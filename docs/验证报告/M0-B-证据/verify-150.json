@@ -1,0 +1,177 @@
+{
+  "versions": {
+    "node": "24.21.0",
+    "acorn": "8.18.0",
+    "ada": "4.0.0",
+    "amaro": "1.1.11",
+    "ares": "1.34.8",
+    "brotli": "1.2.0",
+    "cldr": "48.0",
+    "icu": "78.2",
+    "llhttp": "9.4.3",
+    "merve": "1.2.2",
+    "modules": "149",
+    "napi": "10",
+    "nbytes": "0.1.4",
+    "ncrypto": "0.0.1",
+    "nghttp2": "1.70.0",
+    "nghttp3": "",
+    "ngtcp2": "",
+    "openssl": "0.0.0",
+    "simdjson": "4.6.7",
+    "simdutf": "7.7.0",
+    "sqlite": "3.53.4",
+    "tz": "2025c",
+    "undici": "7.29.1",
+    "unicode": "17.0",
+    "uv": "1.52.1",
+    "uvwasi": "0.0.23",
+    "v8": "15.2.124.28-electron.0",
+    "zlib": "1.3.2.1-motley",
+    "zstd": "1.6.0",
+    "electron": "44.5.1",
+    "chrome": "152.0.7977.130"
+  },
+  "displays": [
+    {
+      "accelerometerSupport": "unknown",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1200
+      },
+      "colorDepth": 24,
+      "colorSpace": "{primaries:BT709, transfer:SRGB, matrix:RGB, range:FULL}",
+      "depthPerComponent": 8,
+      "detected": true,
+      "displayFrequency": 120,
+      "id": 586695528,
+      "internal": true,
+      "label": "ATNA40CU05-0 ",
+      "maximumCursorSize": {
+        "width": 0,
+        "height": 0
+      },
+      "monochrome": false,
+      "nativeOrigin": {
+        "x": 0,
+        "y": 0
+      },
+      "rotation": 0,
+      "scaleFactor": 1.5,
+      "size": {
+        "width": 1920,
+        "height": 1200
+      },
+      "workArea": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1152
+      },
+      "workAreaSize": {
+        "width": 1920,
+        "height": 1152
+      },
+      "touchSupport": "unknown"
+    }
+  ],
+  "capturedAt": "2026-09-30T20:16:43.813Z",
+  "windows": [
+    {
+      "id": "3215114",
+      "pid": 276,
+      "title": "M0-B Fixture",
+      "className": "Chrome_WidgetWin_1",
+      "bounds": {
+        "left": 759,
+        "top": 330,
+        "right": 1941,
+        "bottom": 921
+      },
+      "buttons": {
+        "left": 1720,
+        "right": 1940,
+        "top": 330,
+        "bottom": 374
+      },
+      "buttonsFallback": false,
+      "dpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "id": "3868722",
+      "pid": 276,
+      "title": "M0-B Occluder",
+      "className": "Chrome_WidgetWin_1",
+      "bounds": {
+        "left": 909,
+        "top": 210,
+        "right": 1419,
+        "bottom": 591
+      },
+      "buttons": {
+        "left": 1198,
+        "right": 1418,
+        "top": 210,
+        "bottom": 254
+      },
+      "buttonsFallback": false,
+      "dpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    }
+  ],
+  "pollingMs": {
+    "count": 148,
+    "mean": 3.5099168918919346,
+    "p95": 5.200999999999908,
+    "max": 9.207099999999627
+  },
+  "pollingCpuUs": {
+    "count": 148,
+    "mean": 2844.5945945945946,
+    "p95": 16000,
+    "max": 32000
+  },
+  "pollingCpuOneCorePercent": 2.740517587821676,
+  "sampleIntervalsMs": {
+    "count": 147,
+    "mean": 104.50382040816328,
+    "p95": 110.69830000000002,
+    "max": 162.61039999999957
+  },
+  "sampleToRendererAckMs": {
+    "count": 147,
+    "mean": 10.78817482993197,
+    "p95": 10.003600000000006,
+    "max": 331.2346
+  },
+  "commandedMovementToRendererAckMs": {
+    "count": 5,
+    "mean": 82.0841199999999,
+    "p95": 97.63819999999942,
+    "max": 100.0591000000004
+  },
+  "fastWindowIds": ["3215114"],
+  "verificationChecks": [
+    "canvas-css-size",
+    "native-enumeration",
+    "occlusion-and-buttons",
+    "dpi-roundtrip",
+    "fast-movement",
+    "z-order-churn",
+    "commanded-movement-latency",
+    "maximize",
+    "minimize",
+    "hide",
+    "fullscreen",
+    "normal"
+  ]
+}

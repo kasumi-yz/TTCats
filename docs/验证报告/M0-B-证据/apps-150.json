@@ -1,0 +1,167 @@
+{
+  "capturedAt": "2026-09-30T20:16:48.882Z",
+  "results": [
+    {
+      "name": "资源管理器",
+      "className": "CabinetWClass",
+      "dpi": 144,
+      "buttonsFallback": false,
+      "movement": {
+        "dx": 180,
+        "dy": 40
+      },
+      "bounds": {
+        "left": 289,
+        "top": 140,
+        "right": 2080,
+        "bottom": 1296
+      },
+      "ledges": [
+        {
+          "id": "134138",
+          "left": 289,
+          "right": 1859,
+          "y": 140
+        },
+        {
+          "id": "134138",
+          "left": 2079,
+          "right": 2080,
+          "y": 140
+        }
+      ]
+    },
+    {
+      "name": "Chrome",
+      "className": "Chrome_WidgetWin_1",
+      "dpi": 144,
+      "buttonsFallback": false,
+      "movement": {
+        "dx": 180,
+        "dy": 40
+      },
+      "bounds": {
+        "left": 289,
+        "top": 140,
+        "right": 2880,
+        "bottom": 1679
+      },
+      "ledges": [
+        {
+          "id": "197920",
+          "left": 289,
+          "right": 2659,
+          "y": 140
+        },
+        {
+          "id": "197920",
+          "left": 2879,
+          "right": 2880,
+          "y": 140
+        }
+      ]
+    },
+    {
+      "name": "微信",
+      "className": "Qt51514QWindowIcon",
+      "dpi": 144,
+      "buttonsFallback": true,
+      "movement": {
+        "dx": 180,
+        "dy": 40
+      },
+      "bounds": {
+        "left": 289,
+        "top": 140,
+        "right": 713,
+        "bottom": 712
+      },
+      "ledges": [
+        {
+          "id": "1970406",
+          "left": 289,
+          "right": 473,
+          "y": 140
+        }
+      ]
+    },
+    {
+      "name": "VS Code",
+      "className": "Chrome_WidgetWin_1",
+      "dpi": 144,
+      "buttonsFallback": true,
+      "movement": {
+        "dx": 180,
+        "dy": 40
+      },
+      "bounds": {
+        "left": 288,
+        "top": 140,
+        "right": 2100,
+        "bottom": 1348
+      },
+      "ledges": [
+        {
+          "id": "789076",
+          "left": 288,
+          "right": 1860,
+          "y": 140
+        }
+      ]
+    },
+    {
+      "name": "记事本",
+      "className": "Notepad",
+      "dpi": 144,
+      "buttonsFallback": false,
+      "movement": {
+        "dx": 180,
+        "dy": 40
+      },
+      "bounds": {
+        "left": 287,
+        "top": 140,
+        "right": 1872,
+        "bottom": 1401
+      },
+      "ledges": [
+        {
+          "id": "4329686",
+          "left": 287,
+          "right": 1649,
+          "y": 140
+        },
+        {
+          "id": "4329686",
+          "left": 1869,
+          "right": 1872,
+          "y": 140
+        }
+      ]
+    },
+    {
+      "name": "设置",
+      "className": "ApplicationFrameWindow",
+      "dpi": 144,
+      "buttonsFallback": true,
+      "movement": {
+        "dx": 180,
+        "dy": 40
+      },
+      "bounds": {
+        "left": 289,
+        "top": 140,
+        "right": 2472,
+        "bottom": 1576
+      },
+      "ledges": [
+        {
+          "id": "393816",
+          "left": 289,
+          "right": 2232,
+          "y": 140
+        }
+      ]
+    }
+  ]
+}

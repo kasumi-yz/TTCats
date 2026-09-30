@@ -1,0 +1,23 @@
+{
+  "name": "ttcats-window-spike",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/main/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && electron .",
+    "test": "tsx --test src/ledge.test.ts",
+    "measure": "npm run build && electron . --measure",
+    "verify": "npm run build && electron . --verify",
+    "verify:apps": "npm run build && node dist/main/verify-apps.js"
+  },
+  "dependencies": {
+    "koffi": "3.3.2"
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "typescript": "~6.0.3",
+    "@types/node": "^24.19.0",
+    "tsx": "4.23.15"
+  }
+}
