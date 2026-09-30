@@ -1,0 +1,14 @@
+node_modules/
+app/out/
+app/dist/
+app/test-results/
+app/playwright-report/
+*.log
+.DS_Store
+Thumbs.db
+
+# Python（素材工厂）
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/

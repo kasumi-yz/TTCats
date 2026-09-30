@@ -74,7 +74,25 @@ docs/                      设计方案、ADR、验证报告、素材制作手�
 
 ## 常用命令
 
-（由 M0 的 D 线"协作底座"issue 补充，完成前这里暂时为空。）
+在仓库根目录运行（需要 Node.js 24 以上）：
+
+```bash
+npm ci                     # 安装依赖（第一次，或 package-lock.json 变了之后）
+npm run check              # 提交前必跑：类型检查 → lint 和格式 → 单元测试 → 内容校验 → schema 是否最新
+npm test                   # 只跑单元测试（Vitest）
+npm run validate:content   # 只校验 content/ 下的猫咪包和事件配置
+npm run gen:schemas        # 改了 app/src/shared/schemas/ 之后，重新生成根目录的 schemas/，并一起提交
+npm run build              # 构建 Electron 应用到 app/out/
+npm run test:smoke         # 冒烟测试：用 Playwright 启动构建好的应用（先 build，需要桌面环境）
+```
+
+在 `app/` 目录里还可以用：`npm run dev`（开发模式启动应用）、`npm run format`（自动修格式和可修的 lint 问题）。
+
+自动检查会拦下违反硬性规则的代码：
+- `src/core/`、`src/shared/` 里导入 `electron`、`pixi.js`、`react`、`node:*`，或者使用 `window`、`document` 等 DOM 全局变量、`Date.now()`（规则 1、6）。
+- `src/main/platform/` 以外导入 `koffi` 或使用 `process.platform`（规则 3）。
+
+CI（`.github/workflows/ci.yml`）：Linux 上跑 `npm run check`；有 `tools/asset-factory/` 时跑 `uv sync`、`uv run ruff check`、`uv run pytest`；Windows 上构建应用并跑冒烟测试。
 
 ## Agent skills
 

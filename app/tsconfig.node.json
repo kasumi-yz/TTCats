@@ -1,0 +1,17 @@
+{
+  // 主进程、构建脚本、测试脚本：Node 环境，不带 DOM 类型
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"]
+  },
+  "include": [
+    "src/main/**/*.ts",
+    "scripts/**/*.ts",
+    "e2e/**/*.ts",
+    "test/**/*.ts",
+    "electron.vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts"
+  ]
+}

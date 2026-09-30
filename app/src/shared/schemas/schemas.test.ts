@@ -1,0 +1,151 @@
+import { describe, expect, it } from 'vitest';
+import type { z } from 'zod';
+import { CandidateManifestSchema } from './candidate-manifest';
+import { CatSchema } from './cat';
+import { ClipSchema, type Clip } from './clip';
+import { EventSchema } from './event';
+import { validateWith } from './validate';
+
+function clip(overrides: Partial<Clip> = {}): Clip {
+  return {
+    schemaVersion: 1,
+    name: 'stand-to-sit',
+    variant: 1,
+    kind: 'transition',
+    fromPose: 'stand',
+    toPose: 'sit',
+    optional: false,
+    video: 'clips/stand-to-sit.webm',
+    hitMask: 'clips/stand-to-sit.hitmask.png',
+    fps: 24,
+    frameCount: 3,
+    width: 512,
+    height: 512,
+    footAnchors: [
+      { x: 256, y: 500 },
+      { x: 256, y: 500 },
+      { x: 256, y: 500 },
+    ],
+    mirrorable: true,
+    facing: 'right',
+    speed: 0,
+    keypoints: {},
+    ...overrides,
+  };
+}
+
+function problemsOf(schema: z.ZodType, data: unknown): string[] {
+  const result = validateWith(schema, data);
+  return result.ok ? [] : result.problems;
+}
+
+describe('片段元数据', () => {
+  it('合法的过渡片段能通过', () => {
+    expect(problemsOf(ClipSchema, clip())).toEqual([]);
+  });
+
+  it('标准片段的起止姿势必须和片段表一致', () => {
+    expect(problemsOf(ClipSchema, clip({ toPose: 'sleep' }))).toEqual([
+      '字段 fromPose（开始姿势） 不对：片段「stand-to-sit」必须从「站」开始、在「坐」结束',
+    ]);
+  });
+
+  it('落脚锚点必须逐帧记录', () => {
+    expect(problemsOf(ClipSchema, clip({ footAnchors: [{ x: 0, y: 0 }] }))).toEqual([
+      '字段 footAnchors（落脚锚点） 不对：需要逐帧记录，应有 3 项，实际有 1 项',
+    ]);
+  });
+
+  it('不在片段表里的片段必须标成可选', () => {
+    const custom = clip({ name: 'walk-toward-camera', kind: 'loop', toPose: 'stand' });
+    expect(problemsOf(ClipSchema, custom)).toEqual([
+      '字段 name（名字） 不对：不在标准片段表里的片段名，必须标成可选（optional: true）',
+    ]);
+    expect(problemsOf(ClipSchema, { ...custom, optional: true })).toEqual([]);
+  });
+
+  it('路径不能跳出猫咪包', () => {
+    expect(problemsOf(ClipSchema, clip({ video: '../other/x.webm' }))).toEqual([
+      '字段 video（视频文件） 不对：应是猫咪包内部的相对路径，用正斜杠，不能包含 ..',
+    ]);
+  });
+});
+
+describe('猫咪包 cat.json', () => {
+  const cat = {
+    schemaVersion: 1,
+    id: 'kubo',
+    name: '库啵',
+    relativeSize: 0.9,
+    personality: { activity: 0.4, clinginess: 0.8, initiative: 0.3, dominance: 0.2, patience: 0.7 },
+    relationships: [{ cat: 'majiang', closeness: 0.9, dominance: -0.4 }],
+    sounds: { meow: [], purr: [] },
+  };
+
+  it('生日和到家日可以不写', () => {
+    expect(problemsOf(CatSchema, cat)).toEqual([]);
+  });
+
+  it('不能和自己建立关系', () => {
+    const selfRel = { ...cat, relationships: [{ cat: 'kubo', closeness: 1, dominance: 0 }] };
+    expect(problemsOf(CatSchema, selfRel)).toEqual([
+      '字段 relationships[0].cat（猫） 不对：不能和自己建立关系',
+    ]);
+  });
+
+  it('日期格式错误时报中文', () => {
+    expect(problemsOf(CatSchema, { ...cat, birthday: '2020/1/1' })).toEqual([
+      '字段 birthday（生日） 不对：日期格式应为 YYYY-MM-DD',
+    ]);
+  });
+});
+
+describe('事件配置', () => {
+  const event = {
+    schemaVersion: 1,
+    id: 'late-night-sleepy',
+    name: '深夜犯困',
+    trigger: { type: 'timeOfDay', from: '23:00', to: '05:00' },
+    cooldownMinutes: 60,
+    cats: { min: 1, max: 1 },
+    steps: [
+      { do: 'goToPose', pose: 'sit' },
+      { do: 'playClip', clip: 'yawn' },
+    ],
+  };
+
+  it('合法的事件能通过', () => {
+    expect(problemsOf(EventSchema, event)).toEqual([]);
+  });
+
+  it('参与猫数的上下限要合理', () => {
+    expect(problemsOf(EventSchema, { ...event, cats: { min: 2, max: 1 } })).toEqual([
+      '字段 cats.max（最多几只） 不对：最多几只猫不能小于最少几只猫',
+    ]);
+  });
+});
+
+describe('素材工厂的候选 manifest', () => {
+  it('合法的 manifest 能通过', () => {
+    const manifest = {
+      schemaVersion: 1,
+      candidateId: 'stand-to-sit-001',
+      cat: 'doudou',
+      status: 'pending',
+      assetLog: {
+        generator: 'wan2.2-flf2v',
+        modelFiles: ['wan2.2_i2v_high_noise_14B_Q4_K_M.gguf'],
+        workflow: 'flf2v-v1.json',
+        prompt: 'a cat sits down',
+        params: { steps: 20, seed: 42 },
+        attempt: 1,
+        startPoseFrame: 'stand.png',
+        endPoseFrame: 'sit.png',
+        rawVideo: 'D:/assets/raw/doudou/stand-to-sit-001.mp4',
+        createdAt: '2026-10-01T12:00:00+08:00',
+      },
+      clip: clip(),
+    };
+    expect(problemsOf(CandidateManifestSchema, manifest)).toEqual([]);
+  });
+});
