@@ -23,7 +23,7 @@ import { cpus } from 'node:os';
 import { join } from 'node:path';
 import type { LogEvent, OverlayState } from '../shared/protocol';
 import { mouseButton, mouseMove, setDpiAware } from '../shared/win32';
-import { launch, RESULTS, sleep, waitFor, type Launched } from './common';
+import { launch, RESULTS, ROOT, sleep, waitFor, type Launched } from './common';
 
 const arg = (name: string): string | undefined =>
   process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -89,22 +89,31 @@ function otherElectronProcesses(ourPids: number[]): { name: string; count: numbe
   }
 }
 
-/** 独占检查：别的 electron.exe（其他会话的 Electron 程序）或素材工厂（python/ComfyUI）是否在跑 */
-function exclusivityCheck(ourPids: number[]): string[] {
+/**
+ * 独占检查：别的 electron.exe（其他会话的 Electron 程序）或素材工厂（python/ComfyUI）是否在跑。
+ * 按可执行文件路径区分：本工程目录下的 electron.exe（桌面层和全屏测试窗口，包括它们后来才启动的子进程）不算。
+ * 返回 "程序路径" 列表。
+ */
+function exclusivityCheck(): string[] {
+  const ours = ROOT.toLowerCase();
   try {
     const out = execFileSync(
       'powershell',
       [
         '-NoProfile',
         '-Command',
-        "Get-Process | Where-Object { $_.Name -match '^(electron|python|pythonw|ComfyUI)$' } | ForEach-Object { \"$($_.Id)|$($_.Name)\" }",
+        "Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(electron|python|pythonw|ComfyUI)\\.exe$' } | ForEach-Object { $_.ExecutablePath }",
       ],
       { encoding: 'utf8' },
     );
-    return out
-      .split(/\r?\n/)
-      .filter(Boolean)
-      .filter((l) => !ourPids.includes(Number(l.split('|')[0])));
+    return [
+      ...new Set(
+        out
+          .split(/\r?\n/)
+          .map((l) => l.trim())
+          .filter((l) => l && !l.toLowerCase().startsWith(ours)),
+      ),
+    ];
   } catch {
     return [];
   }
@@ -145,10 +154,9 @@ async function main(): Promise<void> {
     console.log(`显卡：${gpuInfo.info.auxAttributes?.glRenderer}`);
     console.log(`同时在运行的其他 Electron 类程序：${others.map((o) => `${o.name}×${o.count}`).join('，') || '无'}`);
     stopGpu = startGpuSampler(pids, join(dir, 'gpu.jsonl'));
-    const intruders = new Set<string>(exclusivityCheck(pids));
+    const intruders = new Set<string>(exclusivityCheck());
     const excl = setInterval(() => {
-      const probePids = probe?.proc.pid ? [probe.proc.pid] : [];
-      for (const l of exclusivityCheck([...pids, ...probePids])) intruders.add(l);
+      for (const l of exclusivityCheck()) intruders.add(l);
     }, 15000);
     stopExcl = () => clearInterval(excl);
 

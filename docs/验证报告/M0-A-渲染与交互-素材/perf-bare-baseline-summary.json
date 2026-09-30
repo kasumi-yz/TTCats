@@ -1,0 +1,101 @@
+{
+  "time": "2026-09-30T19:44:43.292Z",
+  "minutesPerPhase": 1,
+  "warmupExcludedMs": 15000,
+  "gpuMode": "low-power",
+  "preload": "all",
+  "fpsCap": 0,
+  "resolution": "系统缩放",
+  "glRenderer": "ANGLE (AMD, AMD Radeon 780M Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11-32.0.12019.1028)",
+  "activeGpu": "AMD Radeon 780M Graphics",
+  "versions": {
+    "electron": "44.5.1",
+    "chrome": "152.0.7977.130",
+    "node": "24.21.0"
+  },
+  "cpuCount": 16,
+  "otherElectronApps": [
+    {
+      "name": "ChatGPT",
+      "count": 13
+    },
+    {
+      "name": "claude",
+      "count": 14
+    },
+    {
+      "name": "electron",
+      "count": 4
+    },
+    {
+      "name": "lghub_agent",
+      "count": 1
+    },
+    {
+      "name": "msedgewebview2",
+      "count": 19
+    },
+    {
+      "name": "NVIDIA Overlay",
+      "count": 5
+    },
+    {
+      "name": "Overwolf",
+      "count": 1
+    },
+    {
+      "name": "OverwolfBrowser",
+      "count": 4
+    },
+    {
+      "name": "SteelSeriesGG",
+      "count": 1
+    }
+  ],
+  "phases": [
+    {
+      "phase": "playing",
+      "samples": 45,
+      "cpuOneCoreAvg": 0.1,
+      "cpuOneCoreMax": 1.2,
+      "cpuMachineAvg": 0,
+      "cpuMachineMax": 0.1,
+      "workingSetAvgMB": 359.8,
+      "workingSetMaxMB": 363.3,
+      "privateAvgMB": 170,
+      "privateMaxMB": 172.8,
+      "byType": {
+        "Browser": {
+          "cpuAvg": 0.1,
+          "wsAvgMB": 109
+        },
+        "GPU": {
+          "cpuAvg": 0,
+          "wsAvgMB": 125.5
+        },
+        "Utility": {
+          "cpuAvg": 0,
+          "wsAvgMB": 47.4
+        },
+        "Tab": {
+          "cpuAvg": 0,
+          "wsAvgMB": 77.9
+        }
+      },
+      "gpuByEngine": [
+        {
+          "engine": "0x00000000_0x00016564 3D",
+          "avg": 0,
+          "max": 0
+        },
+        {
+          "engine": "0x00000000_0x00016564 High Priority 3D",
+          "avg": 0,
+          "max": 0
+        }
+      ]
+    }
+  ],
+  "timing": [],
+  "switchStats": null
+}
