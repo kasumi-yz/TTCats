@@ -11,5 +11,5 @@ content/cats/<猫id>/
 content/events/<事件id>.json   事件配置（schemas/event.schema.json）
 ```
 
-目前只有豆豆的 `cat.json`（草稿），用来测试校验流程。性格参数是按设计方案里的描述估的初值，
-生日和到家日还没填，之后可以在设置里补，也可以直接写进 `cat.json`。
+目前只有豆豆的 `cat.json`（草稿），用来测试校验流程。性格参数是按设计方案里的描述估的初值；
+到家日可以不写。

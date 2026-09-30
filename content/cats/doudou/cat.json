@@ -3,6 +3,7 @@
   "schemaVersion": 1,
   "id": "doudou",
   "name": "豆豆",
+  "birthday": "2024-10-30",
   "relativeSize": 1,
   "personality": {
     "activity": 0.25,
