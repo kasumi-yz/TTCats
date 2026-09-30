@@ -100,11 +100,17 @@ describe('平台代码的位置限制（硬性规则 3）', () => {
     "export const isWin = process['platform'] === 'win32';\n",
     "export const koffi = import('koffi');\n",
     "const name = 'node:os';\nexport const os = import(name);\n",
+    // Codex 第三次审查的复现：用字符串做键的解构
+    "const { ['platform']: hostOs } = process;\nexport const isWin = hostOs === 'win32';\n",
+    "const { 'platform': hostOs } = process;\nexport const isWin = hostOs === 'win32';\n",
   ];
 
   it.each([
     "export const debug = process.env['DEBUG'] === '1';\n",
     "export const loadApp = () => import('./App');\n",
+    // 用名叫 platform 的变量做下标或解构，只是普通的字典查询
+    'export function readName(names: Record<string, string>, platform: string) {\n  return names[platform];\n}\n',
+    'export function pick(obj: Record<string, number>, platform: string) {\n  const { [platform]: value } = obj;\n  return value;\n}\n',
   ])('src/main 里的普通代码 %s 不会被误拦', async (code) => {
     expect(await ruleIdsFor('src/main/probe.ts', code)).toEqual([]);
   });

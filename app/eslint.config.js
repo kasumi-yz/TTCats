@@ -71,9 +71,12 @@ const platformRestrictedSyntax = [
     selector: 'ImportExpression[source.type!="Literal"]',
     message: `动态 import() 只能写固定的模块名，才能被自动检查。${RULE3}`,
   },
-  { selector: 'MemberExpression[property.name="platform"]', message: RULE3 },
+  // x.platform、x['platform']、{ platform } = x、{ ['platform']: y } = x；
+  // 但 x[platform] 这种用变量做下标的普通字典查询不算
+  { selector: 'MemberExpression[computed=false][property.name="platform"]', message: RULE3 },
   { selector: 'MemberExpression[property.value="platform"]', message: RULE3 },
-  { selector: 'ObjectPattern > Property[key.name="platform"]', message: RULE3 },
+  { selector: 'ObjectPattern > Property[computed=false][key.name="platform"]', message: RULE3 },
+  { selector: 'ObjectPattern > Property[key.value="platform"]', message: RULE3 },
 ];
 
 export default tseslint.config(
