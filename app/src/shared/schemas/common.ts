@@ -9,7 +9,7 @@ export const SchemaVersionSchema = z.literal(1);
 /** 猫、片段、事件等的 id：小写英文、数字和连字符，比如 `doudou`、`idle-stand`。 */
 export const IdSchema = z
   .string()
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, { error: zh.validation.idFormat });
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*(?![\s\S])/, { error: zh.validation.idFormat });
 
 /** 公历日期，格式 YYYY-MM-DD。 */
 export const DateSchema = z.iso.date({ error: zh.validation.dateFormat });
@@ -17,12 +17,20 @@ export const DateSchema = z.iso.date({ error: zh.validation.dateFormat });
 /** 一天中的时刻，格式 HH:MM（24 小时制）。 */
 export const TimeOfDaySchema = z
   .string()
-  .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, { error: zh.validation.timeOfDayFormat });
+  .regex(/^(?:[01]\d|2[0-3]):[0-5]\d(?![\s\S])/, { error: zh.validation.timeOfDayFormat });
 
-/** 猫咪包内部的相对路径，用正斜杠，不能跳出猫咪包。 */
+/**
+ * 猫咪包内部的相对路径，用正斜杠分隔，不能跳出猫咪包。
+ * 每一段都不能是空的、`.` 或 `..`，也不能含反斜杠、冒号和控制字符（包括换行）。
+ * 这里只检查写法；validate:content 还会确认它实际指向猫咪包里的一个文件。
+ * 结尾用 (?![\s\S]) 而不是 $：Python 的 $ 会放过结尾的换行，素材工厂用 Python 校验同一个正则。
+ */
+const packPathSegment = String.raw`(?!\.{1,2}(?:/|$))[^/\\:\u0000-\u001f\u007f]+`;
 export const PackPathSchema = z
   .string()
-  .regex(/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[^\\:]+$/, { error: zh.validation.packPathFormat });
+  .regex(new RegExp(String.raw`^${packPathSegment}(?:/${packPathSegment})*(?![\s\S])`), {
+    error: zh.validation.packPathFormat,
+  });
 
 /** 0～1 之间的参数值。 */
 export const UnitSchema = z.number().min(0).max(1);

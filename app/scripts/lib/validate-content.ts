@@ -1,6 +1,6 @@
 // 校验 content/ 下的全部内容，报错用中文，并说清楚是哪只猫、哪个文件、缺了什么（硬性规则 4）。
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { basename, join, relative } from 'node:path';
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { z } from 'zod';
 import { CatSchema, ClipSchema, EventSchema, validateWith } from '../../src/shared/schemas';
 import { zh } from '../../src/shared/strings.zh-CN';
@@ -54,10 +54,19 @@ export function validateContentDir(contentDir: string): ContentReport {
     return result.value;
   }
 
+  /** 确认猫咪包里引用的路径在包内，并且是一个普通文件。 */
   function requireFile(packDir: string, who: string, from: string, field: string, path: string) {
-    if (!existsSync(join(packDir, path))) {
-      report.problems.push(`${who} ${rel(from)}：${v.referencedFileMissing(field, path)}`);
+    const target = resolve(packDir, path);
+    const inside = relative(packDir, target);
+    let problem: string | undefined;
+    if (inside === '' || inside === '..' || inside.startsWith(`..${sep}`) || isAbsolute(inside)) {
+      problem = v.referencedOutsidePack(field, path);
+    } else if (!existsSync(target)) {
+      problem = v.referencedFileMissing(field, path);
+    } else if (!statSync(target).isFile()) {
+      problem = v.referencedNotAFile(field, path);
     }
+    if (problem !== undefined) report.problems.push(`${who} ${rel(from)}：${problem}`);
   }
 
   for (const folder of listDirs(join(contentDir, 'cats'))) {

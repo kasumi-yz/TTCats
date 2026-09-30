@@ -20,8 +20,9 @@ function describePath(path: readonly PropertyKey[]): string {
 function describeIssue(issue: z.core.$ZodIssue): string {
   const v = zh.validation;
   if (issue.code === 'unrecognized_keys') {
-    const where = issue.path.length === 0 ? '' : `${describePath(issue.path)} 里`;
-    return `${where}${v.unknownFields(issue.keys)}`;
+    return issue.path.length === 0
+      ? v.unknownFields(issue.keys)
+      : v.unknownFieldsIn(describePath(issue.path), issue.keys);
   }
   if (issue.code === 'invalid_type' && issue.input === undefined) {
     return v.missingField(describePath(issue.path));

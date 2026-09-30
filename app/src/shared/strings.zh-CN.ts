@@ -7,6 +7,7 @@ export const zh = {
     name: 'TTCats',
     panelsTitle: 'TTCats',
     panelsPlaceholder: '项目骨架已就绪。设置和调试台在 M1 里做。',
+    rootElementMissing: '页面里找不到 #root 元素，面板无法显示。',
   },
 
   poses: {
@@ -75,17 +76,24 @@ export const zh = {
     badField: (field: string, detail: string) => `字段 ${field} 不对：${detail}`,
     unknownFields: (keys: readonly string[]) =>
       `有不认识的字段：${keys.join('、')}（是不是拼错了？）`,
+    unknownFieldsIn: (path: string, keys: readonly string[]) =>
+      `${path} 里有不认识的字段：${keys.join('、')}（是不是拼错了？）`,
     fileNotJson: (detail: string) => `不是合法的 JSON：${detail}`,
     fileMissing: (file: string) => `缺少文件 ${file}`,
     referencedFileMissing: (field: string, file: string) =>
       `字段 ${field} 指向的文件不存在：${file}`,
+    referencedNotAFile: (field: string, file: string) =>
+      `字段 ${field} 指向的是文件夹，不是文件：${file}`,
+    referencedOutsidePack: (field: string, file: string) =>
+      `字段 ${field} 指向了猫咪包外面：${file}`,
     idMismatch: (id: string, expected: string) =>
       `id 写的是「${id}」，但它所在的文件夹或文件名是「${expected}」，两者必须一样`,
     idFormat: '只能用小写英文、数字和连字符',
     dateFormat: '日期格式应为 YYYY-MM-DD',
     timeOfDayFormat: '时刻格式应为 HH:MM（24 小时制）',
-    monthDayFormat: '日期格式应为 MM-DD',
-    packPathFormat: '应是猫咪包内部的相对路径，用正斜杠，不能包含 ..',
+    monthDayFormat: '日期格式应为 MM-DD，并且是真实存在的日子（2 月 29 日可以）',
+    packPathFormat:
+      '应是猫咪包内部的相对路径，用正斜杠分隔，不能包含 . 或 .. 路径段、空段、反斜杠、冒号、换行等控制字符',
     relationshipWithSelf: '不能和自己建立关系',
     duplicateRelationship: (catId: string) => `和「${catId}」的关系写了不止一次`,
     slotKind: (name: string, kind: string) => `片段「${name}」的类型必须是 ${kind}`,

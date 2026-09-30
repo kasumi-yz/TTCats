@@ -23,12 +23,15 @@ export const EventTriggerSchema = z.discriminatedUnion('type', [
   }),
   /** 某只参与的猫的生日或到家纪念日。 */
   z.strictObject({ type: z.literal('catDate'), date: z.enum(['birthday', 'homeDate']) }),
-  /** 每年固定公历日期的节日，格式 MM-DD。 */
+  /** 每年固定公历日期的节日，格式 MM-DD。按月份检查天数，2 月 29 日算合法（闰年才触发）。 */
   z.strictObject({
     type: z.literal('holiday'),
-    date: z.string().regex(/^(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/, {
-      error: zh.validation.monthDayFormat,
-    }),
+    date: z
+      .string()
+      .regex(
+        /^(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|02-(?:0[1-9]|1\d|2\d))(?![\s\S])/,
+        { error: zh.validation.monthDayFormat },
+      ),
   }),
 ]);
 export type EventTrigger = z.infer<typeof EventTriggerSchema>;

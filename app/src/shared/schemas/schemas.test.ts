@@ -4,6 +4,9 @@ import { CandidateManifestSchema } from './candidate-manifest';
 import { CatSchema } from './cat';
 import { ClipSchema, type Clip } from './clip';
 import { EventSchema } from './event';
+import { zh } from '../strings.zh-CN';
+import { PackPathSchema } from './common';
+import { EventTriggerSchema } from './event';
 import { validateWith } from './validate';
 
 function clip(overrides: Partial<Clip> = {}): Clip {
@@ -66,8 +69,38 @@ describe('片段元数据', () => {
 
   it('路径不能跳出猫咪包', () => {
     expect(problemsOf(ClipSchema, clip({ video: '../other/x.webm' }))).toEqual([
-      '字段 video（视频文件） 不对：应是猫咪包内部的相对路径，用正斜杠，不能包含 ..',
+      `字段 video（视频文件） 不对：${zh.validation.packPathFormat}`,
     ]);
+  });
+
+  it.each([
+    '../x.webm',
+    'clips/../../x.webm',
+    'clips/..',
+    './x.webm',
+    'clips/./x.webm',
+    '/abs/x.webm',
+    'clips//x.webm',
+    'clips/',
+    'clips\\x.webm',
+    'C:/x.webm',
+    '\n/../../../../outside.ogg',
+    'clips/x.webm\n',
+    '\r/../x.webm',
+    'clips/\u0000x.webm',
+    '',
+  ])('不合法的猫咪包路径 %j 会被拒绝', (path) => {
+    expect(PackPathSchema.safeParse(path).success).toBe(false);
+  });
+
+  it.each([
+    'x.webm',
+    'clips/walk.v2.webm',
+    'sounds/meow-1.ogg',
+    'a/b/c/..d.png',
+    'clips/豆豆.webm',
+  ])('合法的猫咪包路径 %j 能通过', (path) => {
+    expect(PackPathSchema.safeParse(path).success).toBe(true);
   });
 });
 
@@ -90,6 +123,13 @@ describe('猫咪包 cat.json', () => {
     const selfRel = { ...cat, relationships: [{ cat: 'kubo', closeness: 1, dominance: 0 }] };
     expect(problemsOf(CatSchema, selfRel)).toEqual([
       '字段 relationships[0].cat（猫） 不对：不能和自己建立关系',
+    ]);
+  });
+
+  it('嵌套对象里拼错的字段会带上路径', () => {
+    const typo = { ...cat, personality: { ...cat.personality, activty: 0.5 } };
+    expect(problemsOf(CatSchema, typo)).toEqual([
+      'personality（性格参数） 里有不认识的字段：activty（是不是拼错了？）',
     ]);
   });
 
@@ -117,6 +157,19 @@ describe('事件配置', () => {
   it('合法的事件能通过', () => {
     expect(problemsOf(EventSchema, event)).toEqual([]);
   });
+
+  it.each(['01-31', '02-28', '02-29', '04-30', '12-31'])('节日日期 %s 合法', (date) => {
+    expect(problemsOf(EventTriggerSchema, { type: 'holiday', date })).toEqual([]);
+  });
+
+  it.each(['02-30', '02-31', '04-31', '06-31', '09-31', '11-31', '13-01', '00-10', '01-00'])(
+    '节日日期 %s 不存在，会被拒绝',
+    (date) => {
+      expect(problemsOf(EventTriggerSchema, { type: 'holiday', date })).toEqual([
+        `字段 date 不对：${zh.validation.monthDayFormat}`,
+      ]);
+    },
+  );
 
   it('参与猫数的上下限要合理', () => {
     expect(problemsOf(EventSchema, { ...event, cats: { min: 2, max: 1 } })).toEqual([

@@ -88,6 +88,36 @@ describe('validate:content', () => {
     ]);
   });
 
+  it('用换行伪装的路径不能引用猫咪包外面的文件', () => {
+    // Codex 审查时的复现：content 的上一级放一个文件，再用带换行的 .. 路径去引用它
+    writeFileSync(join(root, '..', 'outside.ogg'), '');
+    writeJson('cats/doudou/cat.json', {
+      ...exampleCat,
+      sounds: { meow: ['\n/../../../../outside.ogg'], purr: [] },
+    });
+    const { problems } = validateContentDir(root);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('字段 sounds.meow[0]（喵叫） 不对：');
+  });
+
+  it('引用指向文件夹时报错', () => {
+    mkdirSync(join(root, 'cats/doudou/sounds'), { recursive: true });
+    writeJson('cats/doudou/cat.json', { ...exampleCat, sounds: { meow: ['sounds'], purr: [] } });
+    expect(validateContentDir(root).problems).toEqual([
+      '猫咪包「doudou」 content/cats/doudou/cat.json：字段 sounds.meow 指向的是文件夹，不是文件：sounds',
+    ]);
+  });
+
+  it('引用存在的普通文件时通过', () => {
+    mkdirSync(join(root, 'cats/doudou/sounds'), { recursive: true });
+    writeFileSync(join(root, 'cats/doudou/sounds/meow-1.ogg'), '');
+    writeJson('cats/doudou/cat.json', {
+      ...exampleCat,
+      sounds: { meow: ['sounds/meow-1.ogg'], purr: [] },
+    });
+    expect(validateContentDir(root).problems).toEqual([]);
+  });
+
   it('事件配置的 id 必须和文件名一样', () => {
     writeJson('events/good-morning.json', {
       schemaVersion: 1,

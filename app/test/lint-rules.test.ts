@@ -1,4 +1,4 @@
-// 证明硬性规则 1 和 3 已经变成自动检查：在不该出现的地方写这些代码，ESLint 会报错。
+// 证明硬性规则 1、3、6 已经变成自动检查：在不该出现的地方写这些代码，ESLint 会报错。
 import { resolve } from 'node:path';
 import { ESLint } from 'eslint';
 import tseslint from 'typescript-eslint';
@@ -19,6 +19,9 @@ async function ruleIdsFor(relativePath: string, code: string): Promise<string[]>
 describe('core 的依赖限制（硬性规则 1）', () => {
   it.each([
     ["import 'electron';", 'no-restricted-imports'],
+    ["export * from 'electron';", 'no-restricted-imports'],
+    ["export const e = import('electron');", 'no-restricted-syntax'],
+    ["import e = require('electron');\nexport { e };", 'no-restricted-syntax'],
     [
       "import { Application } from 'pixi.js';\nexport const a = Application;",
       'no-restricted-imports',
@@ -28,9 +31,15 @@ describe('core 的依赖限制（硬性规则 1）', () => {
       "import { readFileSync } from 'node:fs';\nexport const r = readFileSync;",
       'no-restricted-imports',
     ],
+    ["import { readFileSync } from 'fs';\nexport const r = readFileSync;", 'no-restricted-imports'],
+    // 导入主进程、渲染进程的代码，包括直接导入目录（会解析到 index.ts）
+    ["import '../../main';", 'no-restricted-imports'],
+    ["import '../../main/index';", 'no-restricted-imports'],
+    ["import '../../renderer/panels/App';", 'no-restricted-imports'],
     ['export const el = document.body;', 'no-restricted-globals'],
     ['export const w = window;', 'no-restricted-globals'],
-    ['export const t = Date.now();', 'no-restricted-properties'],
+    ['export const d = globalThis.document;', 'no-restricted-globals'],
+    ["export const p = process.env['X'];", 'no-restricted-globals'],
   ])('src/core 里的 %s 会被拦下', async (code, ruleId) => {
     expect(await ruleIdsFor('src/core/game/probe.ts', code)).toContain(ruleId);
   });
@@ -41,27 +50,56 @@ describe('core 的依赖限制（硬性规则 1）', () => {
     );
   });
 
-  it('纯 TypeScript 的代码不会被拦', async () => {
-    expect(await ruleIdsFor('src/core/stage/probe.ts', 'export const x = 1 + 1;\n')).toEqual([]);
+  it('纯 TypeScript 的代码不会被拦，core 内部可以互相导入', async () => {
+    const code = [
+      "import { a } from '../stage/domain';",
+      "import { b } from './maintenance';",
+      'export const x = a + b;',
+      '',
+    ].join('\n');
+    expect(await ruleIdsFor('src/core/game/probe.ts', code)).toEqual([]);
+  });
+});
+
+describe('core 不读系统时钟（硬性规则 6）', () => {
+  it.each([
+    ['export const t = Date.now();', 'no-restricted-properties'],
+    ['export const t = performance.now();', 'no-restricted-properties'],
+    ['export const t = new Date().getTime();', 'no-restricted-syntax'],
+    ['export const t = Date();', 'no-restricted-syntax'],
+    ['export const t = globalThis.Date.now();', 'no-restricted-globals'],
+  ])('src/core 里的 %s 会被拦下', async (code, ruleId) => {
+    expect(await ruleIdsFor('src/core/game/probe.ts', code)).toContain(ruleId);
+  });
+
+  it('用传入的时间构造日期是允许的', async () => {
+    const code = [
+      'export function hourOf(now: number): number {',
+      '  return new Date(now).getUTCHours() + Date.UTC(2026, 0, 1);',
+      '}',
+      '',
+    ].join('\n');
+    expect(await ruleIdsFor('src/core/game/probe.ts', code)).toEqual([]);
   });
 });
 
 describe('平台代码的位置限制（硬性规则 3）', () => {
-  const platformCode = "export const isWin = process.platform === 'win32';\n";
+  const platformProbes = [
+    "export const isWin = process.platform === 'win32';\n",
+    'export const { platform } = process;\n',
+    "import { platform } from 'node:os';\nexport const isWin = platform() === 'win32';\n",
+    "import { platform as p } from 'os';\nexport const isWin = p() === 'win32';\n",
+    "import * as nodeOs from 'node:os';\nexport const isWin = nodeOs.platform() === 'win32';\n",
+    "import { platform } from 'node:process';\nexport const isWin = platform === 'win32';\n",
+    "import 'koffi';\n",
+  ];
 
-  it('src/main/platform 以外不能按操作系统分支', async () => {
-    expect(await ruleIdsFor('src/main/probe.ts', platformCode)).toContain(
-      'no-restricted-properties',
-    );
+  it.each(platformProbes)('src/main/platform 以外的 %s 会被拦下', async (code) => {
+    const ruleIds = await ruleIdsFor('src/main/probe.ts', code);
+    expect(ruleIds.some((id) => id.startsWith('no-restricted-'))).toBe(true);
   });
 
-  it('src/main/platform 以外不能用 koffi', async () => {
-    expect(await ruleIdsFor('src/main/probe.ts', "import 'koffi';")).toContain(
-      'no-restricted-imports',
-    );
-  });
-
-  it('src/main/platform 里可以用', async () => {
-    expect(await ruleIdsFor('src/main/platform/win/probe.ts', platformCode)).toEqual([]);
+  it.each(platformProbes)('src/main/platform 里可以写 %s', async (code) => {
+    expect(await ruleIdsFor('src/main/platform/win/probe.ts', code)).toEqual([]);
   });
 });
