@@ -1,0 +1,149 @@
+{
+  "$comment": "由 app/src/shared/schemas 自动生成，不要手改。修改后运行 npm run gen:schemas。",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "birthday": {
+      "type": "string",
+      "allOf": [
+        {
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        {
+          "pattern": "^[0-9-]+(?![\\s\\S])"
+        }
+      ]
+    },
+    "homeDate": {
+      "type": "string",
+      "allOf": [
+        {
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        {
+          "pattern": "^[0-9-]+(?![\\s\\S])"
+        }
+      ]
+    },
+    "relativeSize": {
+      "type": "number",
+      "minimum": 0.5,
+      "maximum": 1.5
+    },
+    "personality": {
+      "type": "object",
+      "properties": {
+        "activity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "clinginess": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "initiative": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dominance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "patience": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "activity",
+        "clinginess",
+        "initiative",
+        "dominance",
+        "patience"
+      ],
+      "additionalProperties": false
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "cat": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])"
+          },
+          "closeness": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "dominance": {
+            "type": "number",
+            "minimum": -1,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "cat",
+          "closeness",
+          "dominance"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "sounds": {
+      "type": "object",
+      "properties": {
+        "meow": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(?!\\.{1,2}(?:\\/|$))[^/\\\\:\\u0000-\\u001f\\u007f]+(?:\\/(?!\\.{1,2}(?:\\/|$))[^/\\\\:\\u0000-\\u001f\\u007f]+)*(?![\\s\\S])"
+          }
+        },
+        "purr": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(?!\\.{1,2}(?:\\/|$))[^/\\\\:\\u0000-\\u001f\\u007f]+(?:\\/(?!\\.{1,2}(?:\\/|$))[^/\\\\:\\u0000-\\u001f\\u007f]+)*(?![\\s\\S])"
+          }
+        }
+      },
+      "required": [
+        "meow",
+        "purr"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "relativeSize",
+    "personality",
+    "relationships",
+    "sounds"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,18 @@
+{
+  "name": "ttcats-workspace",
+  "private": true,
+  "workspaces": [
+    "app"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "check": "npm run check -w app",
+    "test": "npm test -w app",
+    "validate:content": "npm run validate:content -w app",
+    "gen:schemas": "npm run gen:schemas -w app",
+    "build": "npm run build -w app",
+    "test:smoke": "npm run test:smoke -w app"
+  }
+}
