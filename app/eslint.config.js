@@ -54,16 +54,27 @@ const coreRestrictedSyntax = [
 ];
 
 // 硬性规则 3：和操作系统打交道的 API 只能在 src/main/platform/ 里用。
+// 全局的 process 仍然可以用（比如 process.env），但不能导入 process 模块，也不能读任何对象的 platform 属性
+// ——这样 `import p from 'node:process'`、`const p = process; p.platform` 这类换个名字的写法也会被拦下。
 const platformRestrictedImports = {
-  paths: [
-    { name: 'koffi', message: RULE3 },
-    { name: 'os', message: RULE3 },
-    { name: 'node:os', message: RULE3 },
-    { name: 'process', importNames: ['platform'], message: RULE3 },
-    { name: 'node:process', importNames: ['platform'], message: RULE3 },
-  ],
+  paths: ['koffi', 'os', 'node:os', 'process', 'node:process'].map((name) => ({
+    name,
+    message: RULE3,
+  })),
 };
-const platformRestrictedProperties = [{ object: 'process', property: 'platform', message: RULE3 }];
+const platformRestrictedSyntax = [
+  {
+    selector: 'ImportExpression[source.value=/^(?:(?:node:)?(?:os|process)|koffi)$/]',
+    message: RULE3,
+  },
+  {
+    selector: 'ImportExpression[source.type!="Literal"]',
+    message: `动态 import() 只能写固定的模块名，才能被自动检查。${RULE3}`,
+  },
+  { selector: 'MemberExpression[property.name="platform"]', message: RULE3 },
+  { selector: 'MemberExpression[property.value="platform"]', message: RULE3 },
+  { selector: 'ObjectPattern > Property[key.name="platform"]', message: RULE3 },
+];
 
 export default tseslint.config(
   { ignores: ['out/**', 'dist/**', 'test-results/**', 'playwright-report/**'] },
@@ -86,14 +97,14 @@ export default tseslint.config(
     files: ['src/**'],
     rules: {
       'no-restricted-imports': ['error', platformRestrictedImports],
-      'no-restricted-properties': ['error', ...platformRestrictedProperties],
+      'no-restricted-syntax': ['error', ...platformRestrictedSyntax],
     },
   },
   {
     files: ['src/main/platform/**'],
     rules: {
       'no-restricted-imports': 'off',
-      'no-restricted-properties': 'off',
+      'no-restricted-syntax': 'off',
     },
   },
   {
@@ -113,10 +124,9 @@ export default tseslint.config(
           message: `core 和 shared 不能直接访问全局对象${RULE1}`,
         })),
       ],
-      'no-restricted-syntax': ['error', ...coreRestrictedSyntax],
+      'no-restricted-syntax': ['error', ...coreRestrictedSyntax, ...platformRestrictedSyntax],
       'no-restricted-properties': [
         'error',
-        ...platformRestrictedProperties,
         { object: 'Date', property: 'now', message: RULE6 },
         { object: 'performance', property: 'now', message: RULE6 },
       ],

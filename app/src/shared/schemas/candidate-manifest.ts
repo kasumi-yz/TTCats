@@ -24,7 +24,8 @@ export const AssetLogSchema = z.strictObject({
   /** 原始视频在素材库里的路径。原始视频不进仓库（D22）。 */
   rawVideo: z.string().min(1),
   /** 生成时间，ISO 8601。 */
-  createdAt: z.iso.datetime({ offset: true }),
+  // 另加只允许 ASCII 字符的检查，原因同 common.ts 里的 DateSchema
+  createdAt: z.iso.datetime({ offset: true }).regex(/^[0-9T:.+Z-]+(?![\s\S])/),
 });
 export type AssetLog = z.infer<typeof AssetLogSchema>;
 

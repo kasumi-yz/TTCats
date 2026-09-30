@@ -92,7 +92,27 @@ describe('平台代码的位置限制（硬性规则 3）', () => {
     "import * as nodeOs from 'node:os';\nexport const isWin = nodeOs.platform() === 'win32';\n",
     "import { platform } from 'node:process';\nexport const isWin = platform === 'win32';\n",
     "import 'koffi';\n",
+    // Codex 复审时的两个复现：默认导入 process、动态导入 os
+    "import nodeProcess from 'node:process';\nexport const isWin = nodeProcess.platform === 'win32';\n",
+    "export async function f() {\n  const { platform } = await import('node:os');\n  return platform() === 'win32';\n}\n",
+    // 换个名字、换种写法
+    "const p = process;\nexport const isWin = p.platform === 'win32';\n",
+    "export const isWin = process['platform'] === 'win32';\n",
+    "export const koffi = import('koffi');\n",
+    "const name = 'node:os';\nexport const os = import(name);\n",
   ];
+
+  it.each([
+    "export const debug = process.env['DEBUG'] === '1';\n",
+    "export const loadApp = () => import('./App');\n",
+  ])('src/main 里的普通代码 %s 不会被误拦', async (code) => {
+    expect(await ruleIdsFor('src/main/probe.ts', code)).toEqual([]);
+  });
+
+  it('构建脚本和测试可以用 os 模块', async () => {
+    const code = "import { tmpdir } from 'node:os';\nexport const dir = tmpdir();\n";
+    expect(await ruleIdsFor('scripts/probe.ts', code)).toEqual([]);
+  });
 
   it.each(platformProbes)('src/main/platform 以外的 %s 会被拦下', async (code) => {
     const ruleIds = await ruleIdsFor('src/main/probe.ts', code);

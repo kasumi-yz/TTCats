@@ -12,12 +12,15 @@ export const IdSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*(?![\s\S])/, { error: zh.validation.idFormat });
 
 /** 公历日期，格式 YYYY-MM-DD。 */
-export const DateSchema = z.iso.date({ error: zh.validation.dateFormat });
+// zod 自带的日期正则用 \d，Python 会把阿拉伯文等非 ASCII 数字也当成数字，所以再加一道只允许 ASCII 数字的检查
+export const DateSchema = z.iso
+  .date({ error: zh.validation.dateFormat })
+  .regex(/^[0-9-]+(?![\s\S])/, { error: zh.validation.dateFormat });
 
 /** 一天中的时刻，格式 HH:MM（24 小时制）。 */
 export const TimeOfDaySchema = z
   .string()
-  .regex(/^(?:[01]\d|2[0-3]):[0-5]\d(?![\s\S])/, { error: zh.validation.timeOfDayFormat });
+  .regex(/^(?:[01][0-9]|2[0-3]):[0-5][0-9](?![\s\S])/, { error: zh.validation.timeOfDayFormat });
 
 /**
  * 猫咪包内部的相对路径，用正斜杠分隔，不能跳出猫咪包。

@@ -5,7 +5,7 @@ import { CatSchema } from './cat';
 import { ClipSchema, type Clip } from './clip';
 import { EventSchema } from './event';
 import { zh } from '../strings.zh-CN';
-import { PackPathSchema } from './common';
+import { DateSchema, PackPathSchema, TimeOfDaySchema } from './common';
 import { EventTriggerSchema } from './event';
 import { validateWith } from './validate';
 
@@ -170,6 +170,19 @@ describe('事件配置', () => {
       ]);
     },
   );
+
+  // Python 的 \d 会接受阿拉伯文等非 ASCII 数字；素材工厂用同样的正则，所以这里只允许 ASCII 数字
+  it.each(['02-2١', '0٢-01'])('节日日期 %s 含非 ASCII 数字，会被拒绝', (date) => {
+    expect(problemsOf(EventTriggerSchema, { type: 'holiday', date })).toHaveLength(1);
+  });
+
+  it.each(['0١:3٠', '２３:００'])('时刻 %s 含非 ASCII 数字，会被拒绝', (time) => {
+    expect(TimeOfDaySchema.safeParse(time).success).toBe(false);
+  });
+
+  it.each(['2024-10-3٠', '２０２４-10-30'])('日期 %s 含非 ASCII 数字，会被拒绝', (date) => {
+    expect(DateSchema.safeParse(date).success).toBe(false);
+  });
 
   it('参与猫数的上下限要合理', () => {
     expect(problemsOf(EventSchema, { ...event, cats: { min: 2, max: 1 } })).toEqual([

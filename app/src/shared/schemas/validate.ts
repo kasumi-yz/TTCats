@@ -40,5 +40,6 @@ export function validateWith<S extends z.ZodType>(
     error: (issue) => zhLocale.localeError(issue),
   });
   if (result.success) return { ok: true, value: result.data };
-  return { ok: false, problems: result.error.issues.map(describeIssue) };
+  // 同一个字段可能有好几道检查报出同一句话（比如日期），重复的只留一条
+  return { ok: false, problems: [...new Set(result.error.issues.map(describeIssue))] };
 }
