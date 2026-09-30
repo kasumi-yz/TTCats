@@ -23,6 +23,8 @@ export function startControlServer(routes: Record<string, Handler>): Promise<num
       }
     });
   });
+  // 测试脚本会复用连接；默认 5 秒的空闲超时会让复用的连接被服务端关掉（ECONNRESET）
+  server.keepAliveTimeout = 10 * 60 * 1000;
   return new Promise((resolve) => {
     server.listen(0, '127.0.0.1', () => {
       const addr = server.address();

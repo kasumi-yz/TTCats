@@ -42,6 +42,8 @@ export function launch(entry: string, args: string[], label: string): Promise<La
           const res = await fetch(base + path, {
             method,
             body: body ? JSON.stringify(body) : undefined,
+          }).catch((err: unknown) => {
+            throw new Error(`${label} ${method} ${path} ${body ? JSON.stringify(body) : ''} 请求失败：${String(err)}`);
           });
           const json = await res.json();
           if (!res.ok) throw new Error(`${label} ${path}: ${JSON.stringify(json)}`);

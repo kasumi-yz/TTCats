@@ -432,6 +432,9 @@ async function startControl(): Promise<void> {
           state.phase = String(b.phase);
           log('phase', { phase: state.phase });
           break;
+        case 'raise':
+          win?.moveTop();
+          break;
         case 'quit':
           setTimeout(() => app.quit(), 50);
           break;

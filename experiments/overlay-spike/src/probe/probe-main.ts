@@ -70,6 +70,12 @@ app.whenReady().then(async () => {
           value = '';
           await win.webContents.executeJavaScript('document.querySelector("textarea").value = ""');
           break;
+        case 'raise':
+          // 恢复并提到最前（Win+Shift+S 截完后探针窗口有时会被最小化，实测）
+          if (win.isMinimized()) win.restore();
+          win.showInactive();
+          win.moveTop();
+          break;
         case 'focus':
           win.focus();
           break;
