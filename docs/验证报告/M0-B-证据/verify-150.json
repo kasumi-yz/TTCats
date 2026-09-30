@@ -77,11 +77,11 @@
       "touchSupport": "unknown"
     }
   ],
-  "capturedAt": "2026-09-30T20:16:43.813Z",
+  "capturedAt": "2026-09-30T21:14:18.477Z",
   "windows": [
     {
-      "id": "3215114",
-      "pid": 276,
+      "id": "4655248",
+      "pid": 7960,
       "title": "M0-B Fixture",
       "className": "Chrome_WidgetWin_1",
       "bounds": {
@@ -98,14 +98,15 @@
       },
       "buttonsFallback": false,
       "dpi": 144,
+      "windowDpi": 144,
       "eligible": true,
       "reason": "",
       "maximized": false,
       "fullscreen": false
     },
     {
-      "id": "3868722",
-      "pid": 276,
+      "id": "7935462",
+      "pid": 7960,
       "title": "M0-B Occluder",
       "className": "Chrome_WidgetWin_1",
       "bounds": {
@@ -122,46 +123,150 @@
       },
       "buttonsFallback": false,
       "dpi": 144,
+      "windowDpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "id": "6293596",
+      "pid": 7960,
+      "title": "M0-B Legacy",
+      "className": "Static",
+      "bounds": {
+        "left": 2261,
+        "top": 750,
+        "right": 2839,
+        "bottom": 1114
+      },
+      "buttons": {
+        "left": 2419,
+        "right": 2639,
+        "top": 750,
+        "bottom": 795
+      },
+      "buttonsFallback": false,
+      "dpi": 144,
+      "windowDpi": 96,
       "eligible": true,
       "reason": "",
       "maximized": false,
       "fullscreen": false
     }
   ],
+  "ignoredTransparentWindows": [
+    {
+      "id": "14161308",
+      "pid": 7960,
+      "bounds": {
+        "left": 2261,
+        "top": 750,
+        "right": 2839,
+        "bottom": 1114
+      },
+      "extendedStyle": 524680,
+      "reason": "alpha-zero"
+    },
+    {
+      "id": "6357544",
+      "pid": 7960,
+      "bounds": {
+        "left": 2261,
+        "top": 750,
+        "right": 2839,
+        "bottom": 1114
+      },
+      "extendedStyle": 524712,
+      "reason": "layered-click-through"
+    },
+    {
+      "id": "463522",
+      "pid": 35812,
+      "bounds": {
+        "left": 1608,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "extendedStyle": 2621608,
+      "reason": "layered-click-through"
+    },
+    {
+      "id": "1248190",
+      "pid": 29464,
+      "bounds": {
+        "left": 1058,
+        "top": 572,
+        "right": 1822,
+        "bottom": 1228
+      },
+      "extendedStyle": 134742176,
+      "reason": "layered-click-through"
+    },
+    {
+      "id": "262628",
+      "pid": 22500,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "extendedStyle": 134742144,
+      "reason": "alpha-zero"
+    },
+    {
+      "id": "131356",
+      "pid": 4204,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 22,
+        "bottom": 22
+      },
+      "extendedStyle": 134742176,
+      "reason": "layered-click-through"
+    }
+  ],
   "pollingMs": {
-    "count": 148,
-    "mean": 3.5099168918919346,
-    "p95": 5.200999999999908,
-    "max": 9.207099999999627
+    "count": 179,
+    "mean": 3.67118715083797,
+    "p95": 6.332500000000437,
+    "max": 16.11239999999998
   },
   "pollingCpuUs": {
-    "count": 148,
-    "mean": 2844.5945945945946,
+    "count": 179,
+    "mean": 2363.1284916201116,
     "p95": 16000,
     "max": 32000
   },
-  "pollingCpuOneCorePercent": 2.740517587821676,
+  "pollingCpuTotalUs": 423000,
+  "pollingCpuOneCorePercent": 2.198116477121645,
   "sampleIntervalsMs": {
-    "count": 147,
-    "mean": 104.50382040816328,
-    "p95": 110.69830000000002,
-    "max": 162.61039999999957
+    "count": 178,
+    "mean": 108.11094494382023,
+    "p95": 111.38490000000093,
+    "max": 465.28690000000006
   },
   "sampleToRendererAckMs": {
-    "count": 147,
-    "mean": 10.78817482993197,
-    "p95": 10.003600000000006,
-    "max": 331.2346
+    "count": 178,
+    "mean": 10.579651685393186,
+    "p95": 10.109499999998661,
+    "max": 447.65740000000005
   },
   "commandedMovementToRendererAckMs": {
     "count": 5,
-    "mean": 82.0841199999999,
-    "p95": 97.63819999999942,
-    "max": 100.0591000000004
+    "mean": 96.26447999999945,
+    "p95": 101.59950000000026,
+    "max": 107.78419999999824
   },
-  "fastWindowIds": ["3215114"],
+  "fastWindowIds": ["4655248"],
   "verificationChecks": [
+    "transparent-occluders",
+    "legacy-monitor-dpi",
     "canvas-css-size",
+    "known-window-position",
     "native-enumeration",
     "occlusion-and-buttons",
     "dpi-roundtrip",
@@ -173,5 +278,39 @@
     "hide",
     "fullscreen",
     "normal"
-  ]
+  ],
+  "geometryEvidence": {
+    "expectedOuterRects": [
+      {
+        "x": 300,
+        "y": 330,
+        "width": 1200,
+        "height": 600
+      },
+      {
+        "x": 480,
+        "y": 330,
+        "width": 1200,
+        "height": 600
+      }
+    ],
+    "actualOuter": {
+      "left": 480,
+      "top": 330,
+      "right": 1680,
+      "bottom": 930
+    },
+    "dwmBounds": {
+      "left": 489,
+      "top": 330,
+      "right": 1671,
+      "bottom": 921
+    },
+    "convertedDwm": {
+      "x": 326,
+      "y": 220,
+      "width": 788,
+      "height": 394
+    }
+  }
 }

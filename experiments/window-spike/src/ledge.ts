@@ -13,6 +13,7 @@ export interface WindowInfo {
   buttons: Rect | null;
   buttonsFallback: boolean;
   dpi: number;
+  windowDpi: number;
   eligible: boolean;
   reason: string;
   maximized: boolean;
@@ -53,7 +54,8 @@ export function computeLedges(windows: WindowInfo[]): Ledge[] {
       }
     }
     for (const [a, b] of segments)
-      if (b > a) ledges.push({ id: window.id, left: a, right: b, y: top });
+      // M0 只排除按钮边缘的像素碎线；猫实际所需宽度由 M4 决定。
+      if (b - a >= (8 * window.dpi) / 96) ledges.push({ id: window.id, left: a, right: b, y: top });
   });
   return ledges;
 }

@@ -1,10 +1,26 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  desktopCapturer,
+  ipcMain,
+  Menu,
+  nativeImage,
+  screen,
+  Tray,
+} from 'electron';
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { computeLedges, movementSpeed, type Rect, type WindowInfo } from '../ledge';
+import { computeLedges, movementSpeed, type WindowInfo } from '../ledge';
 import { zh } from '../zh-CN';
-import { assertWindows, enumerateWindows } from './platform/win/windows';
+import {
+  assertWindows,
+  createNativeFixtures,
+  enumerateWindows,
+  outerBounds,
+  ignoredTransparentWindows,
+} from './platform/win/windows';
+import { keepAboveDrag, monitors, overlayRect } from './platform/win/overlay';
 
 const output = path.resolve('results');
 function fatal(error: unknown) {
@@ -39,22 +55,11 @@ const pending = new Map<number, number>();
 const sampleTimes: number[] = [];
 const fastIds = new Set<string>();
 const verificationChecks: string[] = [];
-const fixtureMode = process.argv.find((arg) => arg.startsWith('--fixture='))?.split('=')[1];
+let geometryEvidence: unknown;
+const fixtureMode = process.argv.includes('--fixture');
 // 测试进程和调试窗口不能争用同一个 Chromium 缓存。
 if (fixtureMode)
   app.setPath('userData', path.join(app.getPath('userData'), `fixture-${process.pid}`));
-
-function monitors(): Rect[] {
-  return screen.getAllDisplays().map((display) => {
-    const r = screen.dipToScreenRect(null, display.bounds);
-    return {
-      left: r.x,
-      top: r.y,
-      right: r.x + r.width,
-      bottom: r.y + r.height,
-    };
-  });
-}
 
 function stats(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b);
@@ -76,9 +81,11 @@ function exportResults(name = 'sample.json') {
         displays: screen.getAllDisplays(),
         capturedAt: new Date().toISOString(),
         windows: latest,
+        ignoredTransparentWindows,
         ledges: computeLedges(latest),
         pollingMs: stats(pollMs),
         pollingCpuUs: stats(pollCpuUs),
+        pollingCpuTotalUs: pollCpuUs.reduce((a, b) => a + b, 0),
         pollingCpuOneCorePercent:
           pollCpuUs.reduce((a, b) => a + b, 0) /
           Math.max(1, (sampleTimes.at(-1) ?? 0) - (sampleTimes[0] ?? 0)) /
@@ -88,6 +95,7 @@ function exportResults(name = 'sample.json') {
         commandedMovementToRendererAckMs: stats(movementResponseMs),
         fastWindowIds: [...fastIds],
         verificationChecks,
+        geometryEvidence,
       },
       null,
       2,
@@ -127,20 +135,18 @@ function poll() {
   );
   overlays.forEach((overlay) => {
     if (overlay.isDestroyed()) return;
-    // Windows 拖动循环会把活动窗口排到前面；重新置顶但不获取焦点。
-    overlay.moveTop();
-    const origin = overlay.getBounds();
+    keepAboveDrag(overlay);
     const converted = ledges.map((ledge) => {
-      const r = screen.screenToDipRect(overlay, {
+      const r = overlayRect(overlay, {
         x: ledge.left,
         y: ledge.y,
         width: ledge.right - ledge.left,
         height: 1,
       });
       return {
-        left: r.x - origin.x,
-        right: r.x + r.width - origin.x,
-        y: r.y - origin.y,
+        left: r.x,
+        right: r.x + r.width,
+        y: r.y,
         fast: fast.has(ledge.id),
         label: latest.find((w) => w.id === ledge.id)?.className ?? '',
       };
@@ -148,12 +154,12 @@ function poll() {
     overlay.webContents.send('frame', {
       sequence,
       ledges: converted,
-      status: `${zh.title}\n${zh.help}\n${zh.threshold}\n${latest.length} / ${ledges.length} | ${elapsed.toFixed(2)} ms`,
+      status: zh.status(latest.length, ledges.length, elapsed),
     });
   });
   previous = latest;
   previousTime = start;
-  // 只保留最近十分钟，避免长时间运行导致采样数组不断增长。
+  // 最多保留 6000 条，限制采样内存；实际覆盖时长由采样间隔决定。
   if (pollMs.length > 6000) {
     pollMs.shift();
     pollCpuUs.shift();
@@ -191,7 +197,7 @@ async function createOverlays() {
 async function verify() {
   // 独立 Electron 进程创建的测试窗口，避免破坏用户的窗口布局。
   const { spawn } = await import('node:child_process');
-  const child = spawn(process.execPath, [path.resolve('.'), '--fixture=normal'], {
+  const child = spawn(process.execPath, [path.resolve('.'), '--fixture'], {
     stdio: ['pipe', 'inherit', 'inherit'],
   });
   const commandFile = path.join(output, `fixture-command-${child.pid}.txt`);
@@ -202,6 +208,13 @@ async function verify() {
     exportResults('verify-initial.json');
     const fixture = latest.find((w) => w.title === 'M0-B Fixture');
     if (!fixture || !fixture.eligible) throw new Error('没有读到独立进程的测试窗口。');
+    if (latest.some((w) => ['M0-B ClickThrough', 'M0-B AlphaZero'].includes(w.title)))
+      throw new Error('透明鼠标穿过层或完全透明层仍参与遮挡。');
+    verificationChecks.push('transparent-occluders');
+    const legacy = latest.find((w) => w.title === 'M0-B Legacy');
+    if (!legacy || legacy.windowDpi !== 96 || legacy.dpi !== fixture.dpi)
+      throw new Error('不支持 DPI 的程序没有使用所在显示器的缩放。');
+    verificationChecks.push('legacy-monitor-dpi');
     const blocked = latest.find((w) => w.title === 'M0-B Occluder');
     const segments = computeLedges(latest.filter((w) => w.title.startsWith('M0-B '))).filter(
       (l) => l.id === fixture.id,
@@ -228,7 +241,7 @@ async function verify() {
       Math.abs(canvasSize.width - canvasSize.viewportWidth) > 1 ||
       Math.abs(canvasSize.height - canvasSize.viewportHeight) > 1
     )
-      throw new Error(`画布逻辑尺寸错误：${JSON.stringify(canvasSize)}`);
+      throw new Error(`桌面层绘制区逻辑尺寸错误：${JSON.stringify(canvasSize)}`);
     verificationChecks.push('canvas-css-size');
     const dip = screen.screenToDipRect(overlay, {
       x: fixture.bounds.left,
@@ -237,6 +250,27 @@ async function verify() {
       height: fixture.bounds.bottom - fixture.bounds.top,
     });
     const physical = screen.dipToScreenRect(overlay, dip);
+    const outer = outerBounds(fixture.id);
+    const expected = [200, 320].map((x) =>
+      screen.dipToScreenRect(overlay, { x, y: 220, width: 800, height: 400 }),
+    );
+    if (
+      !expected.some(
+        (r) =>
+          Math.abs(r.x - outer.left) <= 2 &&
+          Math.abs(r.y - outer.top) <= 2 &&
+          Math.abs(r.width - (outer.right - outer.left)) <= 2 &&
+          Math.abs(r.height - (outer.bottom - outer.top)) <= 2,
+      )
+    )
+      throw new Error('真实外框不符合测试窗口已知的逻辑位置或大小。');
+    geometryEvidence = {
+      expectedOuterRects: expected,
+      actualOuter: outer,
+      dwmBounds: fixture.bounds,
+      convertedDwm: dip,
+    };
+    verificationChecks.push('known-window-position');
     if (
       Math.abs(physical.x - fixture.bounds.left) > 2 ||
       Math.abs(physical.y - fixture.bounds.top) > 2 ||
@@ -255,6 +289,16 @@ async function verify() {
     }
     if (!fastIds.has(fixture.id)) throw new Error('没有检测到测试窗口的快速移动。');
     verificationChecks.push('fast-movement');
+    writeFileSync(commandFile, 'capture');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    poll();
+    const sources = await desktopCapturer.getSources({
+      types: ['window'],
+      thumbnailSize: { width: 1600, height: 1000 },
+    });
+    const source = sources.find((s) => s.name === 'M0-B Fixture');
+    if (!source || source.thumbnail.isEmpty()) throw new Error('没有取得独立测试窗口的图像。');
+    writeFileSync(path.join(output, 'fixture-window.png'), source.thumbnail.toPNG());
     writeFileSync(commandFile, 'churn');
     for (let i = 0; i < 300; i++) {
       const snapshot = enumerateWindows(monitors());
@@ -326,9 +370,12 @@ app
       await occluder.loadURL('data:text/html,<h1>M0-B Occluder</h1>');
       occluder.setTitle('M0-B Occluder');
       occluder.setAlwaysOnTop(true);
+      createNativeFixtures();
       let phase = 0;
       let churn = false;
+      let capturing = false;
       const movement = setInterval(() => {
+        if (capturing) return;
         phase++;
         fixture.setPosition(200 + (phase % 2) * 120, 220);
         if (churn) (phase % 2 ? fixture : occluder).moveTop();
@@ -342,6 +389,13 @@ app
         lastCommand = data;
         if (data === 'churn') {
           churn = true;
+          capturing = false;
+          return;
+        }
+        if (data === 'capture') {
+          capturing = true;
+          fixture.moveTop();
+          occluder.moveTop();
           return;
         }
         clearInterval(movement);

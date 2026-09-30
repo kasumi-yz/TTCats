@@ -17,10 +17,16 @@ const window = (
   buttons: null,
   buttonsFallback: false,
   dpi: 96,
+  windowDpi: 96,
   eligible,
   reason: '',
   maximized: false,
   fullscreen: false,
+});
+test('按钮右侧的像素碎线不能提供可站立的窗口顶边', () => {
+  const target = window('target', 0, 100, 1000, 500);
+  target.buttons = { left: 850, right: 998, top: 100, bottom: 140 };
+  assert.deepEqual(computeLedges([target]), [{ id: 'target', left: 0, right: 850, y: 100 }]);
 });
 test('窗口顶边不能出现在遮挡窗口或标题栏按钮下面', () => {
   const target = window('target', 0, 100, 1000, 500);

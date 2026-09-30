@@ -9,7 +9,7 @@
     "test": "tsx --test src/ledge.test.ts",
     "measure": "npm run build && electron . --measure",
     "verify": "npm run build && electron . --verify",
-    "verify:apps": "npm run build && node dist/main/verify-apps.js"
+    "verify:apps": "npm run build && electron dist/main/verify-apps.js"
   },
   "dependencies": {
     "koffi": "3.3.2"
