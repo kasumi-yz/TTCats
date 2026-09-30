@@ -77,11 +77,11 @@
       "touchSupport": "unknown"
     }
   ],
-  "capturedAt": "2026-09-30T21:14:18.477Z",
+  "capturedAt": "2026-09-30T21:22:38.936Z",
   "windows": [
     {
-      "id": "4655248",
-      "pid": 7960,
+      "id": "4982928",
+      "pid": 55480,
       "title": "M0-B Fixture",
       "className": "Chrome_WidgetWin_1",
       "bounds": {
@@ -105,8 +105,8 @@
       "fullscreen": false
     },
     {
-      "id": "7935462",
-      "pid": 7960,
+      "id": "6361454",
+      "pid": 55480,
       "title": "M0-B Occluder",
       "className": "Chrome_WidgetWin_1",
       "bounds": {
@@ -130,8 +130,8 @@
       "fullscreen": false
     },
     {
-      "id": "6293596",
-      "pid": 7960,
+      "id": "2621666",
+      "pid": 55480,
       "title": "M0-B Legacy",
       "className": "Static",
       "bounds": {
@@ -157,8 +157,20 @@
   ],
   "ignoredTransparentWindows": [
     {
-      "id": "14161308",
-      "pid": 7960,
+      "id": "7146784",
+      "pid": 9776,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1728
+      },
+      "extendedStyle": 136839208,
+      "reason": "layered-click-through"
+    },
+    {
+      "id": "9570356",
+      "pid": 55480,
       "bounds": {
         "left": 2261,
         "top": 750,
@@ -169,8 +181,8 @@
       "reason": "alpha-zero"
     },
     {
-      "id": "6357544",
-      "pid": 7960,
+      "id": "19927616",
+      "pid": 55480,
       "bounds": {
         "left": 2261,
         "top": 750,
@@ -230,38 +242,38 @@
     }
   ],
   "pollingMs": {
-    "count": 179,
-    "mean": 3.67118715083797,
-    "p95": 6.332500000000437,
-    "max": 16.11239999999998
+    "count": 152,
+    "mean": 3.6074539473684397,
+    "p95": 5.5974999999998545,
+    "max": 11.2192
   },
   "pollingCpuUs": {
-    "count": 179,
-    "mean": 2363.1284916201116,
+    "count": 152,
+    "mean": 2572.3684210526317,
     "p95": 16000,
     "max": 32000
   },
-  "pollingCpuTotalUs": 423000,
-  "pollingCpuOneCorePercent": 2.198116477121645,
+  "pollingCpuTotalUs": 391000,
+  "pollingCpuOneCorePercent": 2.483756439337079,
   "sampleIntervalsMs": {
-    "count": 178,
-    "mean": 108.11094494382023,
-    "p95": 111.38490000000093,
-    "max": 465.28690000000006
+    "count": 151,
+    "mean": 104.25353841059604,
+    "p95": 110.86990000000014,
+    "max": 125.76070000000072
   },
   "sampleToRendererAckMs": {
-    "count": 178,
-    "mean": 10.579651685393186,
-    "p95": 10.109499999998661,
-    "max": 447.65740000000005
+    "count": 151,
+    "mean": 9.355333774834413,
+    "p95": 8.907800000000861,
+    "max": 242.75560000000002
   },
   "commandedMovementToRendererAckMs": {
     "count": 5,
-    "mean": 96.26447999999945,
-    "p95": 101.59950000000026,
-    "max": 107.78419999999824
+    "mean": 96.48159999999989,
+    "p95": 99.48890000000029,
+    "max": 108.96219999999994
   },
-  "fastWindowIds": ["4655248"],
+  "fastWindowIds": ["4982928"],
   "verificationChecks": [
     "transparent-occluders",
     "legacy-monitor-dpi",

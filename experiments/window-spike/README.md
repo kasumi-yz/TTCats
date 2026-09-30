@@ -16,6 +16,7 @@ npm start
 ```powershell
 npm test          # 遮挡、按钮避让、负坐标、DPI 归一化规则
 npm run verify    # 真实 Win32 窗口读取、遮挡、坐标往返、快速移动和窗口状态过滤
+npm run verify -- --capture-window # 另取测试窗口本身的参考图，捕获失败会报错
 npm run verify:apps # 六类常见应用的真实窗口移动，结束后恢复布局
 npm run measure   # 持续 30 秒，导出轮询开销后自动退出
 ```
