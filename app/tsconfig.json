@@ -1,0 +1,10 @@
+{
+  // 只给编辑器和 ESLint 用；真正的分区类型检查见 npm run typecheck
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client"]
+  },
+  "include": ["src", "scripts", "e2e", "test", "*.ts"]
+}

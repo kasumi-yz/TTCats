@@ -1,0 +1,23 @@
+{
+  "$schema": "../../../schemas/cat.schema.json",
+  "schemaVersion": 1,
+  "id": "doudou",
+  "name": "豆豆",
+  "birthday": "2024-10-30",
+  "relativeSize": 1,
+  "personality": {
+    "activity": 0.25,
+    "clinginess": 0.35,
+    "initiative": 0.2,
+    "dominance": 0.3,
+    "patience": 0.85
+  },
+  "relationships": [
+    { "cat": "kubo", "closeness": 0.5, "dominance": 0.2 },
+    { "cat": "majiang", "closeness": 0.2, "dominance": -0.3 }
+  ],
+  "sounds": {
+    "meow": [],
+    "purr": []
+  }
+}

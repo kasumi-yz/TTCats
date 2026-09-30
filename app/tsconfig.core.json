@@ -1,0 +1,9 @@
+{
+  // core 和 shared：纯 TypeScript，不带 DOM 类型，也不带 Node 全局类型（硬性规则 1）
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": []
+  },
+  "include": ["src/core/**/*.ts", "src/shared/**/*.ts"]
+}

@@ -1,0 +1,175 @@
+{
+  "$comment": "由 app/src/shared/schemas 自动生成，不要手改。修改后运行 npm run gen:schemas。",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])"
+    },
+    "variant": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "loop",
+        "transition",
+        "action"
+      ]
+    },
+    "fromPose": {
+      "type": "string",
+      "enum": [
+        "stand",
+        "sit",
+        "sleep",
+        "dangle",
+        "crouch",
+        "airborne"
+      ]
+    },
+    "toPose": {
+      "type": "string",
+      "enum": [
+        "stand",
+        "sit",
+        "sleep",
+        "dangle",
+        "crouch",
+        "airborne"
+      ]
+    },
+    "optional": {
+      "type": "boolean"
+    },
+    "video": {
+      "type": "string",
+      "pattern": "^(?!\\.{1,2}(?:\\/|$))[^/\\\\:\\u0000-\\u001f\\u007f]+(?:\\/(?!\\.{1,2}(?:\\/|$))[^/\\\\:\\u0000-\\u001f\\u007f]+)*(?![\\s\\S])"
+    },
+    "hitMask": {
+      "type": "string",
+      "pattern": "^(?!\\.{1,2}(?:\\/|$))[^/\\\\:\\u0000-\\u001f\\u007f]+(?:\\/(?!\\.{1,2}(?:\\/|$))[^/\\\\:\\u0000-\\u001f\\u007f]+)*(?![\\s\\S])"
+    },
+    "fps": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "frameCount": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "width": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "height": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "footAnchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "mirrorable": {
+      "type": "boolean"
+    },
+    "facing": {
+      "type": "string",
+      "enum": [
+        "left",
+        "right"
+      ]
+    },
+    "speed": {
+      "type": "number",
+      "minimum": 0
+    },
+    "keypoints": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])"
+      },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "x",
+                "y"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "soundStartFrame": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "name",
+    "variant",
+    "kind",
+    "fromPose",
+    "toPose",
+    "optional",
+    "video",
+    "hitMask",
+    "fps",
+    "frameCount",
+    "width",
+    "height",
+    "footAnchors",
+    "mirrorable",
+    "facing",
+    "speed",
+    "keypoints"
+  ],
+  "additionalProperties": false
+}

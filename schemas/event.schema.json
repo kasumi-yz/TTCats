@@ -1,0 +1,326 @@
+{
+  "$comment": "由 app/src/shared/schemas 自动生成，不要手改。修改后运行 npm run gen:schemas。",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trigger": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "random"
+            },
+            "perHour": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "type",
+            "perHour"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "firstLaunchOfDay"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "timeOfDay"
+            },
+            "from": {
+              "type": "string",
+              "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9](?![\\s\\S])"
+            },
+            "to": {
+              "type": "string",
+              "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9](?![\\s\\S])"
+            }
+          },
+          "required": [
+            "type",
+            "from",
+            "to"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "feedingTime"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "userState"
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "away",
+                "back",
+                "sedentary"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "state"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "catDate"
+            },
+            "date": {
+              "type": "string",
+              "enum": [
+                "birthday",
+                "homeDate"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "date"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "holiday"
+            },
+            "date": {
+              "type": "string",
+              "pattern": "^(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|02-(?:0[1-9]|1[0-9]|2[0-9]))(?![\\s\\S])"
+            }
+          },
+          "required": [
+            "type",
+            "date"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "cooldownMinutes": {
+      "type": "number",
+      "minimum": 0
+    },
+    "cats": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false
+    },
+    "steps": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "goToPose"
+              },
+              "pose": {
+                "type": "string",
+                "enum": [
+                  "stand",
+                  "sit",
+                  "sleep",
+                  "dangle",
+                  "crouch",
+                  "airborne"
+                ]
+              }
+            },
+            "required": [
+              "do",
+              "pose"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "playClip"
+              },
+              "clip": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])"
+              },
+              "times": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "do",
+              "clip"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "bubble"
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1
+              },
+              "durationMs": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "do",
+              "text",
+              "durationMs"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "effect"
+              },
+              "effect": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])"
+              }
+            },
+            "required": [
+              "do",
+              "effect"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "sound"
+              },
+              "slot": {
+                "type": "string",
+                "enum": [
+                  "meow",
+                  "purr"
+                ]
+              }
+            },
+            "required": [
+              "do",
+              "slot"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "wait"
+              },
+              "ms": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "do",
+              "ms"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "trigger",
+    "cooldownMinutes",
+    "cats",
+    "steps"
+  ],
+  "additionalProperties": false
+}

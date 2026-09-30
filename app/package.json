@@ -1,0 +1,46 @@
+{
+  "name": "ttcats",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TTCats 桌面宠物",
+  "main": "./out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.core.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "lint": "eslint . --max-warnings 0 && prettier --check .",
+    "format": "prettier --write . && eslint . --fix",
+    "test": "vitest run",
+    "validate:content": "tsx scripts/validate-content.ts",
+    "gen:schemas": "tsx scripts/gen-schemas.ts",
+    "check:schemas": "tsx scripts/gen-schemas.ts --check",
+    "check": "npm run typecheck && npm run lint && npm test && npm run validate:content && npm run check:schemas",
+    "test:smoke": "playwright test"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^24.19.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.5.1",
+    "electron-vite": "^5.0.0",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.0",
+    "vite": "^7.3.6",
+    "vitest": "^5.0.3"
+  }
+}

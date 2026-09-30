@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 检查（Linux）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+        env:
+          # Linux 上只做检查，不需要 Electron 本体
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - run: npm run check
+
+  asset-factory:
+    name: 素材工厂（Linux）
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/asset-factory
+    # tools/asset-factory/ 由 M0-C 加入；还没有时下面的步骤都跳过
+    steps:
+      - uses: actions/checkout@v4
+      - id: detect
+        working-directory: .
+        shell: bash
+        run: |
+          if [ -f tools/asset-factory/pyproject.toml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tools/asset-factory/ 还不存在，跳过。"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.detect.outputs.present == 'true'
+        uses: astral-sh/setup-uv@v6
+      - if: steps.detect.outputs.present == 'true'
+        run: uv sync
+      - if: steps.detect.outputs.present == 'true'
+        run: uv run ruff check
+      - if: steps.detect.outputs.present == 'true'
+        run: uv run pytest
+
+  smoke:
+    name: 冒烟测试（Windows）
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:smoke
