@@ -1,0 +1,34 @@
+{
+  "name": "ttcats-overlay-spike",
+  "version": "0.0.0",
+  "private": true,
+  "description": "M0-A 渲染与桌面交互验证小样（一次性原型，不是正式代码）",
+  "main": "dist/main.js",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "gen:clips": "node scripts/gen-clips.mjs",
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "prepare-all": "node scripts/gen-clips.mjs --if-missing && node scripts/build.mjs",
+    "prestart": "npm run prepare-all",
+    "start": "electron .",
+    "preperf": "npm run prepare-all",
+    "perf": "node dist/tools/perf.js",
+    "preinteraction-test": "npm run prepare-all",
+    "interaction-test": "node dist/tools/interaction-test.js",
+    "precapture-test": "npm run prepare-all",
+    "capture-test": "node dist/tools/capture-test.js",
+    "prerecord": "npm run prepare-all",
+    "record": "node dist/tools/record-interrupts.js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.0",
+    "electron": "44.5.1",
+    "esbuild": "^0.28.2",
+    "koffi": "^3.3.2",
+    "pixi.js": "^8.21.0",
+    "typescript": "~6.0.3"
+  }
+}

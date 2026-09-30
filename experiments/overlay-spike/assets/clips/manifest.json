@@ -1,0 +1,96 @@
+{
+  "size": 384,
+  "fps": 24,
+  "footAnchor": [
+    0.5,
+    0.94
+  ],
+  "mask": {
+    "width": 96,
+    "height": 96,
+    "scale": 4
+  },
+  "clips": [
+    {
+      "id": "loop_stand",
+      "kind": "loop",
+      "fromPose": "stand",
+      "toPose": "stand",
+      "frames": 48,
+      "video": "loop_stand.webm",
+      "mask": "loop_stand.hitmask.bin"
+    },
+    {
+      "id": "loop_sit",
+      "kind": "loop",
+      "fromPose": "sit",
+      "toPose": "sit",
+      "frames": 48,
+      "video": "loop_sit.webm",
+      "mask": "loop_sit.hitmask.bin"
+    },
+    {
+      "id": "loop_hang",
+      "kind": "loop",
+      "fromPose": "hang",
+      "toPose": "hang",
+      "frames": 48,
+      "video": "loop_hang.webm",
+      "mask": "loop_hang.hitmask.bin"
+    },
+    {
+      "id": "tr_stand_sit",
+      "kind": "transition",
+      "fromPose": "stand",
+      "toPose": "sit",
+      "frames": 18,
+      "video": "tr_stand_sit.webm",
+      "mask": "tr_stand_sit.hitmask.bin"
+    },
+    {
+      "id": "tr_stand_hang",
+      "kind": "transition",
+      "fromPose": "stand",
+      "toPose": "hang",
+      "frames": 18,
+      "video": "tr_stand_hang.webm",
+      "mask": "tr_stand_hang.hitmask.bin"
+    },
+    {
+      "id": "tr_sit_stand",
+      "kind": "transition",
+      "fromPose": "sit",
+      "toPose": "stand",
+      "frames": 18,
+      "video": "tr_sit_stand.webm",
+      "mask": "tr_sit_stand.hitmask.bin"
+    },
+    {
+      "id": "tr_sit_hang",
+      "kind": "transition",
+      "fromPose": "sit",
+      "toPose": "hang",
+      "frames": 18,
+      "video": "tr_sit_hang.webm",
+      "mask": "tr_sit_hang.hitmask.bin"
+    },
+    {
+      "id": "tr_hang_stand",
+      "kind": "transition",
+      "fromPose": "hang",
+      "toPose": "stand",
+      "frames": 18,
+      "video": "tr_hang_stand.webm",
+      "mask": "tr_hang_stand.hitmask.bin"
+    },
+    {
+      "id": "tr_hang_sit",
+      "kind": "transition",
+      "fromPose": "hang",
+      "toPose": "sit",
+      "frames": 18,
+      "video": "tr_hang_sit.webm",
+      "mask": "tr_hang_sit.hitmask.bin"
+    }
+  ]
+}
