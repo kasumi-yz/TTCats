@@ -31,10 +31,23 @@ describe('姿势网络', () => {
   });
 
   it('有两条路时选用时最短的', () => {
-    const slow = testClip('pounce', { frameCount: 240 });
-    const g = new PoseGraph(new ClipLibrary([...testClips(['pounce']), slow]));
-    expect(g.path('stand', 'stand')).toEqual([]);
-    expect(g.path('crouch', 'sit')).toEqual(['pounce', 'stand-to-sit']);
+    // 伏低 → 坐：可以直接用一个自定义的过渡片段，也可以先扑上去站起来再坐下（18 + 18 帧）
+    const direct = (frameCount: number) =>
+      testClip('stalk', {
+        name: 'crouch-to-sit',
+        optional: true,
+        fromPose: 'crouch',
+        toPose: 'sit',
+        frameCount,
+        footAnchors: Array.from({ length: frameCount }, () => ({ x: 128, y: 240 })),
+      });
+    for (const clip of [direct(24), direct(48)]) {
+      expect(validateWith(ClipSchema, clip)).toMatchObject({ ok: true });
+    }
+    const fast = new PoseGraph(new ClipLibrary([...testClips(), direct(24)]));
+    expect(fast.path('crouch', 'sit')).toEqual(['crouch-to-sit']);
+    const slow = new PoseGraph(new ClipLibrary([...testClips(), direct(48)]));
+    expect(slow.path('crouch', 'sit')).toEqual(['pounce', 'stand-to-sit']);
   });
 
   it('只用猫咪包里实际有的片段建网络：缺了落地，悬空就回不到站姿', () => {

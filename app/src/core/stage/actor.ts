@@ -76,8 +76,13 @@ interface Move {
   dir: 1 | -1;
   /** 已经要求停下：到下一个循环边界就停。 */
   stop: boolean;
-  /** 这一遍开始时的 x，用来发现被屏幕边挡住、原地踏步的情况。 */
+  /** 这一遍开始时的 x。也用来发现被屏幕边挡住、原地踏步的情况。 */
   cycleStartX: number;
+  /**
+   * 这一遍的移动速度（像素 / 片段毫秒），在每一遍开始时按当时的远近缩放算好，这一遍里不变。
+   * 这样位置只取决于这一遍播了多久，不受 update 怎么分段影响（ADR-0004）。
+   */
+  cycleSpeed: number;
 }
 
 interface Segment {
@@ -157,9 +162,9 @@ export class CatActor {
     seg.elapsed += dtMs * seg.rate;
     const move = seg.move;
     if (move === undefined) return;
-    const speed = seg.clip.speed * this.finalScale() * seg.rate;
+    const cycleStart = seg.end - clipDurationMs(seg.clip);
     this.x = this.env.floor.clampX(
-      this.x + (move.dir * speed * dtMs) / 1000,
+      move.cycleStartX + move.dir * move.cycleSpeed * (seg.elapsed - cycleStart),
       this.cat.relativeSize,
     );
     if (move.toX !== move.fromX) {
@@ -175,6 +180,7 @@ export class CatActor {
     const stuck = Math.abs(this.x - move.cycleStartX) < 1e-6;
     if (move.stop || stuck || remaining < cycle / 2) return false;
     move.cycleStartX = this.x;
+    move.cycleSpeed = this.cycleSpeed(seg.clip);
     seg.end += clipDurationMs(seg.clip);
     return true;
   }
@@ -285,22 +291,36 @@ export class CatActor {
   }
 
   private startMove(step: Extract<Step, { kind: 'move' }>, t: number): boolean {
-    if (!this.reachPose('stand', step, t)) return false;
-    const gait = step.gait === 'run' && this.canRun() ? 'run' : 'walk';
     const toX = this.env.floor.clampX(step.x, this.cat.relativeSize);
     if (toX === this.x) return false;
     const dir = toX > this.x ? 1 : -1;
-    this.facing = dir > 0 ? 'right' : 'left';
-    const clip = this.pickVariant(gait);
+    const facing = dir > 0 ? 'right' : 'left';
+    // 奔跑没有能朝这边的版本就改成走路；走路也没有，就不走，免得画面朝一边、身子往另一边滑
+    const gaits = step.gait === 'run' && this.canRun() ? ['run', 'walk'] : ['walk'];
+    const gait = gaits.find((name) =>
+      this.library.variants(name).some((clip) => canMoveToward(clip, facing)),
+    );
+    if (gait === undefined) return false;
+    if (!this.reachPose('stand', step, t)) return false;
+    this.facing = facing;
+    const clip = this.pickVariant(gait, undefined, true);
     if (clip === undefined) return false;
-    const cycle = this.cycleDistance(clip);
-    if (!(cycle > 0) || Math.abs(toX - this.x) < cycle / 2) return false;
+    if (Math.abs(toX - this.x) < this.cycleDistance(clip) / 2) return false;
     // 坡度限制：纵向位移不超过横向位移的 MAX_WALK_SLOPE 倍
     const band = this.env.floor.band;
     const maxDd = band > 0 ? (MAX_WALK_SLOPE * Math.abs(toX - this.x)) / band : 1;
     const toD = Math.min(this.d + maxDd, Math.max(this.d - maxDd, clamp01(step.d)));
     this.beginSegment(clip, t, {
-      move: { fromX: this.x, fromD: this.d, toX, toD, dir, stop: false, cycleStartX: this.x },
+      move: {
+        fromX: this.x,
+        fromD: this.d,
+        toX,
+        toD,
+        dir,
+        stop: false,
+        cycleStartX: this.x,
+        cycleSpeed: this.cycleSpeed(clip),
+      },
     });
     return true;
   }
@@ -310,9 +330,13 @@ export class CatActor {
     return run !== undefined && run.speed > 0;
   }
 
-  /** 按朝向挑一个版本：优先能朝这个方向的；有多个版本时不连续用同一个（D7）。 */
-  private pickVariant(name: string, variant?: number): Clip | undefined {
+  /**
+   * 按朝向挑一个版本：优先能朝这个方向的；有多个版本时不连续用同一个（D7）。
+   * forMove 时只挑能朝移动方向、而且真的会移动的版本。
+   */
+  private pickVariant(name: string, variant?: number, forMove = false): Clip | undefined {
     let options = this.library.variants(name).filter((c) => c.fromPose === this.pose);
+    if (forMove) options = options.filter((c) => canMoveToward(c, this.facing));
     const exact = options.find((c) => c.variant === variant);
     if (exact !== undefined) return exact;
     const facingOk = options.filter((c) => c.facing === this.facing || c.mirrorable);
@@ -467,19 +491,18 @@ export class CatActor {
    * 召唤几只猫时，用它把停的位置错开。
    */
   stopTolerance(): number {
-    const gaits = [
-      this.library.first('walk'),
-      this.canRun() ? this.library.first('run') : undefined,
-    ];
-    return Math.max(
-      0,
-      ...gaits.map((clip) => (clip === undefined ? 0 : this.cycleDistance(clip) / 2)),
-    );
+    const clips = [...this.library.variants('walk'), ...this.library.variants('run')];
+    return Math.max(0, ...clips.map((clip) => this.cycleDistance(clip) / 2));
   }
 
   /** 走（跑）一遍在屏幕上移动多远。和播放速度无关：速度快了腿也摆得快。 */
   private cycleDistance(clip: Clip): number {
-    return (clip.speed * this.finalScale() * clipDurationMs(clip)) / 1000;
+    return this.cycleSpeed(clip) * clipDurationMs(clip);
+  }
+
+  /** 按现在的缩放，每播 1 毫秒片段时间移动多少像素。 */
+  private cycleSpeed(clip: Clip): number {
+    return (clip.speed * this.finalScale()) / 1000;
   }
 
   // ---------- 输出 ----------
@@ -521,4 +544,9 @@ export class CatActor {
     if (clip === undefined) throw new Error(`cat ${this.id} has no clip ${name}`);
     return clip;
   }
+}
+
+/** 这个版本能不能朝 facing 那边移动：朝向对得上或者能镜像，而且移动速度大于 0。 */
+function canMoveToward(clip: Clip, facing: Facing): boolean {
+  return clip.speed > 0 && (clip.facing === facing || clip.mirrorable);
 }

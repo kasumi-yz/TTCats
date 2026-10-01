@@ -152,11 +152,11 @@ describe('片段调度', () => {
     expect(new Set(holds).size).toBeGreaterThan(3);
   });
 
-  it('按真实经过的时间推进：每帧间隔不同，结果一样', () => {
-    const settings = { floorDepth: 0 };
+  it.each([0, 1])('按真实经过的时间推进：每帧间隔不同，结果一样（地板纵深 %s）', (floorDepth) => {
+    const settings = { floorDepth };
     const a = setup({ settings, seed: 5 }).stage;
     const b = setup({ settings, seed: 5 }).stage;
-    for (let checkpoint = 1; checkpoint <= 600; checkpoint++) {
+    for (let checkpoint = 1; checkpoint <= 3600; checkpoint++) {
       const t = T0 + checkpoint * 1000;
       run(a, t - 1000, t - 16, 16);
       run(b, t - 1000, t - 100, 300);
@@ -165,6 +165,7 @@ describe('片段调度', () => {
       expect(pb.clip).toBe(pa.clip);
       expect(pb.variant).toBe(pa.variant);
       expect(pb.x).toBeCloseTo(pa.x, 6);
+      expect(pb.depth).toBeCloseTo(pa.depth, 9);
       expect(pb.clipTimeMs).toBeCloseTo(pa.clipTimeMs, 6);
     }
   });
@@ -237,6 +238,56 @@ describe('在地板上移动', () => {
     );
     const walks = segmentsOf(log).filter((s) => s.clip.name === 'walk');
     expect(new Set(walks.map((s) => s.clip.facing))).toEqual(new Set(['left', 'right']));
+  });
+
+  function walkLeftFrom960(clips: Clip[], gait: 'walk' | 'run') {
+    const env: ActorEnv = {
+      random: () => 0.5,
+      floor: new Floor({ bounds: SCREEN, scale: 1, floorDepth: 0 }),
+      scale: 1,
+      activityLevel: 'natural',
+      addEffect: () => undefined,
+    };
+    const actor = new CatActor(testCat('a'), clips, env, {
+      x: 960,
+      d: 0.5,
+      facing: 'right',
+      now: T0,
+    });
+    actor.interrupt([{ kind: 'move', gait, x: 100, d: 0.5 }], { kind: 'summon' }, 'cut', T0);
+    const before = actor.placement();
+    actor.advance(T0, T0 + 500, false);
+    return { before, after: actor.placement() };
+  }
+
+  it('奔跑片段不能朝目标方向时，改用能朝那边的走路片段，不倒着滑', () => {
+    const clips = [...testClips(['run']), testClip('run', { mirrorable: false, facing: 'right' })];
+    const { after } = walkLeftFrom960(clips, 'run');
+    expect(after).toMatchObject({ clip: 'walk', mirrored: true });
+    expect(after.x).toBeLessThan(960);
+  });
+
+  it('走路片段也不能朝目标方向时，猫不走，而不是倒着滑', () => {
+    const clips = [
+      ...testClips(['run', 'walk']),
+      testClip('walk', { mirrorable: false, facing: 'right' }),
+    ];
+    const { before, after } = walkLeftFrom960(clips, 'run');
+    expect(after.x).toBe(960);
+    expect(after.clip).not.toBe('walk');
+    expect(before.clip).not.toBe('walk');
+    // 往右走照常
+    const stage = setup({ cats: [{ cat: testCat('a'), clips }] }).stage;
+    const frames = run(stage, T0, T0 + HOUR, 50);
+    for (let i = 1; i < frames.length; i++) {
+      const prev = placementOf(at(frames, i - 1));
+      const cur = placementOf(at(frames, i));
+      if (cur.clip === 'walk' && prev.clip === 'walk') {
+        expect(cur.x).toBeGreaterThanOrEqual(prev.x);
+        expect(cur.mirrored).toBe(false);
+      }
+    }
+    expect(frames.some((f) => placementOf(f).clip === 'walk')).toBe(true);
   });
 
   it('斜着走：纵向位移不超过横向位移的一定比例，远近缩放随纵深变化', () => {
