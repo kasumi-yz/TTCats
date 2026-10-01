@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "test-active",
+  "name": "测试蹦蹦",
+  "relativeSize": 1.2,
+  "personality": {
+    "activity": 0.9,
+    "clinginess": 0.7,
+    "initiative": 0.9,
+    "dominance": 0.8,
+    "patience": 0.3
+  },
+  "relationships": [
+    { "cat": "test-calm", "closeness": 0.3, "dominance": 0.6 },
+    { "cat": "test-close", "closeness": 0.8, "dominance": 0.3 }
+  ],
+  "sounds": { "meow": [], "purr": [] }
+}

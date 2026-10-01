@@ -8,6 +8,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "gen:test-pack": "npm run gen:test-pack -w app",
     "check": "npm run check -w app",
     "test": "npm test -w app",
     "validate:content": "npm run validate:content -w app",

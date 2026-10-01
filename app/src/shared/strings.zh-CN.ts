@@ -159,4 +159,16 @@ export const zh = {
     invalidTime: '存档保存时间必须是非负有限数。',
     wholeState: '整个存档状态',
   },
+  content: {
+    packReadFailed: '无法读取猫咪包文件，请检查 cat.json、clips 目录和文件权限。',
+    duplicateClip: (name: string, variant: number) =>
+      `片段「${name}」的版本 ${variant} 重复，不能确定该播放哪一段。`,
+    missingClips: (names: readonly string[]) => `缺少必需片段：${names.join('、')}`,
+    maskLength: (file: string, expected: number, actual: number) =>
+      `点击遮罩 ${file} 长度不对，应为 ${expected} 字节，实际 ${actual} 字节`,
+    denied: '禁止读取未加载的猫咪包或包外路径。',
+    generationFailed: (detail: string) => `测试猫咪包生成失败：${detail}`,
+    endpointMismatch: (name: string) => `片段「${name}」首尾帧与姿势帧不一致。`,
+    generated: '测试猫咪包已生成，全部片段首尾帧已核对。',
+  },
 };
