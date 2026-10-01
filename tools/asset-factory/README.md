@@ -166,6 +166,10 @@ pytest 用小型合成视频覆盖全部阶段；AI 推理使用明确标注的�
 集成测试必须找到 ffmpeg/ffprobe，否则失败，不跳过。`verify-contract.mjs` 直接使用桌宠的 Zod schema 和点击遮罩实现，
 逐帧读取 WebM 的真实 alpha，与导出遮罩逐字节比较；需要先在根目录 `npm ci`。
 ffprobe 可能把透明 WebM 的像素格式显示为 yuv420p；要证明透明通道存在，必须用 `libvpx-vp9` 解码再检查 alpha。
+Linux x86_64 的开发依赖包含固定 `ffmpeg-binaries==1.1.0`（wheel 约 60MB，校验值写入 uv.lock），
+仅在 pytest 找不到系统工具时使用，并仅修改测试进程 PATH，不在测试时另行下载可执行文件。
+Windows 日常处理和 GPU 验证仍使用本机安装的工具，CLI 不自动切换到测试依赖。
+包来源及文件校验见 [ffmpeg-binaries 发布页](https://pypi.org/project/ffmpeg-binaries/)。
 
 真实 GPU 合成链路可以复现（先安装 GPU 依赖和模型）：
 

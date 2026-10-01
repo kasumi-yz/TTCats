@@ -31,7 +31,7 @@ def root(tmp_path, monkeypatch):
 
 @pytest.fixture
 def video(root):
-    # Linux CI 没有安装步骤；没有 ffmpeg 时必须失败，不能跳过处理链验证。
+    # 测试环境提供本机工具或固定开发依赖；缺工具必须失败，不能跳过处理链验证。
     assert shutil.which("ffmpeg"), "合成视频集成测试需要 PATH 中有 ffmpeg"
     assert shutil.which("ffprobe"), "合成视频集成测试需要 PATH 中有 ffprobe"
     frames = root / "synthetic"

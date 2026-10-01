@@ -108,6 +108,9 @@ SHA-256 `ce94ddaf7d62e408133445a5f0f865ef60678f6941cd56f65fafa03d0d97258a`。
    为本进程加入独立虚拟环境的 DLL 搜索目录后成功。失败没有发布半截抠图结果，没有修改全局 PATH。
 2. WebM 编码后软边 alpha 与编码前 PNG 有最大 1 级的差别，使个别格子的命中结果变化。
    改为从最终 WebM 解码 alpha 生成遮罩；添加软边回归测试，并用 TypeScript 逐帧交叉核对。
+3. 首次 Linux CI 没有 ffmpeg/ffprobe，完整视频测试因此失败，没有跳过。
+   在允许目录内添加固定版本的 Linux x86_64 开发依赖；pytest 优先用系统工具，缺失时使用 uv.lock 校验的 wheel 二进制。
+   仅修改测试进程 PATH，不改 CI 工作流、系统安装或日常 CLI。
 
 ## 人工改动量与 v1 建议
 

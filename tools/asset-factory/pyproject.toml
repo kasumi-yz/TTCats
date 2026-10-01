@@ -9,7 +9,11 @@ dependencies = ["numpy>=2.2,<3", "pillow>=11,<13", "pydantic>=2.11,<3", "jsonsch
 gpu = ["onnxruntime-gpu[cuda,cudnn]>=1.26,<1.27"]
 
 [dependency-groups]
-dev = ["pytest>=8,<10", "ruff>=0.11,<1"]
+dev = [
+  "pytest>=8,<10",
+  "ruff>=0.11,<1",
+  "ffmpeg-binaries==1.1.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
 
 [project.scripts]
 asset-factory = "asset_factory.cli:main"
