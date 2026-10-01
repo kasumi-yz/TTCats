@@ -159,4 +159,17 @@ export const zh = {
     invalidTime: '存档保存时间必须是非负有限数。',
     wholeState: '整个存档状态',
   },
+
+  stage: {
+    /** 调试台里显示的行为（Behavior）说明。 */
+    behaviors: {
+      idle: '待着',
+      rest: { stand: '站一会儿', sit: '坐下歇着', sleep: '去睡觉' },
+      wander: '溜达',
+      action: (clip: string) => `做动作「${clip}」`,
+      summon: '被召唤过来',
+      sleepCommand: '被叫去睡觉',
+      debugClip: (clip: string) => `调试：播放「${clip}」`,
+    },
+  },
 };
