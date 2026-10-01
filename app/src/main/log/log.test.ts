@@ -4,11 +4,13 @@ import { EventEmitter } from 'node:events';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FileLog, attachMainLog } from './index';
+import type { WebContents } from 'electron';
+import { FileLog, attachMainLog, attachRendererLog } from './index';
 
 vi.mock('electron', () => ({}));
 const directories: string[] = [];
 afterEach(() => {
+  vi.useRealTimers();
   for (const directory of directories.splice(0)) fs.rmSync(directory, { recursive: true });
 });
 
@@ -19,6 +21,38 @@ function logger(backups = 2): FileLog {
 }
 
 describe('日志为排查故障留下有限大小的记录', () => {
+  it('页面错误刷屏时每秒最多写十条，省略数量和崩溃记录仍会留下', async () => {
+    vi.useFakeTimers();
+    const log = logger();
+    const report = vi.spyOn(log, 'report').mockImplementation(() => {});
+    const contents = new EventEmitter();
+    const detach = attachRendererLog(contents as unknown as WebContents, 'overlay', log);
+    try {
+      for (let index = 0; index < 60; index++)
+        contents.emit('console-message', {
+          level: 'error',
+          message: `fault-${index}`,
+          sourceId: 'test',
+          lineNumber: 1,
+        });
+      expect(report).toHaveBeenCalledTimes(10);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(report).toHaveBeenCalledWith(expect.stringContaining('已省略 50 条'));
+      for (let index = 0; index < 30; index++)
+        contents.emit('console-message', {
+          level: 'warning',
+          message: 'repeated',
+          sourceId: 'test',
+          lineNumber: 1,
+        });
+      contents.emit('render-process-gone', {}, { reason: 'crashed', exitCode: 1 });
+      expect(report).toHaveBeenCalledWith('overlay: crashed (1)');
+      expect(report).toHaveBeenCalledWith(expect.stringContaining('已省略 20 条'));
+    } finally {
+      detach();
+      report.mockRestore();
+    }
+  });
   it('大量中文错误和超长单条日志也不会无限增长，保留最新记录', () => {
     const log = logger();
     for (let index = 0; index < 30; index++) log.write(`故障${index}：${'猫'.repeat(10000)}`);

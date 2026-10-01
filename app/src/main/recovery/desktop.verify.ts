@@ -109,7 +109,8 @@ try {
   const notice = electron.windows()[noticeTitles.indexOf('TTCats 已进入安全模式')];
   assert.ok(notice);
   await expect(notice.locator('p')).toContainText('已加载最近一份正常的备份存档');
-  await expect(notice.locator('p')).toContainText('本次运行已停用猫咪包：test-cat');
+  await expect(notice.locator('p')).toContainText('已停用所有当前显示的猫咪包：测试猫');
+  await expect(notice.locator('p')).toContainText('本次运行里桌面上的猫不会再出现');
   await notice.screenshot({ path: join(directory, 'safe-mode.png') });
   console.log(
     JSON.stringify({
@@ -168,4 +169,96 @@ try {
   );
 } finally {
   await hungApp.close();
+}
+
+// 审查发现的真实加载竞态、快速连点和超过十秒的慢资源，分别用独立实例验证。
+for (const scenario of ['loading-crash', 'double-crash', 'slow-load']) {
+  const directory = fs.mkdtempSync(join(tmpdir(), `ttcats-recovery-${scenario}-`));
+  const application = await _electron.launch({
+    args: [join(output, 'desktop.mjs')],
+    env: {
+      ...process.env,
+      TTCATS_RECOVERY_CHECK_DIR: directory,
+      TTCATS_RECOVERY_SCENARIO: scenario,
+    },
+  });
+  try {
+    await expect
+      .poll(async () =>
+        (await Promise.all(application.windows().map((page) => page.title()))).includes(
+          'Recovery panels',
+        ),
+      )
+      .toBe(true);
+    const titles = await Promise.all(application.windows().map((page) => page.title()));
+    const panels = application.windows()[titles.indexOf('Recovery panels')];
+    assert.ok(panels);
+    const original = fs.readFileSync(join(directory, 'save.json'), 'utf8');
+    const crash = async (): Promise<void> => {
+      await panels.evaluate("window.ttcats.sendCommand({type:'debug/crashOverlay'})");
+    };
+    const readNumber = (file: string): string =>
+      fs.existsSync(join(directory, file)) ? fs.readFileSync(join(directory, file), 'utf8') : '0';
+    await crash();
+    if (scenario === 'loading-crash') {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        await expect.poll(() => readNumber('loading-started.json')).toBe(String(attempt));
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await crash();
+      }
+      await expect.poll(() => fs.existsSync(join(directory, 'safe-mode.json'))).toBe(true);
+      assert.equal(readNumber('reload-attempts.json'), '3');
+      const result: unknown = JSON.parse(
+        fs.readFileSync(join(directory, 'safe-mode.json'), 'utf8'),
+      );
+      assert.ok(
+        typeof result === 'object' &&
+          result !== null &&
+          'state' in result &&
+          'disabledCats' in result,
+      );
+      assert.deepEqual(GameStateSchema.parse(result.state).settings.visibleCats, ['backup-cat']);
+      assert.deepEqual(result.disabledCats, ['test-cat']);
+      const raw: unknown = JSON.parse(fs.readFileSync(join(directory, 'timeline.json'), 'utf8'));
+      assert.ok(Array.isArray(raw));
+      const timeline = raw as { event: string; at: number }[];
+      const reject = timeline.findIndex((item) => item.event === 'reject');
+      assert.ok(
+        reject >= 0 && timeline[reject + 1]?.event === 'gone',
+        '真实顺序应包含先 reject 后 gone',
+      );
+      console.log(
+        JSON.stringify({
+          scenario,
+          attempts: 3,
+          safeMode: true,
+          rejectBeforeGone: true,
+          evidenceDirectory: directory,
+        }),
+      );
+    } else if (scenario === 'double-crash') {
+      await expect.poll(() => readNumber('reloads.json')).toBe('1');
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      await crash();
+      await expect.poll(() => readNumber('reloads.json')).toBe('2');
+      console.log(
+        JSON.stringify({ scenario, laterCommandRecovered: true, evidenceDirectory: directory }),
+      );
+    } else {
+      await expect.poll(() => readNumber('reloads.json'), { timeout: 20000 }).toBe('1');
+      assert.equal(readNumber('reload-attempts.json'), '1');
+      assert.ok(!fs.existsSync(join(directory, 'safe-mode.json')));
+      console.log(
+        JSON.stringify({
+          scenario,
+          resourceDelayMs: 12000,
+          falseCrash: false,
+          evidenceDirectory: directory,
+        }),
+      );
+    }
+    assert.equal(fs.readFileSync(join(directory, 'save.json'), 'utf8'), original);
+  } finally {
+    await application.close();
+  }
 }

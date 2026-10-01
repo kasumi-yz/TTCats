@@ -4,7 +4,7 @@ import { app, type WebContents } from 'electron';
 import { zh } from '../../shared/strings.zh-CN';
 
 export interface LogOptions {
-  /** 正式应用传入 join(app.getPath('userData'), 'logs')。 */
+  /** 正式应用使用 appData/TTCats/logs，测试传入隔离目录。 */
   directory: string;
   now?: () => number;
   maxBytes?: number;
@@ -79,24 +79,43 @@ export class FileLog {
 
 /** 与 D13 的存档根目录一致，不受开发入口的应用名称影响。 */
 export function createApplicationLog(): FileLog {
-  return new FileLog({ directory: join(app.getPath('appData'), zh.app.name, 'logs') });
+  return new FileLog({ directory: join(app.getPath('appData'), 'TTCats', 'logs') });
 }
 
 /** Electron 会把页面的未捕获异常、未处理 rejection 和 console.error 转成 console-message。 */
 export function attachRendererLog(contents: WebContents, name: string, log: FileLog): () => void {
+  let recorded = 0;
+  let skipped = 0;
+  let windowStarted = performance.now();
+  const flush = (): void => {
+    if (skipped > 0) log.report(zh.recovery.rendererLogSkipped(name, skipped));
+    recorded = 0;
+    skipped = 0;
+    windowStarted = performance.now();
+  };
+  const summaryTimer = setInterval(flush, 1000);
   const onConsole = (
     details: Electron.Event<Electron.WebContentsConsoleMessageEventParams>,
   ): void => {
     if (details.level === 'error' || details.level === 'warning') {
+      if (performance.now() - windowStarted >= 1000) flush();
+      if (recorded >= 10) {
+        skipped++;
+        return;
+      }
+      recorded++;
       log.report(`${name}: ${details.message} (${details.sourceId}:${details.lineNumber})`);
     }
   };
   const onGone = (_event: Electron.Event, details: Electron.RenderProcessGoneDetails): void => {
+    flush();
     log.report(`${name}: ${details.reason} (${details.exitCode})`);
   };
   contents.on('console-message', onConsole);
   contents.on('render-process-gone', onGone);
   return () => {
+    clearInterval(summaryTimer);
+    flush();
     contents.removeListener('console-message', onConsole);
     contents.removeListener('render-process-gone', onGone);
   };

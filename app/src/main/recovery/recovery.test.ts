@@ -11,7 +11,12 @@ import { defaultSettings } from '../../shared/schemas/settings';
 import { zh } from '../../shared/strings.zh-CN';
 import { FileLog } from '../log';
 import { SaveStore } from '../save';
-import { attachCrashCommand, attachRecovery, type RecoveryOptions } from './index';
+import {
+  attachCrashCommand,
+  attachRecovery,
+  LOAD_FAILURE_GRACE_MS,
+  type RecoveryOptions,
+} from './index';
 
 const native = vi.hoisted(() => ({ showMessageBox: vi.fn(), openPath: vi.fn() }));
 vi.mock('electron', () => ({ dialog: native, shell: native }));
@@ -51,6 +56,7 @@ function setup(extra: Partial<RecoveryOptions> = {}) {
   save.flush();
   const contents = Object.assign(new EventEmitter(), {
     isDestroyed: () => false,
+    isLoadingMainFrame: vi.fn(() => false),
     executeJavaScript: vi.fn(() => Promise.resolve(0)),
     forcefullyCrashRenderer: vi.fn(() =>
       contents.emit('render-process-gone', {}, { reason: 'crashed', exitCode: 1 }),
@@ -66,13 +72,16 @@ function setup(extra: Partial<RecoveryOptions> = {}) {
   const reload = vi.fn<RecoveryOptions['reload']>();
   const notify = vi.fn<NonNullable<RecoveryOptions['notify']>>();
   let now = 10000;
+  let monotonic = 10000;
   const options: RecoveryOptions = {
     overlay: overlay as unknown as BrowserWindow,
     save,
     log,
     defaultState: () => ({ settings: defaultSettings([]) }),
     activeCats: () => ['active-cat', 'other-cat'],
+    catName: (id) => (id === 'active-cat' ? '测试猫' : '另一只测试猫'),
     now: () => now,
+    monotonicNow: () => monotonic,
     applySafeMode,
     reload,
     notify,
@@ -91,6 +100,13 @@ function setup(extra: Partial<RecoveryOptions> = {}) {
     recovery,
     setNow: (time: number) => {
       now = time;
+      monotonic = time;
+    },
+    setWallTime: (time: number) => {
+      now = time;
+    },
+    setMonotonic: (time: number) => {
+      monotonic = time;
     },
   };
 }
@@ -124,6 +140,9 @@ describe('故障恢复保留存档并停止不安全的重试', () => {
       await settle();
     }
     expect(target.applySafeMode.mock.calls[0]?.[0].disabledCats).toEqual(['other-cat']);
+    expect(target.notify).toHaveBeenCalledWith(expect.stringContaining('另一只测试猫'));
+    expect(target.notify.mock.calls[0]?.[0]).not.toContain('无法确定故障来源');
+    expect(target.notify.mock.calls[0]?.[0]).toContain('桌面上的猫不会再出现');
   });
 
   it('没有备份时使用默认设置并说明原因，不能重新读故障主存档', async () => {
@@ -172,9 +191,14 @@ describe('故障恢复保留存档并停止不安全的重试', () => {
   });
 
   it('重载失败时停止自动尝试并提示，不静默卡住桌面', async () => {
+    vi.useFakeTimers();
     const target = setup({ reload: () => Promise.reject(new Error('load failed')) });
     target.recovery.crash();
     await settle();
+    expect(target.notify).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(LOAD_FAILURE_GRACE_MS - 1);
+    expect(target.notify).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
     expect(target.recovery.getState().safeMode).toBe(true);
     expect(target.overlay.setIgnoreMouseEvents).toHaveBeenCalledWith(true);
     expect(target.notify).toHaveBeenCalledWith(zh.recovery.failed);
@@ -194,6 +218,7 @@ describe('故障恢复保留存档并停止不安全的重试', () => {
   });
 
   it('重载期间再崩溃导致加载 reject 时，仍使用剩余重试额度', async () => {
+    vi.useFakeTimers();
     let rejectLoad: ((error: Error) => void) | undefined;
     const reload = vi
       .fn<RecoveryOptions['reload']>()
@@ -207,12 +232,69 @@ describe('故障恢复保留存档并停止不安全的重试', () => {
     const target = setup({ reload });
     target.recovery.crash();
     await settle();
-    target.recovery.crash();
     rejectLoad?.(new Error('renderer died during load'));
+    await settle();
+    expect(target.notify).not.toHaveBeenCalled();
+    // Windows Electron 的真实顺序：loadURL 先 reject，几毫秒后才报告进程崩溃。
+    setTimeout(
+      () => target.contents.emit('render-process-gone', {}, { reason: 'crashed', exitCode: 1 }),
+      5,
+    );
+    await vi.advanceTimersByTimeAsync(5);
     await settle();
     expect(reload).toHaveBeenCalledTimes(2);
     expect(target.recovery.getState().safeMode).toBe(false);
     expect(target.applySafeMode).not.toHaveBeenCalled();
+  });
+
+  it('强制崩溃没有产生退出事件时，两秒后仍能继续调试和检测卡死', async () => {
+    vi.useFakeTimers();
+    const target = setup({ unresponsiveMs: 1000 });
+    target.contents.forcefullyCrashRenderer.mockImplementationOnce(() => false);
+    target.recovery.crash();
+    target.recovery.crash();
+    expect(target.contents.forcefullyCrashRenderer).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(2000);
+    target.recovery.crash();
+    await settle();
+    expect(target.reload).toHaveBeenCalledOnce();
+    target.contents.executeJavaScript.mockImplementation(() => new Promise(() => {}));
+    await vi.advanceTimersByTimeAsync(1000);
+    target.setMonotonic(11000);
+    await vi.advanceTimersByTimeAsync(1000);
+    await settle();
+    expect(target.reload).toHaveBeenCalledTimes(2);
+  });
+
+  it('慢加载使用独立长超时，不能把开机加载当成画面线程卡死', async () => {
+    vi.useFakeTimers();
+    const target = setup({ unresponsiveMs: 1000, loadingTimeoutMs: 20000 });
+    target.contents.isLoadingMainFrame.mockReturnValue(true);
+    target.contents.executeJavaScript.mockImplementation(() => new Promise(() => {}));
+    for (let second = 1; second <= 12; second++) {
+      target.setMonotonic(10000 + second * 1000);
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+    expect(target.contents.executeJavaScript).not.toHaveBeenCalled();
+    expect(target.contents.forcefullyCrashRenderer).not.toHaveBeenCalled();
+    for (let second = 13; second <= 21; second++) {
+      target.setMonotonic(10000 + second * 1000);
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+    expect(target.contents.forcefullyCrashRenderer).toHaveBeenCalledOnce();
+  });
+
+  it('墙上时钟回拨和主进程长暂停都不能让健康桌面层被立即终止', async () => {
+    vi.useFakeTimers();
+    const target = setup({ unresponsiveMs: 1000 });
+    target.contents.executeJavaScript.mockImplementation(() => new Promise(() => {}));
+    await vi.advanceTimersByTimeAsync(1000);
+    target.setWallTime(100);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(target.contents.forcefullyCrashRenderer).not.toHaveBeenCalled();
+    target.setMonotonic(100000);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(target.contents.forcefullyCrashRenderer).not.toHaveBeenCalled();
   });
 
   it('退出时即使旧重载随后失败，也不弹提示或重新启动', async () => {
