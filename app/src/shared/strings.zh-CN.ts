@@ -117,4 +117,32 @@ export const zh = {
       `schemas/ 下的 JSON Schema 不是最新的：${files.join('、')}。请运行 npm run gen:schemas 后提交。`,
     written: (count: number) => `已生成 ${count} 个 JSON Schema 到 schemas/。`,
   },
+
+  save: {
+    loadedMain: (file: string) => `已读取主存档「${file}」。`,
+    loadedBackup: (file: string) => `已回退到备份存档「${file}」。`,
+    usingDefault: '没有能正常读取的存档，已使用默认状态。',
+    fileMissing: (file: string) => `存档「${file}」不存在。`,
+    readFailed: (file: string) => `无法读取存档「${file}」，请检查文件权限和磁盘。`,
+    invalidJson: (file: string) => `存档「${file}」不是合法的 JSON。`,
+    invalidEnvelope: (file: string) =>
+      `存档「${file}」的外层格式不对，请检查存档版本、保存时间和状态字段。`,
+    invalidState: (file: string, fields: readonly string[]) =>
+      `存档「${file}」的数据校验失败，字段：${fields.join('、')}。`,
+    migrated: (file: string, from: number, to: number) =>
+      `存档「${file}」已从版本 ${from} 迁移到版本 ${to}。`,
+    migrationMissing: (file: string, from: number, to: number) =>
+      `存档「${file}」缺少从版本 ${from} 到版本 ${to} 的迁移步骤。`,
+    migrationFailed: (file: string, from: number, to: number) =>
+      `存档「${file}」从版本 ${from} 到版本 ${to} 的迁移失败。`,
+    newerVersion: (file: string, version: number, current: number) =>
+      `存档「${file}」的版本 ${version} 比当前程序支持的版本 ${current} 新，已禁止覆盖，请使用更新的程序打开。`,
+    writeProtected: '检测到更新版本的存档，已禁止写入，以免丢失数据。',
+    written: (file: string) => `已安全写入存档「${file}」。`,
+    writeFailed: (file: string) => `存档「${file}」写入失败，请检查文件权限和磁盘。`,
+    backupFailed: (file: string) => `存档「${file}」的备份轮换失败，请检查文件权限和磁盘。`,
+    invalidOptions: '存档配置不对：版本必须是正整数，合并写入间隔必须是非负有限数。',
+    invalidTime: '存档保存时间必须是非负有限数。',
+    wholeState: '整个存档状态',
+  },
 };
