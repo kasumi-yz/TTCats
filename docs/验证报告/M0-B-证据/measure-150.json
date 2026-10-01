@@ -1,0 +1,337 @@
+{
+  "versions": {
+    "node": "24.21.0",
+    "acorn": "8.18.0",
+    "ada": "4.0.0",
+    "amaro": "1.1.11",
+    "ares": "1.34.8",
+    "brotli": "1.2.0",
+    "cldr": "48.0",
+    "icu": "78.2",
+    "llhttp": "9.4.3",
+    "merve": "1.2.2",
+    "modules": "149",
+    "napi": "10",
+    "nbytes": "0.1.4",
+    "ncrypto": "0.0.1",
+    "nghttp2": "1.70.0",
+    "nghttp3": "",
+    "ngtcp2": "",
+    "openssl": "0.0.0",
+    "simdjson": "4.6.7",
+    "simdutf": "7.7.0",
+    "sqlite": "3.53.4",
+    "tz": "2025c",
+    "undici": "7.29.1",
+    "unicode": "17.0",
+    "uv": "1.52.1",
+    "uvwasi": "0.0.23",
+    "v8": "15.2.124.28-electron.0",
+    "zlib": "1.3.2.1-motley",
+    "zstd": "1.6.0",
+    "electron": "44.5.1",
+    "chrome": "152.0.7977.130"
+  },
+  "displays": [
+    {
+      "accelerometerSupport": "unknown",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1200
+      },
+      "colorDepth": 24,
+      "colorSpace": "{primaries:BT709, transfer:SRGB, matrix:RGB, range:FULL}",
+      "depthPerComponent": 8,
+      "detected": true,
+      "displayFrequency": 120,
+      "id": 1476577633,
+      "internal": true,
+      "label": "ATNA40CU05-0 ",
+      "maximumCursorSize": {
+        "width": 0,
+        "height": 0
+      },
+      "monochrome": false,
+      "nativeOrigin": {
+        "x": 0,
+        "y": 0
+      },
+      "rotation": 0,
+      "scaleFactor": 1.5,
+      "size": {
+        "width": 1920,
+        "height": 1200
+      },
+      "workArea": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1152
+      },
+      "workAreaSize": {
+        "width": 1920,
+        "height": 1152
+      },
+      "touchSupport": "unknown"
+    }
+  ],
+  "capturedAt": "2026-10-01T06:33:07.893Z",
+  "windows": [
+    {
+      "id": "66176",
+      "pid": 13996,
+      "className": "Shell_TrayWnd",
+      "bounds": {
+        "left": 0,
+        "top": 1728,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "buttons": {
+        "left": 2640,
+        "right": 2880,
+        "top": 1728,
+        "bottom": 1788
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "windowDpi": 144,
+      "eligible": false,
+      "reason": "shell",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "id": "134466",
+      "pid": 22444,
+      "className": "Chrome_WidgetWin_1",
+      "bounds": {
+        "left": 840,
+        "top": 450,
+        "right": 2643,
+        "bottom": 1652
+      },
+      "buttons": {
+        "left": 2403,
+        "right": 2643,
+        "top": 450,
+        "bottom": 510
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "windowDpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "id": "1641300",
+      "pid": 3876,
+      "className": "Chrome_WidgetWin_1",
+      "bounds": {
+        "left": 170,
+        "top": 104,
+        "right": 2097,
+        "bottom": 1341
+      },
+      "buttons": {
+        "left": 1857,
+        "right": 2097,
+        "top": 104,
+        "bottom": 164
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "windowDpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "id": "69034",
+      "pid": 25232,
+      "className": "HwndWrapper[Overwolf.exe;UI;22a95e67-7a47-4d5b-b1ab-9904cb603524]",
+      "bounds": {
+        "left": 30000,
+        "top": 30000,
+        "right": 30020,
+        "bottom": 30020
+      },
+      "buttons": {
+        "left": 30000,
+        "right": 30020,
+        "top": 30000,
+        "bottom": 30060
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "windowDpi": 144,
+      "eligible": false,
+      "reason": "tool",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "id": "134476",
+      "pid": 25232,
+      "className": "HwndWrapper[Overwolf.exe;UI;2a02cb40-3500-405f-955e-bdb0889f6407]",
+      "bounds": {
+        "left": 114,
+        "top": 114,
+        "right": 134,
+        "bottom": 134
+      },
+      "buttons": {
+        "left": 114,
+        "right": 134,
+        "top": 114,
+        "bottom": 174
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "windowDpi": 144,
+      "eligible": false,
+      "reason": "tool",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "id": "66230",
+      "pid": 13996,
+      "className": "Progman",
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "buttons": {
+        "left": 2640,
+        "right": 2880,
+        "top": 0,
+        "bottom": 60
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "windowDpi": 144,
+      "eligible": false,
+      "reason": "shell",
+      "maximized": false,
+      "fullscreen": true
+    }
+  ],
+  "ignoredTransparentWindows": [
+    {
+      "id": "1511440",
+      "pid": 3876,
+      "bounds": {
+        "left": 1608,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "extendedStyle": 2621608,
+      "reason": "layered-click-through"
+    },
+    {
+      "id": "135066",
+      "pid": 39308,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 22,
+        "bottom": 22
+      },
+      "extendedStyle": 134742176,
+      "reason": "layered-click-through"
+    },
+    {
+      "id": "200604",
+      "pid": 39308,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 22,
+        "bottom": 22
+      },
+      "extendedStyle": 134742176,
+      "reason": "layered-click-through"
+    },
+    {
+      "id": "132356",
+      "pid": 20028,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "extendedStyle": 134742144,
+      "reason": "alpha-zero"
+    },
+    {
+      "id": "65950",
+      "pid": 11304,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 22,
+        "bottom": 22
+      },
+      "extendedStyle": 134742176,
+      "reason": "layered-click-through"
+    }
+  ],
+  "ledges": [
+    {
+      "id": "134466",
+      "left": 840,
+      "right": 2403,
+      "y": 450
+    },
+    {
+      "id": "1641300",
+      "left": 170,
+      "right": 1857,
+      "y": 104
+    }
+  ],
+  "pollingMs": {
+    "count": 277,
+    "mean": 2.139642960288857,
+    "p95": 2.937000000001717,
+    "max": 3.4464999999981956
+  },
+  "pollingCpuUs": {
+    "count": 277,
+    "mean": 1859.2057761732851,
+    "p95": 16000,
+    "max": 16000
+  },
+  "pollingCpuTotalUs": 515000,
+  "pollingCpuOneCorePercent": 1.7164654511433806,
+  "sampleIntervalsMs": {
+    "count": 276,
+    "mean": 108.70839420289856,
+    "p95": 110.34409999999843,
+    "max": 113.20229999999998
+  },
+  "sampleToRendererAckMs": {
+    "count": 276,
+    "mean": 4.406766666666663,
+    "p95": 3.7220000000015716,
+    "max": 203.322
+  },
+  "commandedMovementToRendererAckMs": {
+    "count": 0,
+    "mean": 0,
+    "p95": 0,
+    "max": 0
+  },
+  "fastWindowIds": [],
+  "verificationChecks": []
+}

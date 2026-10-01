@@ -1,0 +1,547 @@
+{
+  "versions": {
+    "node": "24.21.0",
+    "acorn": "8.18.0",
+    "ada": "4.0.0",
+    "amaro": "1.1.11",
+    "ares": "1.34.8",
+    "brotli": "1.2.0",
+    "cldr": "48.0",
+    "icu": "78.2",
+    "llhttp": "9.4.3",
+    "merve": "1.2.2",
+    "modules": "149",
+    "napi": "10",
+    "nbytes": "0.1.4",
+    "ncrypto": "0.0.1",
+    "nghttp2": "1.70.0",
+    "nghttp3": "",
+    "ngtcp2": "",
+    "openssl": "0.0.0",
+    "simdjson": "4.6.7",
+    "simdutf": "7.7.0",
+    "sqlite": "3.53.4",
+    "tz": "2025c",
+    "undici": "7.29.1",
+    "unicode": "17.0",
+    "uv": "1.52.1",
+    "uvwasi": "0.0.23",
+    "v8": "15.2.124.28-electron.0",
+    "zlib": "1.3.2.1-motley",
+    "zstd": "1.6.0",
+    "electron": "44.5.1",
+    "chrome": "152.0.7977.130"
+  },
+  "displays": [
+    {
+      "accelerometerSupport": "unknown",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1200
+      },
+      "colorDepth": 24,
+      "colorSpace": "{primaries:BT709, transfer:SRGB, matrix:RGB, range:FULL}",
+      "depthPerComponent": 8,
+      "detected": true,
+      "displayFrequency": 120,
+      "id": 586695528,
+      "internal": true,
+      "label": "ATNA40CU05-0 ",
+      "maximumCursorSize": {
+        "width": 0,
+        "height": 0
+      },
+      "monochrome": false,
+      "nativeOrigin": {
+        "x": 0,
+        "y": 0
+      },
+      "rotation": 0,
+      "scaleFactor": 1.5,
+      "size": {
+        "width": 1920,
+        "height": 1200
+      },
+      "workArea": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1152
+      },
+      "workAreaSize": {
+        "width": 1920,
+        "height": 1152
+      },
+      "touchSupport": "unknown"
+    }
+  ],
+  "capturedAt": "2026-09-30T20:17:21.204Z",
+  "windows": [
+    {
+      "className": "Shell_TrayWnd",
+      "bounds": {
+        "left": 0,
+        "top": 1728,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "buttons": {
+        "left": 2640,
+        "right": 2880,
+        "top": 1728,
+        "bottom": 1788
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": false,
+      "reason": "shell",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "Chrome_WidgetWin_1",
+      "bounds": {
+        "left": 1608,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "buttons": {
+        "left": 2640,
+        "right": 2880,
+        "top": 0,
+        "bottom": 60
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": false,
+      "reason": "tool",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "Chrome_WidgetWin_1",
+      "bounds": {
+        "left": 230,
+        "top": 167,
+        "right": 2039,
+        "bottom": 1392
+      },
+      "buttons": {
+        "left": 1799,
+        "right": 2039,
+        "top": 167,
+        "bottom": 227
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "Chrome_WidgetWin_1",
+      "bounds": {
+        "left": 915,
+        "top": 453,
+        "right": 2835,
+        "bottom": 1683
+      },
+      "buttons": {
+        "left": 2595,
+        "right": 2835,
+        "top": 453,
+        "bottom": 513
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "Chrome_WidgetWin_1",
+      "bounds": {
+        "left": 286,
+        "top": 112,
+        "right": 2877,
+        "bottom": 1651
+      },
+      "buttons": {
+        "left": 2656,
+        "right": 2876,
+        "top": 112,
+        "bottom": 156
+      },
+      "buttonsFallback": false,
+      "dpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "Chrome_WidgetWin_1",
+      "bounds": {
+        "left": 39,
+        "top": 30,
+        "right": 1440,
+        "bottom": 1719
+      },
+      "buttons": {
+        "left": 1219,
+        "right": 1439,
+        "top": 30,
+        "bottom": 74
+      },
+      "buttonsFallback": false,
+      "dpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "ApplicationFrameWindow",
+      "bounds": {
+        "left": 70,
+        "top": 38,
+        "right": 2253,
+        "bottom": 1474
+      },
+      "buttons": {
+        "left": 2013,
+        "right": 2253,
+        "top": 38,
+        "bottom": 98
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "Chrome_WidgetWin_1",
+      "bounds": {
+        "left": 689,
+        "top": 400,
+        "right": 2501,
+        "bottom": 1608
+      },
+      "buttons": {
+        "left": 2261,
+        "right": 2501,
+        "top": 400,
+        "bottom": 460
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "Qt51514QWindowIcon",
+      "bounds": {
+        "left": 1228,
+        "top": 579,
+        "right": 1652,
+        "bottom": 1151
+      },
+      "buttons": {
+        "left": 1412,
+        "right": 1652,
+        "top": 579,
+        "bottom": 639
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "Notepad",
+      "bounds": {
+        "left": 679,
+        "top": 170,
+        "right": 2264,
+        "bottom": 1431
+      },
+      "buttons": {
+        "left": 2041,
+        "right": 2261,
+        "top": 170,
+        "bottom": 214
+      },
+      "buttonsFallback": false,
+      "dpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "basepopupshadow",
+      "bounds": {
+        "left": 1058,
+        "top": 572,
+        "right": 1822,
+        "bottom": 1228
+      },
+      "buttons": {
+        "left": 1582,
+        "right": 1822,
+        "top": 572,
+        "bottom": 632
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": false,
+      "reason": "tool",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "InstallMainWindow",
+      "bounds": {
+        "left": 1065,
+        "top": 579,
+        "right": 1815,
+        "bottom": 1221
+      },
+      "buttons": {
+        "left": 1575,
+        "right": 1815,
+        "top": 579,
+        "bottom": 639
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "Tauri Window",
+      "bounds": {
+        "left": 1217,
+        "top": 215,
+        "right": 2631,
+        "bottom": 1312
+      },
+      "buttons": {
+        "left": 2410,
+        "right": 2630,
+        "top": 215,
+        "bottom": 259
+      },
+      "buttonsFallback": false,
+      "dpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "CabinetWClass",
+      "bounds": {
+        "left": 155,
+        "top": 503,
+        "right": 1946,
+        "bottom": 1659
+      },
+      "buttons": {
+        "left": 1725,
+        "right": 1945,
+        "top": 503,
+        "bottom": 547
+      },
+      "buttonsFallback": false,
+      "dpi": 144,
+      "eligible": true,
+      "reason": "",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "HwndWrapper[Overwolf.exe;UI;508cebc9-bef6-46db-b2f5-1a01c79de94d]",
+      "bounds": {
+        "left": 114,
+        "top": 114,
+        "right": 134,
+        "bottom": 134
+      },
+      "buttons": {
+        "left": 114,
+        "right": 134,
+        "top": 114,
+        "bottom": 174
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": false,
+      "reason": "tool",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "HwndWrapper[Overwolf.exe;UI;ce276da2-eb0d-4b0a-9f15-9ac961811c83]",
+      "bounds": {
+        "left": 30000,
+        "top": 30000,
+        "right": 30020,
+        "bottom": 30020
+      },
+      "buttons": {
+        "left": 30000,
+        "right": 30020,
+        "top": 30000,
+        "bottom": 30060
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": false,
+      "reason": "tool",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "CEF-OSC-WIDGET",
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "buttons": {
+        "left": 2640,
+        "right": 2880,
+        "top": 0,
+        "bottom": 60
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": false,
+      "reason": "tool",
+      "maximized": false,
+      "fullscreen": true
+    },
+    {
+      "className": "Tao Thread Event Target",
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 22,
+        "bottom": 22
+      },
+      "buttons": {
+        "left": 0,
+        "right": 22,
+        "top": 0,
+        "bottom": 60
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": false,
+      "reason": "tool",
+      "maximized": false,
+      "fullscreen": false
+    },
+    {
+      "className": "Progman",
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "buttons": {
+        "left": 2640,
+        "right": 2880,
+        "top": 0,
+        "bottom": 60
+      },
+      "buttonsFallback": true,
+      "dpi": 144,
+      "eligible": false,
+      "reason": "shell",
+      "maximized": false,
+      "fullscreen": true
+    }
+  ],
+  "ledges": [
+    {
+      "id": "6688716",
+      "left": 230,
+      "right": 1608,
+      "y": 167
+    },
+    {
+      "id": "197920",
+      "left": 286,
+      "right": 1608,
+      "y": 112
+    },
+    {
+      "id": "660174",
+      "left": 39,
+      "right": 1219,
+      "y": 30
+    },
+    {
+      "id": "660174",
+      "left": 1439,
+      "right": 1440,
+      "y": 30
+    },
+    {
+      "id": "393816",
+      "left": 1440,
+      "right": 1608,
+      "y": 38
+    }
+  ],
+  "pollingMs": {
+    "count": 277,
+    "mean": 2.9340101083030987,
+    "p95": 3.5758999999998196,
+    "max": 5.51260000000002
+  },
+  "pollingCpuUs": {
+    "count": 277,
+    "mean": 2642.599277978339,
+    "p95": 16000,
+    "max": 16000
+  },
+  "pollingCpuOneCorePercent": 2.4439599646237467,
+  "sampleIntervalsMs": {
+    "count": 276,
+    "mean": 108.51953188405795,
+    "p95": 110.21950000000015,
+    "max": 113.85560000000004
+  },
+  "sampleToRendererAckMs": {
+    "count": 277,
+    "mean": 5.342076534295974,
+    "p95": 4.636900000000082,
+    "max": 236.3578
+  },
+  "commandedMovementToRendererAckMs": {
+    "count": 0,
+    "mean": 0,
+    "p95": 0,
+    "max": 0
+  },
+  "fastWindowIds": [],
+  "verificationChecks": []
+}
