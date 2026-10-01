@@ -22,6 +22,7 @@ await Promise.all([
       'tools/interaction-test': 'src/tools/interaction-test.ts',
       'tools/capture-test': 'src/tools/capture-test.ts',
       'tools/record-interrupts': 'src/tools/record-interrupts.ts',
+      'tools/rapid-interrupt-test': 'src/tools/rapid-interrupt-test.ts',
     },
     outdir: dist,
   }),

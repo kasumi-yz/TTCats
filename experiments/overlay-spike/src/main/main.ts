@@ -33,7 +33,6 @@ import {
 import { startControlServer } from '../shared/control';
 import { circlePng } from '../shared/png';
 import {
-  INTERRUPT_MODE_LABEL,
   INTERRUPT_MODES,
   type CatInfo,
   type GpuPower,
@@ -47,6 +46,7 @@ import {
   type RendererToMain,
   type SwitchStats,
 } from '../shared/protocol';
+import { UI } from '../shared/strings';
 import {
   exStyle,
   hwndOf,
@@ -130,6 +130,8 @@ function send<K extends keyof MainToRenderer>(channel: K, data: MainToRenderer[K
 const gameStart = Date.now();
 const fullnessAt = (t: number): number => Math.max(0, 100 - (t - gameStart) / 60000);
 let suspendedAt = 0;
+/** 桌面层最近一次隐藏的起止时间（主进程时钟），用来核对渲染进程的隐藏计时 */
+let hiddenSpan: { from: number; to: number } | null = null;
 
 function setIgnore(ignore: boolean, reason: string): void {
   if (!win || state.ignoring === ignore) return;
@@ -147,8 +149,10 @@ function applyVisibility(): void {
     win.showInactive();
     win.setAlwaysOnTop(true, 'screen-saver');
     setIgnore(true, 'show');
+    if (hiddenSpan) hiddenSpan.to = Date.now();
     send('paused', false);
   } else {
+    hiddenSpan = { from: Date.now(), to: 0 };
     send('paused', true);
     state.dragging = false;
     win.hide();
@@ -231,8 +235,11 @@ on('cats', (d) => {
 });
 on('event', (e) => log(e.type, e));
 on('hiddenReport', (r) => {
-  log('hiddenReport', { ...r });
-  appendResult('timing.jsonl', { t: Date.now(), phase: state.phase, ...r });
+  // 主进程按自己记下的隐藏起止时间结算，和渲染进程的计时器、帧数无关
+  const span = hiddenSpan?.to ? hiddenSpan : null;
+  const wall = span ? { mainHiddenMs: span.to - span.from, wallFullnessDrop: fullnessAt(span.from) - fullnessAt(span.to) } : {};
+  log('hiddenReport', { ...r, ...wall });
+  appendResult('timing.jsonl', { t: Date.now(), phase: state.phase, ...r, ...wall });
 });
 
 ipcMain.handle('readMask', (_e, name: string) => readFileSync(join(ROOT, 'assets', 'clips', name)));
@@ -329,12 +336,12 @@ function sampleMetrics(): void {
 function buildTray(): void {
   const icon = nativeImage.createFromBuffer(circlePng(32, [236, 170, 60]));
   tray = new Tray(icon);
-  tray.setToolTip('TTCats 桌面层小样');
+  tray.setToolTip(UI.appName);
   const rebuild = (): void => {
     const template: MenuItemConstructorOptions[] = [
       ...INTERRUPT_MODES.map(
         (m): MenuItemConstructorOptions => ({
-          label: `衔接方式：${INTERRUPT_MODE_LABEL[m]}`,
+          label: UI.menu.interruptMode(m),
           type: 'radio',
           checked: m === mode,
           click: () => {
@@ -344,16 +351,16 @@ function buildTray(): void {
           },
         }),
       ),
-      { label: '打断全部猫', click: () => send('cmd', { type: 'interruptAll' }) },
+      { label: UI.menu.interruptAll, click: () => send('cmd', { type: 'interruptAll' }) },
       { type: 'separator' },
       {
-        label: '截图里显示猫',
+        label: UI.menu.showInCapture,
         type: 'checkbox',
         checked: !state.protection,
         click: (item) => setProtection(!item.checked),
       },
       {
-        label: '隐藏全部猫',
+        label: UI.menu.hideAll,
         type: 'checkbox',
         checked: state.userHidden,
         click: (item) => {
@@ -362,7 +369,7 @@ function buildTray(): void {
         },
       },
       {
-        label: '显示调试信息',
+        label: UI.menu.showHud,
         type: 'checkbox',
         checked: state.hud,
         click: (item) => {
@@ -371,7 +378,7 @@ function buildTray(): void {
         },
       },
       { type: 'separator' },
-      { label: '退出', click: () => app.quit() },
+      { label: UI.menu.quit, click: () => app.quit() },
     ];
     tray?.setContextMenu(Menu.buildFromTemplate(template));
   };

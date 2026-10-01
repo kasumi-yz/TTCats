@@ -3,11 +3,6 @@
 /** 片段被打断时的衔接方式 */
 export type InterruptMode = 'crossfade' | 'hardcut' | 'transition';
 export const INTERRUPT_MODES: InterruptMode[] = ['crossfade', 'hardcut', 'transition'];
-export const INTERRUPT_MODE_LABEL: Record<InterruptMode, string> = {
-  crossfade: '交叉淡化（150ms）',
-  hardcut: '硬切 + 小特效',
-  transition: '专门的过渡片段',
-};
 
 export type GpuPower = 'low-power' | 'high-performance' | 'default';
 
@@ -85,7 +80,6 @@ export interface HiddenReport {
   naiveFullnessDrop: number;
   /** 按帧数累加（每帧按 1/60 秒算） */
   naiveFrameFullnessDrop: number;
-  wallFullnessDrop: number;
 }
 
 /** 渲染进程 → 主进程 */

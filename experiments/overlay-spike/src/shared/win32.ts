@@ -48,9 +48,8 @@ export const VK = {
   LCONTROL: 0xa2,
   LWIN: 0x5b,
   SNAPSHOT: 0x2c,
-  A: 0x41,
-  C: 0x43,
-  DELETE: 0x2e,
+  S: 0x53,
+  W: 0x57,
 } as const;
 
 export function isKeyDown(vk: number): boolean {

@@ -49,9 +49,10 @@ npm start
 
 | 命令 | 做什么 | 大约多久 |
 |---|---|---|
-| `npm run interaction-test` | 真实桌面交互测试：用 `SendInput` 发系统级鼠标、键盘事件，检查点击判定、拖动、Ctrl 幽灵模式、两猫重叠、焦点（含记事本）、防卡死 | 3 分钟 |
+| `npm run interaction-test` | 真实桌面交互测试：用 `SendInput` 发系统级鼠标、键盘事件，检查点击判定、拖动、Ctrl 幽灵模式、两猫重叠、焦点（含记事本：只在测试自己新建的临时文档里打字，不碰你已经打开的记事本内容）、防卡死 | 3 分钟 |
 | `npm run perf` | 性能测试：正常播放、全部隐藏、全屏时自动隐藏，三种状态各 5 分钟 | 16 分钟 |
-| `npm run capture-test` | 截图隐身测试：GDI 截图、Chromium 屏幕采集、Win+Shift+S | 1 分钟 |
+| `npm run capture-test` | 截图隐身测试：GDI 截图、Chromium 屏幕采集、Win+Shift+S。每种方式都要"不保护时能截到猫、保护时截不到"才算通过 | 1 分钟 |
+| `npm run rapid-interrupt-test` | 快速连续打断（站 → 坐 → 还没切完就站回去），检查猫不会卡住。不动鼠标键盘 | 20 秒 |
 | `npm run record` | 把三种衔接方式并排录屏，导出 MP4、GIF 和逐帧对比图 | 30 秒 |
 | `npm run gen:clips` | 重新生成测试片段 | 15 秒 |
 

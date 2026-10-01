@@ -60,10 +60,10 @@
     {
       "phase": "playing",
       "samples": 282,
-      "cpuOneCoreAvg": 1.7,
-      "cpuOneCoreMax": 2,
-      "cpuMachineAvg": 0.1,
-      "cpuMachineMax": 0.1,
+      "cpuMachineAvg": 1.7,
+      "cpuMachineMax": 2,
+      "cpuOneCoreAvg": 27.2,
+      "cpuOneCoreMax": 32,
       "workingSetAvgMB": 648.5,
       "workingSetMaxMB": 672,
       "privateAvgMB": 453.4,
@@ -102,10 +102,10 @@
     {
       "phase": "hidden",
       "samples": 282,
-      "cpuOneCoreAvg": 0,
-      "cpuOneCoreMax": 0.2,
       "cpuMachineAvg": 0,
-      "cpuMachineMax": 0,
+      "cpuMachineMax": 0.2,
+      "cpuOneCoreAvg": 0,
+      "cpuOneCoreMax": 3.2,
       "workingSetAvgMB": 586.2,
       "workingSetMaxMB": 588.6,
       "privateAvgMB": 400.8,
@@ -145,10 +145,10 @@
       "phase": "fullscreen",
       "note": "检测到全屏（状态码 2），1ms 后桌面层自动隐藏，visible=false；关掉全屏窗口后 12ms 桌面层恢复显示",
       "samples": 282,
-      "cpuOneCoreAvg": 0,
-      "cpuOneCoreMax": 0.2,
       "cpuMachineAvg": 0,
-      "cpuMachineMax": 0,
+      "cpuMachineMax": 0.2,
+      "cpuOneCoreAvg": 0,
+      "cpuOneCoreMax": 3.2,
       "workingSetAvgMB": 586.9,
       "workingSetMaxMB": 589.5,
       "privateAvgMB": 400.9,
@@ -222,5 +222,6 @@
       "hardcut": null,
       "transition": null
     }
-  }
+  },
+  "cpuCorrection": "2026-10-01 修正：原脚本把 Electron 已按整机算好的 CPU 百分比又除了一次逻辑 CPU 个数。cpuMachine* 改为原来 cpuOneCore* 的数值（即正确的整机百分比），cpuOneCore* 由整机值乘以逻辑 CPU 个数换算（受原数据保留一位小数影响，是近似值）。"
 }

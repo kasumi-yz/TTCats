@@ -160,16 +160,19 @@ async function main(): Promise<void> {
         await sleep(1000);
       }
     }
-    console.log('\n截图方式 | 截图里显示猫=开（不保护） | 截图里显示猫=关（保护，默认）');
-    for (const m of [...new Set(rows.map((r) => r.method))]) {
-      const off = rows.find((r) => r.method === m && !r.protection)!;
-      const on = rows.find((r) => r.method === m && r.protection)!;
-      console.log(`${m} | ${off.result} ${JSON.stringify(off.rgb)} | ${on.result} ${JSON.stringify(on.rgb)}`);
-    }
+    // 每种截图方式都要两头对上：不保护时能截到猫（说明这种方式确实截得到桌面层），保护时截不到
+    console.log('\n截图方式 | 截图里显示猫=开（不保护） | 截图里显示猫=关（保护，默认） | 结论');
+    const verdicts = [...new Set(rows.map((r) => r.method))].map((method) => {
+      const off = rows.find((r) => r.method === method && !r.protection)!;
+      const on = rows.find((r) => r.method === method && r.protection)!;
+      const pass = off.result === '能看到猫' && on.result === '看不到猫';
+      console.log(`${method} | ${off.result} ${JSON.stringify(off.rgb)} | ${on.result} ${JSON.stringify(on.rgb)} | ${pass ? '通过' : '不通过'}`);
+      return { method, pass };
+    });
     const file = join(RESULTS, `capture-${Date.now()}.json`);
-    writeFileSync(file, JSON.stringify({ time: new Date().toISOString(), scaleFactor: S, point: P, background: B, rows }, null, 2));
+    writeFileSync(file, JSON.stringify({ time: new Date().toISOString(), scaleFactor: S, point: P, background: B, rows, verdicts }, null, 2));
     console.log(`结果：${file}`);
-    process.exitCode = rows.some((r) => r.result.startsWith('无效') || r.result === '截图失败') ? 1 : 0;
+    process.exitCode = verdicts.every((v) => v.pass) ? 0 : 1;
   } finally {
     await ov.kill();
     await probe.kill();

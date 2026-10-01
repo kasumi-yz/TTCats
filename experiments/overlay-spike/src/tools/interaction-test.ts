@@ -8,8 +8,9 @@
 // 如果检测到有人动了鼠标，这一项会自动重做（最多 3 次）。
 // 参数：--skip-notepad  不做记事本那一项
 
-import { execFileSync, spawn } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { CatInfo, CatPlacement, LogEvent, OverlayState, Point } from '../shared/protocol';
 import {
@@ -567,28 +568,38 @@ async function main(): Promise<void> {
   }
 }
 
-/** 记事本：在记事本里打字时点一下猫，确认焦点和输入都没被抢走 */
+/**
+ * 记事本：在记事本里打字时点一下猫，确认焦点和输入都没被抢走。
+ *
+ * 只在测试自己新建的临时文档里操作：新版记事本会恢复用户上次没保存的内容，
+ * 所以绝不全选、删除或关闭整个记事本窗口，只核对、保存、关掉自己的这个文档。
+ */
 async function notepadTest(h: Harness, A: CatInfo): Promise<void> {
-  const before = foregroundWindow();
-  spawn('notepad.exe', [], { detached: true, stdio: 'ignore' }).unref();
+  const marker = `ttcats-notepad-test-${process.pid}-${Date.now()}`;
+  const file = join(tmpdir(), `${marker}.txt`);
+  writeFileSync(file, '');
+  /** 前台是记事本，而且当前显示的正是测试自己的文档 */
+  const ours = (hwnd: number): boolean => windowClass(hwnd) === 'Notepad' && windowText(hwnd).includes(marker);
+  spawn('notepad.exe', [file], { detached: true, stdio: 'ignore' }).unref();
   let np = 0;
   await waitFor(
     () => {
       const fg = foregroundWindow();
-      if (fg !== before && windowClass(fg) === 'Notepad') np = fg;
+      if (ours(fg)) np = fg;
       return np !== 0;
     },
     8000,
     100,
   );
-  if (!np) {
-    record('焦点', '在记事本里打字时点猫', false, '记事本窗口没有出现在前台，跳过');
-    return;
-  }
+  let saved = false;
   try {
+    if (!np) {
+      record('焦点', '在记事本里打字时点猫', false, '测试文档没有出现在前台，跳过');
+      return;
+    }
     await h.sleep(500);
-    if (foregroundWindow() !== np) {
-      record('焦点', '在记事本里打字时点猫', false, '记事本不在前台，为安全起见不打字');
+    if (!ours(foregroundWindow())) {
+      record('焦点', '在记事本里打字时点猫', false, '测试文档不在前台，为安全起见不打字');
       return;
     }
     typeText('abc');
@@ -599,37 +610,52 @@ async function notepadTest(h: Harness, A: CatInfo): Promise<void> {
     await h.click(A.core!);
     await h.sleep(200);
     const clicked = (await h.overlayEvents(m.seq)).some((e) => e.type === 'catClick');
-    const stillFront = foregroundWindow() === np;
+    const stillFront = ours(foregroundWindow());
     let text = '';
     if (stillFront) {
       typeText('def');
       await h.sleep(150);
-      // 全选 → 复制，读剪贴板核对内容，然后删掉
-      key(VK.LCONTROL, true);
-      key(VK.A, true);
-      key(VK.A, false);
-      key(VK.C, true);
-      key(VK.C, false);
-      key(VK.LCONTROL, false);
-      await h.sleep(250);
-      text = execFileSync('powershell', ['-NoProfile', '-Command', 'Get-Clipboard'], { encoding: 'utf8' }).trim();
-      if (foregroundWindow() === np) {
-        key(VK.DELETE, true);
-        key(VK.DELETE, false);
+      // 保存到测试文档，再从文件里读回内容核对（不碰剪贴板，也不全选）
+      if (ours(foregroundWindow())) {
+        chord(VK.S);
+        await waitFor(() => readFileSync(file, 'utf8').length > 0, 3000, 100);
+        text = readFileSync(file, 'utf8').replace(/^﻿/, '').trim();
+        saved = text.length > 0;
       }
     }
     record(
       '焦点',
       '在记事本里打字时点猫',
       clicked && stillFront && text === 'abcdef',
-      `点到猫=${clicked}，点猫后记事本仍在前台=${stillFront}，记事本里的内容="${text}"`,
+      `点到猫=${clicked}，点猫后测试文档仍在前台=${stillFront}，测试文档里的内容="${text}"`,
     );
   } finally {
     await sleep(200);
-    closeWindow(np);
-    await sleep(1500);
-    if (windowExists(np)) console.warn(`记事本窗口没有自动关掉（${windowText(np)}），请手动关闭，不用保存。`);
+    if (np) await closeOurDocument(np, ours, saved);
+    rmSync(file, { force: true });
   }
+}
+
+/** 只关掉测试自己的文档：新版记事本用 Ctrl+W 关当前标签页；旧版记事本一个窗口只有一个文档，直接关窗口 */
+async function closeOurDocument(np: number, ours: (hwnd: number) => boolean, saved: boolean): Promise<void> {
+  if (saved && ours(foregroundWindow())) {
+    chord(VK.W);
+    await sleep(800);
+    // 旧版记事本不认 Ctrl+W；此时窗口里只有这一个已保存的测试文档，关窗口不会影响别的内容
+    if (windowExists(np) && ours(np)) closeWindow(np);
+    await sleep(800);
+  }
+  if (windowExists(np) && ours(np)) {
+    console.warn(`测试用的记事本文档没有自动关掉（${windowText(np)}），请手动关闭这个标签页，不用保存。`);
+  }
+}
+
+/** 按 Ctrl+某键 */
+function chord(vk: number): void {
+  key(VK.LCONTROL, true);
+  key(vk, true);
+  key(vk, false);
+  key(VK.LCONTROL, false);
 }
 
 main().catch((err) => {

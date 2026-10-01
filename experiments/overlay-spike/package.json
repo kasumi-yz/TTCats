@@ -21,7 +21,9 @@
     "precapture-test": "npm run prepare-all",
     "capture-test": "node dist/tools/capture-test.js",
     "prerecord": "npm run prepare-all",
-    "record": "node dist/tools/record-interrupts.js"
+    "record": "node dist/tools/record-interrupts.js",
+    "prerapid-interrupt-test": "npm run prepare-all",
+    "rapid-interrupt-test": "node dist/tools/rapid-interrupt-test.js"
   },
   "devDependencies": {
     "@types/node": "^24.19.0",

@@ -208,11 +208,20 @@ for (const clip of clips) {
   for (let i = 0; i < clip.frames; i++) {
     let ellipses;
     if (clip.kind === 'loop') {
-      ellipses = LOOP_WIGGLE[clip.fromPose](POSES[clip.fromPose], i / clip.frames);
+      // 进度从 0 走到 1（含两端），首尾两帧都严格等于标准姿势（ADR-0002）；代价是循环衔接处姿势帧多停一帧
+      ellipses = LOOP_WIGGLE[clip.fromPose](POSES[clip.fromPose], i / (clip.frames - 1));
     } else {
       ellipses = lerpPose(POSES[clip.fromPose], POSES[clip.toPose], smooth(i / (clip.frames - 1)));
     }
     frames.push(renderFrame(ellipses));
+  }
+  for (const [at, pose] of [
+    [0, clip.fromPose],
+    [frames.length - 1, clip.toPose],
+  ]) {
+    if (!maskOf(frames[at]).equals(maskOf(renderFrame(POSES[pose])))) {
+      throw new Error(`${clip.id}：第 ${at + 1} 帧的点击遮罩和标准姿势 ${pose} 不一致`);
+    }
   }
   const video = `${clip.id}.webm`;
   const mask = `${clip.id}.hitmask.bin`;

@@ -15,7 +15,8 @@ import type {
   RendererToMain,
   SwitchStats,
 } from '../shared/protocol';
-import { INTERRUPT_MODE_LABEL, INTERRUPT_MODES } from '../shared/protocol';
+import { INTERRUPT_MODES } from '../shared/protocol';
+import { INTERRUPT_MODE_LABEL, UI } from '../shared/strings';
 
 interface SpikeApi {
   send(channel: string, data: unknown): void;
@@ -106,6 +107,7 @@ class Player {
   onEnded: (() => void) | null = null;
   ready: Promise<void>;
   isReady = false;
+  private destroyed = false;
 
   constructor(readonly clip: ClipMeta) {
     const v = document.createElement('video');
@@ -148,6 +150,7 @@ class Player {
   }
 
   start(measureFrom: number, mode: InterruptMode | null): void {
+    if (this.destroyed) emit('error', { message: `片段 ${this.clip.id} 已经释放，却又被拿来播放` });
     this.measureFrom = measureFrom;
     this.measureMode = mode;
     this.video.loop = this.clip.kind === 'loop';
@@ -158,6 +161,7 @@ class Player {
   }
 
   destroy(): void {
+    this.destroyed = true;
     this.onEnded = null;
     this.video.pause();
     this.video.removeAttribute('src');
@@ -259,7 +263,8 @@ class Cat {
       return;
     }
     this.pendingClip = null;
-    if (this.fade) this.finishFade();
+    // 先不清理：此时 next 还没成为当前片段，清理会把它当成没用的片段释放掉（快速连续打断时）；最后统一清理
+    if (this.fade) this.finishFade(false);
     if (opts.fade && prev && prev !== next) {
       const other = this.curSprite === this.spriteA ? this.spriteB : this.spriteA;
       other.texture = next.texture;
@@ -295,13 +300,13 @@ class Cat {
     }
   }
 
-  private finishFade(): void {
+  private finishFade(release = true): void {
     if (!this.fade) return;
     if (this.fade.player !== this.cur) this.fade.player.stop();
     this.fade.sprite.visible = false;
     this.curSprite.alpha = 1;
     this.fade = null;
-    this.sync();
+    if (release) this.sync();
   }
 
   private onEnded(p: Player): void {
@@ -698,9 +703,7 @@ let hiddenSince: {
   rvfc: number;
   naive: number;
   naiveFrame: number;
-  wall: number;
-} | null =
-  null;
+} | null = null;
 
 on('ghost', (g) => {
   ghost = g;
@@ -717,29 +720,26 @@ on('paused', (p) => {
   if (p) {
     app.ticker.stop();
     for (const c of cats) c.pause();
-    hiddenSince = { t: Date.now(), ...counters, naive: naiveFullness, naiveFrame: naiveFrameFullness, wall: fullness };
+    hiddenSince = { t: Date.now(), ...counters, naive: naiveFullness, naiveFrame: naiveFrameFullness };
   } else {
-    for (const c of cats) c.resume();
-    app.ticker.start();
+    // 在恢复绘制之前就把计数定下来，不能混进恢复显示以后的帧和计时器；按真实时间的结算由主进程自己补上
     const h = hiddenSince;
     hiddenSince = null;
     if (h) {
       const hiddenMs = Date.now() - h.t;
-      // 等主进程下一次推送快照，再比较"按真实时间"和"按计时器次数"两种结算
-      setTimeout(() => {
-        const report: HiddenReport = {
-          hiddenMs,
-          intervalTicks: counters.interval - h.interval,
-          expectedIntervalTicks: Math.floor(hiddenMs / 1000),
-          rafTicks: counters.raf - h.raf,
-          rvfcTicks: counters.rvfc - h.rvfc,
-          naiveFullnessDrop: h.naive - naiveFullness,
-          naiveFrameFullnessDrop: h.naiveFrame - naiveFrameFullness,
-          wallFullnessDrop: h.wall - fullness,
-        };
-        send('hiddenReport', report);
-      }, 1100);
+      const report: HiddenReport = {
+        hiddenMs,
+        intervalTicks: counters.interval - h.interval,
+        expectedIntervalTicks: Math.floor(hiddenMs / 1000),
+        rafTicks: counters.raf - h.raf,
+        rvfcTicks: counters.rvfc - h.rvfc,
+        naiveFullnessDrop: h.naive - naiveFullness,
+        naiveFrameFullnessDrop: h.naiveFrame - naiveFrameFullness,
+      };
+      send('hiddenReport', report);
     }
+    for (const c of cats) c.resume();
+    app.ticker.start();
   }
 });
 on('cmd', (c) => {
@@ -825,10 +825,10 @@ on('config', async (cfg) => {
     if (hud.visible) {
       const s = stats();
       hud.text = [
-        `TTCats 桌面层小样  布局=${layout}  幽灵=${ghost ? '开' : '关'}  FPS=${app.ticker.FPS.toFixed(0)}`,
-        `衔接方式：${cats.map((c) => INTERRUPT_MODE_LABEL[c.mode]).join(' / ')}`,
-        `饱腹（主进程按真实时间）=${fullness.toFixed(2)}   按计时器次数累加=${naiveFullness.toFixed(2)}`,
-        `片段切换 ${s.count} 次，首帧平均 ${s.avgMs.toFixed(1)}ms，最大 ${s.maxMs.toFixed(1)}ms`,
+        UI.hud.title(layout, ghost, app.ticker.FPS),
+        UI.hud.modes(cats.map((c) => c.mode)),
+        UI.hud.fullness(fullness, naiveFullness),
+        UI.hud.switches(s.count, s.avgMs, s.maxMs),
         ...cats.map((c) => `${c.id}: ${c.cur.clip.id} #${c.cur.frame}`),
       ].join('\n');
     }

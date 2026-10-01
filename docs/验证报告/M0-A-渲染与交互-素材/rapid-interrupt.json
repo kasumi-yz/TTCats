@@ -1,0 +1,45 @@
+{
+  "time": "2026-10-01T05:05:33.990Z",
+  "results": [
+    {
+      "round": 1,
+      "path": "stand→sit→stand",
+      "pass": true,
+      "errors": [],
+      "clip": "loop_stand",
+      "playing": true
+    },
+    {
+      "round": 2,
+      "path": "stand→sit→stand",
+      "pass": true,
+      "errors": [],
+      "clip": "loop_stand",
+      "playing": true
+    },
+    {
+      "round": 3,
+      "path": "stand→sit→stand",
+      "pass": true,
+      "errors": [],
+      "clip": "loop_stand",
+      "playing": true
+    },
+    {
+      "round": 4,
+      "path": "stand→sit→stand",
+      "pass": true,
+      "errors": [],
+      "clip": "loop_stand",
+      "playing": true
+    },
+    {
+      "round": 5,
+      "path": "stand→sit→stand",
+      "pass": true,
+      "errors": [],
+      "clip": "loop_stand",
+      "playing": true
+    }
+  ]
+}

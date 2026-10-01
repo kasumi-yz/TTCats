@@ -212,6 +212,7 @@ async function main(): Promise<void> {
     const nCpu = cpus().length;
     const summary = phaseTimes.map(({ phase, start, end, note }) => {
       const ls = lines.filter((l) => l.t >= start + WARMUP_MS && l.t <= end);
+      // percentCPUUsage 已经是占整机的百分比（Electron 内部除过逻辑 CPU 个数），不能再除
       const cpu = ls.map((l) => l.procs.reduce((s, p) => s + p.cpu, 0));
       const ws = ls.map((l) => l.procs.reduce((s, p) => s + p.ws, 0) / 1024);
       const priv = ls.map((l) => l.procs.reduce((s, p) => s + (p.priv ?? 0), 0) / 1024);
@@ -236,10 +237,10 @@ async function main(): Promise<void> {
         phase,
         note,
         samples: ls.length,
-        cpuOneCoreAvg: r1(avg(cpu)),
-        cpuOneCoreMax: r1(max(cpu)),
-        cpuMachineAvg: r1(avg(cpu) / nCpu),
-        cpuMachineMax: r1(max(cpu) / nCpu),
+        cpuMachineAvg: r1(avg(cpu)),
+        cpuMachineMax: r1(max(cpu)),
+        cpuOneCoreAvg: r1(avg(cpu) * nCpu),
+        cpuOneCoreMax: r1(max(cpu) * nCpu),
         workingSetAvgMB: r1(avg(ws)),
         workingSetMaxMB: r1(max(ws)),
         privateAvgMB: r1(avg(priv)),
