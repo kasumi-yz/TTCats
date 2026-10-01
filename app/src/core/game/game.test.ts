@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { ContentCatalog } from '../../shared/core-api';
 import type { Fact, GameCommand, StageCommand } from '../../shared/ipc';
-import { CatSchema, ClipSchema, defaultSettings, GameStateSchema } from '../../shared/schemas';
+import {
+  CatSchema,
+  ClipSchema,
+  defaultSettings,
+  GameStateSchema,
+  SettingsSchema,
+  type Settings,
+} from '../../shared/schemas';
 import { createGameCore } from './index';
 
 const now = 1_800_000_000_000;
@@ -84,23 +91,49 @@ describe('core/game 的 M1 存档状态规则', () => {
     });
   });
 
-  it('合法设置更新需要保存；相同设置和空补丁不要求重复保存', () => {
+  // 每个设置都必须独立触发存档和快照推送；新增字段时必须补一个非默认测试值。
+  const changedSettings = {
+    visibleCats: ['test-b', 'test-a'],
+    scale: 2,
+    floorDepth: 0,
+    activityLevel: 'quiet',
+    showInScreenCapture: true,
+  } satisfies Settings;
+
+  it.each(Object.keys(SettingsSchema.shape) as (keyof Settings)[])(
+    '只修改设置 %s 也必须触发存档，快照包含新值；重复相同值无需存档',
+    (key) => {
+      const game = core();
+      const before = game.exportState().settings;
+      const patch = { [key]: changedSettings[key] };
+      expect(changedSettings[key]).not.toEqual(before[key]);
+      expect(game.handleCommand({ type: 'settings/update', patch }, now)).toEqual({
+        stageCommands: [],
+        stateChanged: true,
+        problems: [],
+      });
+      const expected = { ...before, ...patch };
+      expect(game.exportState().settings).toEqual(expected);
+      expect(game.snapshot(now).settings).toEqual(expected);
+      // 使用值相同的新数组，防止把数组引用变化误当成需要存档的设置变化。
+      expect(
+        game.handleCommand(
+          { type: 'settings/update', patch: { ...game.exportState().settings } },
+          now,
+        ).stateChanged,
+      ).toBe(false);
+    },
+  );
+
+  it('空设置补丁不触发存档和快照推送', () => {
     const game = core();
-    const patch = {
-      scale: 2,
-      floorDepth: 0,
-      activityLevel: 'quiet',
-      showInScreenCapture: true,
-    } as const;
-    expect(game.handleCommand({ type: 'settings/update', patch }, now).stateChanged).toBe(true);
-    expect(game.exportState().settings).toEqual({
-      ...defaultSettings(['test-a', 'test-b']),
-      ...patch,
+    const before = game.exportState();
+    expect(game.handleCommand({ type: 'settings/update', patch: {} }, now)).toEqual({
+      stageCommands: [],
+      stateChanged: false,
+      problems: [],
     });
-    expect(game.handleCommand({ type: 'settings/update', patch }, now).stateChanged).toBe(false);
-    expect(game.handleCommand({ type: 'settings/update', patch: {} }, now).stateChanged).toBe(
-      false,
-    );
+    expect(game.exportState()).toEqual(before);
   });
 
   it.each([

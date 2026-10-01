@@ -19,13 +19,14 @@ export const createGameCore: CreateGameCore = ({ content, state }) => {
     const result = validateWith(SettingsSchema, { ...settings, ...patch });
     if (!result.ok) return output([], result.problems);
     const next = result.value;
-    const stateChanged =
-      next.activityLevel !== settings.activityLevel ||
-      next.scale !== settings.scale ||
-      next.floorDepth !== settings.floorDepth ||
-      next.showInScreenCapture !== settings.showInScreenCapture ||
-      next.visibleCats.length !== settings.visibleCats.length ||
-      next.visibleCats.some((cat, i) => cat !== settings.visibleCats[i]);
+    const stateChanged = Object.entries(next).some(([key, value]) => {
+      const previous = settings[key as keyof Settings];
+      return Array.isArray(value)
+        ? !Array.isArray(previous) ||
+            value.length !== previous.length ||
+            value.some((cat, i) => cat !== previous[i])
+        : value !== previous;
+    });
     settings = next;
     return { stageCommands: [], stateChanged, problems: [] };
   }
