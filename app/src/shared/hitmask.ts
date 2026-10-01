@@ -13,6 +13,9 @@
 
 /** 一个片段的点击遮罩在文件里的排布。 */
 export interface HitMaskLayout {
+  /** 片段画面的宽高（像素）。最右一列、最下一行的格子可能超出画面，超出的部分不算猫身上。 */
+  width: number;
+  height: number;
   scale: number;
   cols: number;
   rows: number;
@@ -32,7 +35,15 @@ export function hitMaskLayout(clip: {
   const cols = Math.ceil(clip.width / scale);
   const rows = Math.ceil(clip.height / scale);
   const frameBytes = Math.ceil((cols * rows) / 8);
-  return { scale, cols, rows, frameBytes, totalBytes: frameBytes * clip.frameCount };
+  return {
+    width: clip.width,
+    height: clip.height,
+    scale,
+    cols,
+    rows,
+    frameBytes,
+    totalBytes: frameBytes * clip.frameCount,
+  };
 }
 
 /**
@@ -46,9 +57,10 @@ export function hitMaskAt(
   x: number,
   y: number,
 ): boolean {
+  // 先按真实画面判断：宽高不能被 scale 整除时，边缘格子会超出画面，那部分要让点击穿过去
+  if (!(x >= 0 && y >= 0 && x < layout.width && y < layout.height)) return false;
   const col = Math.floor(x / layout.scale);
   const row = Math.floor(y / layout.scale);
-  if (col < 0 || row < 0 || col >= layout.cols || row >= layout.rows) return false;
   if (!Number.isInteger(frame) || frame < 0) return false;
   const i = row * layout.cols + col;
   const byte = mask[frame * layout.frameBytes + (i >> 3)];

@@ -13,6 +13,8 @@ function alphaOf(width: number, height: number, opaque: (x: number, y: number) =
 describe('点击遮罩的排布', () => {
   it('列数和行数向上取整，每帧按位补齐到整字节', () => {
     expect(hitMaskLayout({ width: 10, height: 6, frameCount: 3, hitMaskScale: 4 })).toEqual({
+      width: 10,
+      height: 6,
       scale: 4,
       cols: 3,
       rows: 2,
@@ -20,6 +22,8 @@ describe('点击遮罩的排布', () => {
       totalBytes: 3,
     });
     expect(hitMaskLayout({ width: 384, height: 384, frameCount: 48, hitMaskScale: 4 })).toEqual({
+      width: 384,
+      height: 384,
       scale: 4,
       cols: 96,
       rows: 96,
@@ -82,5 +86,25 @@ describe('点击判定', () => {
     expect(hitMaskAt(mask, layout, 2, 1, 1)).toBe(false);
     expect(hitMaskAt(mask, layout, -1, 1, 1)).toBe(false);
     expect(hitMaskAt(mask, layout, 0.5, 1, 1)).toBe(false);
+  });
+
+  it('宽高不能被缩小倍数整除时，边缘格子超出画面的部分不算猫身上', () => {
+    // 5×5 画面、4 倍缩小：右下角格子只有画面里的 (4, 4) 这一个像素，而且不透明
+    const edge = hitMaskLayout({ width: 5, height: 5, frameCount: 1, hitMaskScale: 4 });
+    const edgeMask = encodeHitMaskFrame(
+      alphaOf(5, 5, (x, y) => x === 4 && y === 4),
+      5,
+      5,
+      4,
+    );
+    expect(hitMaskAt(edgeMask, edge, 0, 4, 4)).toBe(true);
+    expect(hitMaskAt(edgeMask, edge, 0, 4.9, 4.9)).toBe(true);
+    expect(hitMaskAt(edgeMask, edge, 0, 5, 4)).toBe(false);
+    expect(hitMaskAt(edgeMask, edge, 0, 4, 5)).toBe(false);
+    expect(hitMaskAt(edgeMask, edge, 0, 7, 7)).toBe(false);
+  });
+
+  it('坐标不是数字时算不在猫身上', () => {
+    expect(hitMaskAt(mask, layout, 0, Number.NaN, 1)).toBe(false);
   });
 });
