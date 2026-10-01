@@ -19,7 +19,10 @@ export type AutonomousBehavior =
 
 /** 用户或调试台让猫做的事。 */
 export type CommandedBehavior =
-  { kind: 'summon' } | { kind: 'sleepCommand' } | { kind: 'debugClip'; clip: string };
+  | { kind: 'summon' }
+  | { kind: 'sleepCommand' }
+  | { kind: 'debugClip'; clip: string }
+  | { kind: 'poked' | 'petted' | 'pickedUp' | 'dropped' | 'approach' | 'avoid' };
 
 export type Behavior = AutonomousBehavior | CommandedBehavior;
 
