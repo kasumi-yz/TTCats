@@ -1,0 +1,202 @@
+{
+  "time": "2026-10-01T14:10:37.464Z",
+  "scaleFactor": 1,
+  "workArea": {
+    "x": 0,
+    "y": 0,
+    "width": 3440,
+    "height": 1392
+  },
+  "versions": {
+    "electron": "44.5.1",
+    "chrome": "152.0.7977.130",
+    "node": "24.21.0"
+  },
+  "interferences": 1,
+  "passed": 23,
+  "failed": 0,
+  "results": [
+    {
+      "scenario": "准备",
+      "name": "探针窗口成为前台",
+      "pass": true,
+      "detail": "前台窗口：TTCats 探针窗口"
+    },
+    {
+      "scenario": "基础",
+      "name": "窗口样式",
+      "pass": true,
+      "detail": "不抢焦点 WS_EX_NOACTIVATE=true，置顶 TOPMOST=true，默认穿透 TRANSPARENT=true"
+    },
+    {
+      "scenario": "基础",
+      "name": "点空白处",
+      "pass": true,
+      "detail": "点击落到：probe"
+    },
+    {
+      "scenario": "基础",
+      "name": "鼠标移到猫身上后关闭穿透",
+      "pass": true,
+      "detail": "用时 15ms"
+    },
+    {
+      "scenario": "基础",
+      "name": "点猫身上（悬停后）",
+      "pass": true,
+      "detail": "点击落到：cat-a"
+    },
+    {
+      "scenario": "基础",
+      "name": "点猫的包围框内的透明处（两腿之间）",
+      "pass": true,
+      "detail": "点击落到：probe"
+    },
+    {
+      "scenario": "快速移到猫身上马上点",
+      "name": "移动后隔多久点击才一定能点中猫",
+      "pass": true,
+      "detail": "隔 0ms 及以上 5/5 点中；全部 40 次里有 0 次点击丢失（猫和下面的窗口都没收到）",
+      "data": {
+        "0": {
+          "cat-a": 5
+        },
+        "5": {
+          "cat-a": 5
+        },
+        "10": {
+          "cat-a": 5
+        },
+        "20": {
+          "cat-a": 5
+        },
+        "35": {
+          "cat-a": 5
+        },
+        "50": {
+          "cat-a": 5
+        },
+        "80": {
+          "cat-a": 5
+        },
+        "120": {
+          "cat-a": 5
+        }
+      }
+    },
+    {
+      "scenario": "快速移到猫身上马上点",
+      "name": "鼠标刚离开猫就点旁边的空白处",
+      "pass": true,
+      "detail": "隔 0ms 及以上 5/5 落到下面的窗口；共 0/25 次被桌面层吃掉或丢失",
+      "data": {
+        "0": {
+          "probe": 5
+        },
+        "5": {
+          "probe": 5
+        },
+        "10": {
+          "probe": 5
+        },
+        "20": {
+          "probe": 5
+        },
+        "50": {
+          "probe": 5
+        }
+      }
+    },
+    {
+      "scenario": "拖动时鼠标移出猫的范围",
+      "name": "整个拖动过程由桌面层接收",
+      "pass": true,
+      "detail": "拖动中=true，松手=true，猫跟到了松手位置=true，下面的窗口收到 0 个鼠标事件"
+    },
+    {
+      "scenario": "拖动时鼠标移出猫的范围",
+      "name": "松手后离开猫，恢复穿透",
+      "pass": true,
+      "detail": "用时 14ms"
+    },
+    {
+      "scenario": "拖动时鼠标移出猫的范围",
+      "name": "之后点空白处",
+      "pass": true,
+      "detail": "点击落到：probe"
+    },
+    {
+      "scenario": "按住 Ctrl 拖动",
+      "name": "先按 Ctrl 再拖：穿过猫，拖到下面的窗口",
+      "pass": true,
+      "detail": "幽灵模式=true，猫的不透明度=0.35，猫身上仍穿透=true，下面的窗口收到 Ctrl+按下=true，猫没动=true"
+    },
+    {
+      "scenario": "按住 Ctrl 拖动",
+      "name": "松开 Ctrl 后保持 2 秒",
+      "pass": true,
+      "detail": "松开约 1 秒时点猫 → probe；约 2.6 秒时点猫 → cat-a"
+    },
+    {
+      "scenario": "按住 Ctrl 拖动",
+      "name": "拖到一半按 Ctrl：继续拖完，松手后穿透",
+      "pass": true,
+      "detail": "按 Ctrl 后仍在拖=true，猫到了松手位置=true，下面的窗口收到 0 个事件，松手后 14ms 恢复穿透（光标还在猫身上）"
+    },
+    {
+      "scenario": "两只猫重叠",
+      "name": "两只猫都不透明的地方 → 前面的猫",
+      "pass": true,
+      "detail": "点击落到：cat-c"
+    },
+    {
+      "scenario": "两只猫重叠",
+      "name": "只有后面的猫的地方 → 后面的猫",
+      "pass": true,
+      "detail": "点击落到：cat-b"
+    },
+    {
+      "scenario": "两只猫重叠",
+      "name": "只有前面的猫的地方 → 前面的猫",
+      "pass": true,
+      "detail": "点击落到：cat-c"
+    },
+    {
+      "scenario": "两只猫重叠",
+      "name": "猫的透明处（腿缝），也没被另一只猫盖住 → 下面的窗口",
+      "pass": true,
+      "detail": "点击落到：probe"
+    },
+    {
+      "scenario": "焦点",
+      "name": "在探针窗口打字时点猫、拖猫",
+      "pass": true,
+      "detail": "点到猫=true，拖了猫=true，输入框内容=\"abcdef\"，前台窗口=TTCats 探针窗口"
+    },
+    {
+      "scenario": "焦点",
+      "name": "在记事本里打字时点猫",
+      "pass": true,
+      "detail": "点到猫=true，点猫后测试文档仍在前台=true，测试文档里的内容=\"abcdef\""
+    },
+    {
+      "scenario": "防卡死",
+      "name": "从猫身上移到空白处",
+      "pass": true,
+      "detail": "15ms 恢复穿透（触发原因：leave）"
+    },
+    {
+      "scenario": "防卡死",
+      "name": "从猫身上移到桌面层外面（任务栏）",
+      "pass": true,
+      "detail": "30ms 恢复穿透（触发原因：cursorOutside）"
+    },
+    {
+      "scenario": "防卡死",
+      "name": "渲染进程卡住 1 秒时从猫身上移开",
+      "pass": true,
+      "detail": "76ms 恢复穿透（触发原因：leaseExpired）；200ms 时点空白处落到了下面的窗口"
+    }
+  ],
+  "lostClicks": []
+}

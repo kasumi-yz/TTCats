@@ -1,0 +1,39 @@
+
+> ttcats-overlay-spike@0.0.0 preinteraction-test
+> npm run prepare-all
+
+
+> ttcats-overlay-spike@0.0.0 prepare-all
+> node scripts/gen-clips.mjs --if-missing && node scripts/build.mjs
+
+构建完成：dist/
+
+> ttcats-overlay-spike@0.0.0 interaction-test
+> node dist/tools/interaction-test.js
+
+显示缩放 100%，工作区 2560x1392（DIP）
+通过  [准备] 探针窗口成为前台：前台窗口：TTCats 探针窗口
+通过  [基础] 窗口样式：不抢焦点 WS_EX_NOACTIVATE=true，置顶 TOPMOST=true，默认穿透 TRANSPARENT=true
+通过  [基础] 点空白处：点击落到：probe
+通过  [基础] 鼠标移到猫身上后关闭穿透：用时 15ms
+通过  [基础] 点猫身上（悬停后）：点击落到：cat-a
+通过  [基础] 点猫的包围框内的透明处（两腿之间）：点击落到：probe
+通过  [快速移到猫身上马上点] 移动后隔多久点击才一定能点中猫：隔 5ms 及以上 5/5 点中；全部 40 次里有 1 次点击丢失（猫和下面的窗口都没收到）
+通过  [快速移到猫身上马上点] 鼠标刚离开猫就点旁边的空白处：隔 0ms 及以上 5/5 落到下面的窗口；共 0/25 次被桌面层吃掉或丢失
+通过  [拖动时鼠标移出猫的范围] 整个拖动过程由桌面层接收：拖动中=true，松手=true，猫跟到了松手位置=true，下面的窗口收到 0 个鼠标事件
+通过  [拖动时鼠标移出猫的范围] 松手后离开猫，恢复穿透：用时 13ms
+通过  [拖动时鼠标移出猫的范围] 之后点空白处：点击落到：probe
+通过  [按住 Ctrl 拖动] 先按 Ctrl 再拖：穿过猫，拖到下面的窗口：幽灵模式=true，猫的不透明度=0.35，猫身上仍穿透=true，下面的窗口收到 Ctrl+按下=true，猫没动=true
+通过  [按住 Ctrl 拖动] 松开 Ctrl 后保持 2 秒：松开约 1 秒时点猫 → probe；约 2.6 秒时点猫 → cat-a
+通过  [按住 Ctrl 拖动] 拖到一半按 Ctrl：继续拖完，松手后穿透：按 Ctrl 后仍在拖=true，猫到了松手位置=true，下面的窗口收到 0 个事件，松手后 16ms 恢复穿透（光标还在猫身上）
+通过  [两只猫重叠] 两只猫都不透明的地方 → 前面的猫：点击落到：cat-c
+通过  [两只猫重叠] 只有后面的猫的地方 → 后面的猫：点击落到：cat-b
+通过  [两只猫重叠] 只有前面的猫的地方 → 前面的猫：点击落到：cat-c
+通过  [两只猫重叠] 猫的透明处（腿缝），也没被另一只猫盖住 → 下面的窗口：点击落到：probe
+通过  [焦点] 在探针窗口打字时点猫、拖猫：点到猫=true，拖了猫=true，输入框内容="abcdef"，前台窗口=TTCats 探针窗口
+通过  [焦点] 在记事本里打字时点猫：点到猫=true，点猫后测试文档仍在前台=true，测试文档里的内容="abcdef"
+通过  [防卡死] 从猫身上移到空白处：15ms 恢复穿透（触发原因：leave）
+通过  [防卡死] 从猫身上移到桌面层外面（任务栏）：15ms 恢复穿透（触发原因：cursorOutside）
+通过  [防卡死] 渲染进程卡住 1 秒时从猫身上移开：60ms 恢复穿透（触发原因：leaseExpired）；200ms 时点空白处落到了下面的窗口
+
+显示缩放 100%：通过 23 项，失败 0 项（因有人动鼠标重做 0 次）。结果：C:\Users\Salmon\.codex\worktrees\issue-2-desktop-interaction\TTCats\experiments\overlay-spike\results\interaction-100pct-1790864967183.json
