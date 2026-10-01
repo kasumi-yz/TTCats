@@ -8,6 +8,9 @@ import { zh } from '../strings.zh-CN';
 import { DateSchema, PackPathSchema, TimeOfDaySchema } from './common';
 import { EventTriggerSchema } from './event';
 import { validateWith } from './validate';
+import { CLIP_SLOTS, missingRequiredClips } from './clip';
+import { defaultSettings, SettingsSchema } from './settings';
+import { CURRENT_SAVE_VERSION, GameStateSchema, SaveEnvelopeSchema } from './save';
 
 function clip(overrides: Partial<Clip> = {}): Clip {
   return {
@@ -19,7 +22,8 @@ function clip(overrides: Partial<Clip> = {}): Clip {
     toPose: 'sit',
     optional: false,
     video: 'clips/stand-to-sit.webm',
-    hitMask: 'clips/stand-to-sit.hitmask.png',
+    hitMask: 'clips/stand-to-sit.hitmask.bin',
+    hitMaskScale: 4,
     fps: 24,
     frameCount: 3,
     width: 512,
@@ -213,5 +217,52 @@ describe('素材工厂的候选 manifest', () => {
       clip: clip(),
     };
     expect(problemsOf(CandidateManifestSchema, manifest)).toEqual([]);
+  });
+});
+
+describe('必需片段', () => {
+  it('列出缺了哪些 required 片段，feature 和 optional 的不算', () => {
+    expect(
+      missingRequiredClips(['idle-stand', 'walk', 'idle-sit', 'sleep', 'stand-to-sit']),
+    ).toEqual(['sit-to-stand', 'sit-to-sleep', 'sleep-to-sit']);
+    const required = Object.entries(CLIP_SLOTS)
+      .filter(([, slot]) => slot.need === 'required')
+      .map(([name]) => name);
+    expect(missingRequiredClips(required)).toEqual([]);
+  });
+});
+
+describe('点击遮罩缩小倍数', () => {
+  it('必须是 1～16 的整数', () => {
+    expect(problemsOf(ClipSchema, clip({ hitMaskScale: 0 }))).toHaveLength(1);
+    expect(problemsOf(ClipSchema, clip({ hitMaskScale: 2.5 }))).toHaveLength(1);
+    expect(problemsOf(ClipSchema, clip({ hitMaskScale: 16 }))).toEqual([]);
+  });
+});
+
+describe('设置和存档', () => {
+  it('默认设置能通过校验，显示全部猫', () => {
+    const settings = defaultSettings(['test-a', 'test-b']);
+    expect(problemsOf(SettingsSchema, settings)).toEqual([]);
+    expect(settings.visibleCats).toEqual(['test-a', 'test-b']);
+    expect(settings.showInScreenCapture).toBe(false);
+  });
+
+  it('设置不合法时报中文，说清楚是哪个字段', () => {
+    expect(problemsOf(SettingsSchema, { ...defaultSettings([]), scale: 3 })).toEqual([
+      expect.stringContaining('scale（缩放）'),
+    ]);
+  });
+
+  it('存档外层先校验版本号，里面的状态按当前版本校验', () => {
+    const state = { settings: defaultSettings(['test-a']) };
+    expect(problemsOf(GameStateSchema, state)).toEqual([]);
+    expect(
+      problemsOf(SaveEnvelopeSchema, { saveVersion: CURRENT_SAVE_VERSION, savedAt: 1, state }),
+    ).toEqual([]);
+    expect(problemsOf(SaveEnvelopeSchema, { saveVersion: 0, savedAt: 1, state })).toHaveLength(1);
+    expect(problemsOf(GameStateSchema, { ...state, extra: 1 })).toEqual([
+      '有不认识的字段：extra（是不是拼错了？）',
+    ]);
   });
 });
