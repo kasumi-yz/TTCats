@@ -8,7 +8,14 @@ import { at, catalog, NEUTRAL, SCREEN, snapshot, testCat, testClips } from './te
 
 const T0 = 1_800_000_000_000;
 
-function setup(options: { personality?: Partial<Personality>; omit?: string[]; id?: string } = {}) {
+function setup(
+  options: {
+    personality?: Partial<Personality>;
+    omit?: string[];
+    id?: string;
+    random?: () => number;
+  } = {},
+) {
   const id = options.id ?? 'test-cat';
   const stage = new Stage({
     content: catalog([
@@ -20,7 +27,7 @@ function setup(options: { personality?: Partial<Personality>; omit?: string[]; i
     snapshot: snapshot([id], { floorDepth: 1 }),
     bounds: SCREEN,
     now: T0,
-    random: () => 0,
+    random: options.random ?? (() => 0),
   });
   const p = at(stage.update(T0).cats, 0);
   const send = (input: PointerInput, ms: number) => {
@@ -33,7 +40,11 @@ function setup(options: { personality?: Partial<Personality>; omit?: string[]; i
   const simulate = (interaction: 'poke' | 'pet' | 'pickUp' | 'drop', ms = 0) => {
     stage.handleCommand({ type: 'debug/simulate', cat: id, interaction }, T0 + ms);
   };
-  return { stage, id, p, send, click, simulate };
+  const pickUp = (ms = 0) => {
+    send({ type: 'down', x: p.x, y: p.y, cat: id }, ms);
+    send({ type: 'move', x: p.x, y: p.y - 150, cat: null }, ms);
+  };
+  return { stage, id, p, send, click, simulate, pickUp };
 }
 
 function placement(stage: Stage, ms: number) {
@@ -190,8 +201,8 @@ describe('拎起放下', () => {
   });
 
   it('拖动移出屏幕仍夹在合法范围，丢失松手的 cancel 放下且不重复事实', () => {
-    const { stage, send, simulate } = setup();
-    simulate('pickUp');
+    const { stage, send, pickUp } = setup();
+    pickUp();
     send({ type: 'move', x: -500, y: -500, cat: null }, 100);
     expect(placement(stage, 100)).toMatchObject({ x: 90, y: 0, clip: 'dangle' });
     send({ type: 'move', x: 5000, y: -100, cat: null }, 200);
@@ -223,8 +234,8 @@ describe('拎起放下', () => {
   });
 
   it('松手位置用于最后一次定位；放在地板下方只落地，不甩飞', () => {
-    const { stage, simulate, send, p } = setup();
-    simulate('pickUp');
+    const { stage, pickUp, send, p } = setup();
+    pickUp();
     send({ type: 'up', x: 800, y: 5000 }, 100);
     expect(placement(stage, 100)).toMatchObject({ x: 800, y: p.y, clip: 'land' });
     expect(placement(stage, 1500).x).toBe(800);
@@ -233,8 +244,8 @@ describe('拎起放下', () => {
   it('快速和慢速拖动在同一处松手，得到同一条下落轨迹', () => {
     const a = setup();
     const b = setup();
-    a.simulate('pickUp');
-    b.simulate('pickUp');
+    a.pickUp();
+    b.pickUp();
     a.send({ type: 'move', x: 100, y: 0, cat: null }, 99);
     b.send({ type: 'move', x: 699, y: 299, cat: null }, 20);
     for (const s of [a, b]) s.send({ type: 'up', x: 700, y: 300 }, 100);
@@ -242,13 +253,18 @@ describe('拎起放下', () => {
     expect(placement(a.stage, 300).x).toBe(700);
   });
 
-  it('冷却到期后允许再次响应靠近', () => {
+  it('停留才响应，冷却到期后重新停留才允许再次响应靠近', () => {
     const { stage, send, p } = setup({ personality: { clinginess: 1, initiative: 1 } });
     send({ type: 'move', x: p.x + 250, y: p.y - 50, cat: null }, 0);
-    const next = placement(stage, 5000);
-    send({ type: 'move', x: next.x + 250, y: next.y - 50, cat: null }, 5000);
-    expect(at(stage.debugReport(T0 + 5000).cats, 0).behavior).toBe('凑近鼠标');
-    expect(placement(stage, 5000).clipTimeMs).toBe(0);
+    expect(placement(stage, 999).clip).toBe('idle-stand');
+    placement(stage, 1000);
+    expect(at(stage.debugReport(T0 + 1000).cats, 0).behavior).toBe('凑近鼠标');
+    expect(placement(stage, 1000).clipTimeMs).toBe(0);
+    const next = placement(stage, 31000);
+    send({ type: 'move', x: next.x + 250, y: next.y - 50, cat: null }, 31000);
+    placement(stage, 32000);
+    expect(at(stage.debugReport(T0 + 32000).cats, 0).behavior).toBe('凑近鼠标');
+    expect(placement(stage, 32000).clipTimeMs).toBe(0);
   });
 
   it.each(['dangle', 'land'])('缺 %s 时不能拎起，其他互动照常', (clip) => {
@@ -277,10 +293,12 @@ describe('靠近、幽灵模式和生命周期', () => {
     ] as const) {
       const { stage, send, p } = setup({ personality });
       send({ type: 'move', x: p.x + 250, y: p.y - 50, cat: null }, 0);
-      expect(at(stage.debugReport(T0).cats, 0).behavior).toBe(behavior);
-      const first = placement(stage, 100);
-      send({ type: 'move', x: p.x + 200, y: p.y - 50, cat: null }, 100);
-      expect(placement(stage, 100).clipTimeMs).toBe(first.clipTimeMs);
+      expect(at(stage.debugReport(T0).cats, 0).behavior).toBe('待着');
+      placement(stage, 1000);
+      expect(at(stage.debugReport(T0 + 1000).cats, 0).behavior).toBe(behavior);
+      const first = placement(stage, 1100);
+      send({ type: 'move', x: p.x + 200, y: p.y - 50, cat: null }, 1100);
+      expect(placement(stage, 1100).clipTimeMs).toBe(first.clipTimeMs);
       if (behavior === '凑近鼠标') expect(first.x).toBeGreaterThan(p.x);
       if (behavior === '走开') {
         // 猫贴着左边时，向右侧可走的地板让开。
@@ -290,7 +308,7 @@ describe('靠近、幽灵模式和生命周期', () => {
   });
 
   it('幽灵模式不接受新互动和靠近，结束后恢复；已有拖动仍跟随并正常放下', () => {
-    const { stage, simulate, send, p, click } = setup();
+    const { stage, simulate, send, p, click, pickUp } = setup();
     stage.setGhostMode(true, T0);
     click(10);
     simulate('pet', 20);
@@ -299,7 +317,7 @@ describe('靠近、幽灵模式和生命周期', () => {
     expect(placement(stage, 40).clip).toBe('idle-stand');
     expect(stage.drainFacts()).toEqual([]);
     stage.setGhostMode(false, T0 + 50);
-    simulate('pickUp', 60);
+    pickUp(60);
     stage.setGhostMode(true, T0 + 70);
     expect(placement(stage, 70).clip).toBe('dangle');
     send({ type: 'move', x: 700, y: 300, cat: null }, 80);
@@ -360,6 +378,180 @@ describe('靠近、幽灵模式和生命周期', () => {
     expect(placement(a.stage, -3000).clip).toBe('sit-to-stand');
     expect(a.stage.drainFacts()).toEqual([]);
     expect(placement(a.stage, -1900).x).toBeGreaterThan(a.p.x);
+  });
+});
+
+describe('PR #46 复查回归：不耐烦、温和靠近和调试模拟', () => {
+  it('不耐烦走开以后按原频率继续点击，仍离开原位；事实照发，冷却后恢复单击', () => {
+    const { stage, click, p, send, id } = setup({ personality: { patience: 0 } });
+    for (let ms = 0; ms <= 3000; ms += 300) click(ms);
+    expect(placement(stage, 3001).x).toBeGreaterThan(p.x + 50);
+    expect(at(stage.debugReport(T0 + 3001).cats, 0).behavior).toBe('走开');
+    expect(stage.drainFacts().map((f) => f.type)).toEqual(
+      Array.from({ length: 11 }, () => 'cat/poked'),
+    );
+    const rested = placement(stage, 11000);
+    send({ type: 'down', x: rested.x, y: rested.y - 50, cat: id }, 11001);
+    send({ type: 'up', x: rested.x, y: rested.y - 50 }, 11002);
+    expect(placement(stage, 11002).clip).toBe('poked');
+  });
+
+  it('撸猫超时以后继续来回划，不重新呼噜、不重发结束事实，仍走开', () => {
+    const { stage, send, p, id } = setup({ personality: { patience: 0 } });
+    for (let ms = 0; ms <= 5000; ms += 100) {
+      send({ type: 'move', x: p.x + ((ms / 100) % 2) * 30, y: p.y - 50, cat: id }, ms);
+    }
+    expect(placement(stage, 5000).x).toBeGreaterThan(p.x + 50);
+    expect(placement(stage, 5000).clip).not.toBe('purr');
+    expect(stage.drainFacts()).toEqual([
+      { type: 'cat/petted', cat: id, at: T0 + 2300, durationMs: 2000 },
+    ]);
+  });
+
+  it('温和靠近只停留满一秒才尝试，划过或中间离开不会触发', () => {
+    const { stage, send, p } = setup({ personality: { clinginess: 0 } });
+    send({ type: 'move', x: p.x + 200, y: p.y - 50, cat: null }, 0);
+    send({ type: 'move', x: 1800, y: 0, cat: null }, 900);
+    placement(stage, 1500);
+    expect(at(stage.debugReport(T0 + 1500).cats, 0).behavior).toBe('待着');
+    send({ type: 'move', x: p.x + 200, y: p.y - 50, cat: null }, 1600);
+    expect(placement(stage, 2599).clip).toBe('idle-stand');
+    placement(stage, 2600);
+    expect(at(stage.debugReport(T0 + 2600).cats, 0).behavior).toBe('走开');
+  });
+
+  it.each([
+    { clinginess: 0, initiative: 1, expected: '走开' },
+    { clinginess: 0.35, initiative: 1, expected: '走开' },
+    { clinginess: 0.49, initiative: 1, expected: '待着' },
+    { clinginess: 0.51, initiative: 1, expected: '待着' },
+    { clinginess: 0.8, initiative: 0.2, expected: '待着' },
+    { clinginess: 0.8, initiative: 1, expected: '凑近鼠标' },
+  ])(
+    '固定随机数时，黏人 $clinginess、主动 $initiative 的反应为 $expected',
+    ({ clinginess, initiative, expected }) => {
+      const { stage, send, p } = setup({
+        personality: { clinginess, initiative },
+        random: () => 0.25,
+      });
+      send({ type: 'move', x: p.x + 200, y: p.y - 50, cat: null }, 0);
+      placement(stage, 1000);
+      expect(at(stage.debugReport(T0 + 1000).cats, 0).behavior).toBe(expected);
+    },
+  );
+
+  it('不反应的尝试也冷却30秒，命令不清掉冷却，不因每帧更新重新掷骰子', () => {
+    let draws = 0;
+    let roll = 0;
+    const { stage, send, p, id } = setup({
+      personality: { clinginess: 0.35 },
+      random: () => {
+        draws++;
+        return roll;
+      },
+    });
+    send({ type: 'move', x: p.x + 200, y: p.y - 50, cat: null }, 0);
+    roll = 0.9;
+    const before = draws;
+    placement(stage, 1000);
+    expect(draws).toBe(before + 1);
+    roll = 0;
+    for (let ms = 1100; ms <= 2000; ms += 100) placement(stage, ms);
+    expect(draws).toBe(before + 1);
+    stage.handleCommand({ type: 'debug/playClip', cat: id, clip: 'idle-stand' }, T0 + 2000);
+    for (let ms = 2100; ms <= 10000; ms += 100) placement(stage, ms);
+    expect(at(stage.debugReport(T0 + 10000).cats, 0).behavior).toBe('待着');
+    const current = placement(stage, 10000);
+    send({ type: 'move', x: current.x + 200, y: current.y - 50, cat: null }, 10000);
+    const stillCooling = draws;
+    placement(stage, 11000);
+    expect(draws).toBe(stillCooling);
+    expect(at(stage.debugReport(T0 + 11000).cats, 0).behavior).toBe('待着');
+  });
+
+  it.each(['cat/sleep', 'cat/summon', 'debug/playClip'] as const)('靠近不盖掉命令 %s', (type) => {
+    const { stage, send, p, id } = setup({ personality: { clinginess: 0.35 } });
+    if (type === 'cat/summon')
+      stage.handleCommand({ type, cats: [id], to: { x: 1400, y: p.y } }, T0);
+    else if (type === 'cat/sleep') stage.handleCommand({ type, cat: id }, T0);
+    else stage.handleCommand({ type, cat: id, clip: 'groom' }, T0);
+    const before = at(stage.debugReport(T0).cats, 0).behavior;
+    send({ type: 'move', x: p.x + 200, y: p.y - 50, cat: null }, 100);
+    for (let ms = 100; ms <= 2000; ms += 100) placement(stage, ms);
+    expect(at(stage.debugReport(T0 + 2000).cats, 0).behavior).toBe(before);
+  });
+
+  it('鼠标离开单击和撸猫后，不硬切反应片段或收尾；下落和落地也不受靠近打断', () => {
+    const a = setup({ personality: { clinginess: 0 } });
+    a.click(0);
+    a.send({ type: 'move', x: a.p.x + 200, y: a.p.y - 50, cat: null }, 2);
+    expect(placement(a.stage, 1100).clip).toBe('poked');
+    const b = setup({ personality: { clinginess: 0 } });
+    for (const [ms, dx] of [
+      [0, 0],
+      [100, 30],
+      [200, 0],
+      [300, 30],
+    ] as const)
+      b.send({ type: 'move', x: b.p.x + dx, y: b.p.y - 50, cat: b.id }, ms);
+    b.send({ type: 'move', x: b.p.x + 200, y: b.p.y - 50, cat: null }, 400);
+    expect(placement(b.stage, 1400).clip).toBe('purr');
+    expect(at(b.stage.debugReport(T0 + 1400).cats, 0).behavior).toBe('被撸着');
+    const c = setup({ personality: { clinginess: 0 } });
+    c.pickUp();
+    c.send({ type: 'cancel' }, 100);
+    c.send({ type: 'move', x: c.p.x + 200, y: c.p.y - 50, cat: null }, 101);
+    expect(placement(c.stage, 1200).clip).toBe('land');
+    expect(at(c.stage.debugReport(T0 + 1200).cats, 0).behavior).toBe('放下落地');
+  });
+
+  it('自主睡着的猫也不响应靠近', () => {
+    const { stage, id, send } = setup({ personality: { clinginess: 0 }, random: () => 0.5 });
+    let asleepAt: number | undefined;
+    for (let ms = 0; ms < 300000; ms += 100) {
+      const p = placement(stage, ms);
+      if (p.pose === 'sleep' && at(stage.debugReport(T0 + ms).cats, 0).behavior === '去睡觉') {
+        asleepAt = ms;
+        break;
+      }
+    }
+    expect(asleepAt).toBeDefined();
+    if (asleepAt === undefined) throw new Error('猫没有进入自主睡觉');
+    const p = placement(stage, asleepAt);
+    send({ type: 'move', x: p.x + 200, y: p.y - 50, cat: null }, asleepAt);
+    placement(stage, asleepAt + 1000);
+    expect(at(stage.debugReport(T0 + asleepAt + 1000).cats, 0)).toMatchObject({
+      cat: id,
+      pose: 'sleep',
+      behavior: '去睡觉',
+    });
+  });
+
+  it('模拟撸猫不被真实鼠标和松手打乱，仍按耐心截止时刻结束', () => {
+    const { stage, simulate, send, p } = setup({ personality: { patience: 0 } });
+    simulate('pet');
+    send({ type: 'move', x: 1000, y: 0, cat: null }, 200);
+    send({ type: 'down', x: p.x, y: p.y, cat: 'test-cat' }, 300);
+    send({ type: 'up', x: p.x, y: p.y }, 400);
+    expect(placement(stage, 1900).clip).toBe('purr');
+    expect(stage.drainFacts()).toEqual([]);
+    placement(stage, 2000);
+    expect(stage.drainFacts()).toEqual([
+      { type: 'cat/petted', cat: 'test-cat', at: T0 + 2000, durationMs: 2000 },
+    ]);
+  });
+
+  it('模拟拎起不跟随真实鼠标，不被真实松手或取消放下，模拟 drop 仍正常落地', () => {
+    const { stage, simulate, send } = setup();
+    simulate('pickUp');
+    const held = placement(stage, 0);
+    send({ type: 'move', x: 1400, y: 400, cat: null }, 100);
+    send({ type: 'up', x: 1400, y: 400 }, 200);
+    send({ type: 'cancel' }, 300);
+    expect(placement(stage, 300)).toMatchObject({ x: held.x, y: held.y, clip: 'dangle' });
+    simulate('drop', 400);
+    expect(stage.drainFacts().map((f) => f.type)).toEqual(['cat/pickedUp', 'cat/dropped']);
+    expect(placement(stage, 2500).pose).toBe('stand');
   });
 });
 

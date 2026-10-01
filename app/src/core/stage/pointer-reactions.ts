@@ -8,14 +8,19 @@ import { STANDARD_CAT_HEIGHT } from './floor';
 const STROKE_WINDOW_MS = 1500;
 const PET_IDLE_MS = 600;
 const POKE_WINDOW_MS = 2000;
-const PROXIMITY_COOLDOWN_MS = 5000;
+const PROXIMITY_COOLDOWN_MS = 30000;
+const PROXIMITY_DWELL_MS = 1000;
+const AVOID_WAIT_MS = 5000;
+const IMPATIENCE_COOLDOWN_MS = 10000;
 const BUBBLE_MS = 2000;
-const HEARTS_MS = 600;
+export const HEARTS_MS = 600;
 
 /** 单一鼠标的互动状态。命中判定和右键菜单由桌面层负责。 */
-export class PointerInteractions {
+export class PointerReactions {
   private ghost = false;
-  private press: { actor: CatActor; origin: Point; offset: Point; dragging: boolean } | undefined;
+  private press:
+    | { actor: CatActor; origin: Point; offset: Point; dragging: boolean; simulated: boolean }
+    | undefined;
   private stroke: { actor: CatActor; origin: Point; direction: Point; times: number[] } | undefined;
   private pet:
     | {
@@ -29,6 +34,9 @@ export class PointerInteractions {
     | undefined;
   private readonly pokes = new Map<CatActor, number[]>();
   private readonly proximity = new Map<CatActor, number>();
+  private readonly dwell = new Map<CatActor, number>();
+  private readonly impatience = new Map<CatActor, number>();
+  private nearbyPointer: Point | undefined;
   private facts: Fact[] = [];
   private bubbles: { cat: string; text: string; at: number }[] = [];
 
@@ -38,6 +46,8 @@ export class PointerInteractions {
   ) {}
 
   handle(input: PointerInput, now: number): void {
+    // 调试模拟只由调试命令结束，不跟随真实鼠标，也不被真实松手或取消打乱。
+    if (this.press?.simulated || this.pet?.simulated) return;
     if (input.type === 'cancel' || input.type === 'up') {
       const press = this.press;
       this.press = undefined;
@@ -59,6 +69,8 @@ export class PointerInteractions {
       return;
     }
     if (this.ghost) return;
+    this.nearbyPointer = undefined;
+    if (input.type !== 'move' || input.cat !== null) this.dwell.clear();
     const actor = this.actors().find((a) => a.id === input.cat && !a.isAirborne());
     if (input.type === 'down') {
       if (this.press !== undefined) return;
@@ -71,6 +83,7 @@ export class PointerInteractions {
         origin: input,
         offset: { x: p.x - input.x, y: p.y - input.y },
         dragging: false,
+        simulated: false,
       };
       return;
     }
@@ -91,6 +104,7 @@ export class PointerInteractions {
     if (actor !== undefined) this.strokeMove(actor, input, now);
     else {
       this.stroke = undefined;
+      this.nearbyPointer = input;
       this.nearPointer(input, now);
     }
   }
@@ -98,6 +112,8 @@ export class PointerInteractions {
   setGhost(active: boolean, now: number): void {
     this.ghost = active;
     this.stroke = undefined;
+    this.nearbyPointer = undefined;
+    this.dwell.clear();
     if (active) {
       this.finishPet(now);
       if (!this.press?.dragging) this.press = undefined;
@@ -117,10 +133,20 @@ export class PointerInteractions {
     if (pet === undefined) return;
     const impatient = now >= pet.deadline;
     this.finishPet(now);
-    if (impatient) this.walkAway(pet.actor, pet.actor.x, now);
+    if (impatient) {
+      this.impatience.set(pet.actor, now);
+      this.walkAway(pet.actor, pet.actor.x, now);
+    }
   }
 
   refresh(now: number): void {
+    if (
+      this.nearbyPointer !== undefined &&
+      !this.ghost &&
+      this.press === undefined &&
+      this.pet === undefined
+    )
+      this.nearPointer(this.nearbyPointer, now);
     if (this.pet !== undefined && now - this.pet.heartAt >= HEARTS_MS) this.hearts(now);
     this.bubbles = this.bubbles.filter((b) => now - b.at < BUBBLE_MS);
   }
@@ -146,17 +172,19 @@ export class PointerInteractions {
     if (this.ghost || this.press !== undefined || actor.isAirborne()) return;
     this.finishPet(now);
     this.stroke = undefined;
+    this.nearbyPointer = undefined;
+    this.dwell.clear();
     if (interaction === 'poke') this.poke(actor, now);
     else if (interaction === 'pet') this.startPet(actor, now, true);
     else if (actor.pickUp(now)) {
       const p = actor.placement();
-      this.press = { actor, origin: p, offset: { x: 0, y: 0 }, dragging: true };
+      this.press = { actor, origin: p, offset: { x: 0, y: 0 }, dragging: true, simulated: true };
       actor.dragTo(p.x, p.y - STANDARD_CAT_HEIGHT * p.scale);
       this.facts.push({ type: 'cat/pickedUp', cat: actor.id, at: now });
     }
   }
 
-  cancelFor(actor: CatActor, now: number): void {
+  cancelFor(actor: CatActor, now: number, removed = false): void {
     if (this.pet?.actor === actor) this.finishPet(now);
     if (this.stroke?.actor === actor) this.stroke = undefined;
     if (this.press?.actor === actor) {
@@ -164,7 +192,11 @@ export class PointerInteractions {
       this.press = undefined;
     }
     this.pokes.delete(actor);
-    this.proximity.delete(actor);
+    this.dwell.delete(actor);
+    if (removed) {
+      this.proximity.delete(actor);
+      this.impatience.delete(actor);
+    }
     this.bubbles = this.bubbles.filter((b) => b.cat !== actor.id);
   }
 
@@ -182,6 +214,8 @@ export class PointerInteractions {
         times.map((t) => t + dt),
       );
     for (const [actor, t] of this.proximity) this.proximity.set(actor, t + dt);
+    for (const [actor, t] of this.dwell) this.dwell.set(actor, t + dt);
+    for (const [actor, t] of this.impatience) this.impatience.set(actor, t + dt);
     for (const bubble of this.bubbles) bubble.at += dt;
   }
 
@@ -189,7 +223,7 @@ export class PointerInteractions {
     return 0.04 * STANDARD_CAT_HEIGHT * actor.finalScale();
   }
 
-  private drag(press: NonNullable<PointerInteractions['press']>, point: Point): void {
+  private drag(press: NonNullable<PointerReactions['press']>, point: Point): void {
     press.actor.dragTo(point.x + press.offset.x, point.y + press.offset.y);
   }
 
@@ -200,6 +234,7 @@ export class PointerInteractions {
 
   private poke(actor: CatActor, now: number): void {
     this.facts.push({ type: 'cat/poked', cat: actor.id, at: now });
+    if (this.isImpatient(actor, now)) return;
     const times = (this.pokes.get(actor) ?? []).filter((t) => now - t <= POKE_WINDOW_MS);
     times.push(now);
     this.pokes.set(actor, times);
@@ -210,6 +245,7 @@ export class PointerInteractions {
     );
     if (times.length >= 3 + Math.round(5 * actor.cat.personality.patience)) {
       this.pokes.delete(actor);
+      this.impatience.set(actor, now);
       this.walkAway(actor, actor.x, now);
       return;
     }
@@ -222,6 +258,10 @@ export class PointerInteractions {
   }
 
   private strokeMove(actor: CatActor, point: Point, now: number): void {
+    if (this.isImpatient(actor, now)) {
+      this.stroke = undefined;
+      return;
+    }
     if (this.pet?.actor === actor) {
       // 原地的 move 不延长撸猫；必须真的继续移动。
       if (
@@ -254,7 +294,7 @@ export class PointerInteractions {
   }
 
   private startPet(actor: CatActor, now: number, simulated: boolean): void {
-    if (!actor.library.has('purr')) return;
+    if (this.isImpatient(actor, now) || !actor.library.has('purr')) return;
     actor.react('purr', { kind: 'petted' }, true, now);
     this.pet = {
       actor,
@@ -303,7 +343,7 @@ export class PointerInteractions {
     actor.interrupt(
       [
         { kind: 'move', gait: 'walk', x, d: actor.d },
-        { kind: 'clip', name: 'idle-stand', holdMs: PROXIMITY_COOLDOWN_MS },
+        { kind: 'clip', name: 'idle-stand', holdMs: AVOID_WAIT_MS },
       ],
       { kind: 'avoid' },
       'cut',
@@ -315,22 +355,42 @@ export class PointerInteractions {
   private nearPointer(point: Point, now: number): void {
     for (const actor of this.actors()) {
       if (
+        !['idle', 'rest', 'wander', 'action'].includes(actor.behavior.kind) ||
+        actor.currentPose() === 'sleep' ||
         actor.isAirborne() ||
+        this.isImpatient(actor, now) ||
         now - (this.proximity.get(actor) ?? -Infinity) < PROXIMITY_COOLDOWN_MS
-      )
+      ) {
+        this.dwell.delete(actor);
         continue;
+      }
       const p = actor.placement();
       const unit = STANDARD_CAT_HEIGHT * p.scale;
-      if (Math.hypot(point.x - p.x, point.y - (p.y - unit / 2)) > unit * 2) continue;
+      if (Math.hypot(point.x - p.x, point.y - (p.y - unit / 2)) > unit * 2) {
+        this.dwell.delete(actor);
+        continue;
+      }
+      const since = this.dwell.get(actor);
+      if (since === undefined) {
+        this.dwell.set(actor, now);
+        continue;
+      }
+      if (now - since < PROXIMITY_DWELL_MS) continue;
+      this.dwell.delete(actor);
+      // 不反应也消耗这次尝试，避免每帧重新掷骰子。
+      this.proximity.set(actor, now);
       const { clinginess, initiative } = actor.cat.personality;
+      const probability =
+        clinginess < 0.5 ? (0.5 - clinginess) * 2 : (clinginess - 0.5) * 2 * initiative;
+      if (this.env.random() >= probability) continue;
       if (clinginess < 0.5) this.walkAway(actor, point.x, now);
-      else if (initiative >= 0.5) {
+      else {
         const x = point.x + (actor.x <= point.x ? -1 : 1) * unit * 0.7;
         actor.interrupt(
           [
             { kind: 'move', gait: 'walk', x, d: actor.d },
             { kind: 'face', towardX: point.x },
-            { kind: 'clip', name: 'idle-stand', holdMs: PROXIMITY_COOLDOWN_MS },
+            { kind: 'clip', name: 'idle-stand', holdMs: AVOID_WAIT_MS },
           ],
           { kind: 'approach' },
           'cut',
@@ -339,5 +399,13 @@ export class PointerInteractions {
         this.proximity.set(actor, now);
       }
     }
+  }
+
+  private isImpatient(actor: CatActor, now: number): boolean {
+    const since = this.impatience.get(actor);
+    if (since === undefined) return false;
+    if (actor.behavior.kind === 'avoid' || now - since < IMPATIENCE_COOLDOWN_MS) return true;
+    this.impatience.delete(actor);
+    return false;
   }
 }

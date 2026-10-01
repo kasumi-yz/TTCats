@@ -16,7 +16,7 @@ import { CatActor, type ActorEnv, type StageObserver } from './actor';
 import type { Behavior } from './behavior';
 import { Floor, STANDARD_CAT_HEIGHT } from './floor';
 import { pick, uniform, type Random } from './random';
-import { PointerInteractions } from './pointer-interactions';
+import { HEARTS_MS, PointerReactions } from './pointer-reactions';
 
 /**
  * 两次推进之间隔了这么久（毫秒），就当作是隐藏后恢复：当前的计划照真实时间推进完，
@@ -55,7 +55,7 @@ export class Stage implements StageCore {
   private pointer: Point | undefined;
   private effects: ActiveEffect[] = [];
   private nextEffectId = 1;
-  private readonly interactions: PointerInteractions;
+  private readonly pointerReactions: PointerReactions;
 
   constructor(options: StageOptions) {
     this.content = options.content;
@@ -74,7 +74,7 @@ export class Stage implements StageCore {
       },
       observer: options.observer,
     };
-    this.interactions = new PointerInteractions(() => this.actors, this.env);
+    this.pointerReactions = new PointerReactions(() => this.actors, this.env);
     this.syncActors(options.now);
   }
 
@@ -95,7 +95,7 @@ export class Stage implements StageCore {
     if (command.type !== 'debug/simulate' && command.type !== 'cat/summon') {
       const actor = this.actor(command.cat);
       if (actor?.isAirborne()) return;
-      if (actor !== undefined) this.interactions.cancelFor(actor, now);
+      if (actor !== undefined) this.pointerReactions.cancelFor(actor, now);
     }
     switch (command.type) {
       case 'cat/summon':
@@ -110,7 +110,7 @@ export class Stage implements StageCore {
       case 'debug/simulate':
         {
           const actor = this.actor(command.cat);
-          if (actor !== undefined) this.interactions.simulate(actor, command.interaction, now);
+          if (actor !== undefined) this.pointerReactions.simulate(actor, command.interaction, now);
         }
         break;
     }
@@ -120,12 +120,12 @@ export class Stage implements StageCore {
     this.advanceTo(now);
     // 召唤没写目标时，走到最后一次看到鼠标的地方
     if (input.type !== 'cancel') this.pointer = { x: input.x, y: input.y };
-    this.interactions.handle(input, now);
+    this.pointerReactions.handle(input, now);
   }
 
   setGhostMode(active: boolean, now: number): void {
     this.advanceTo(now);
-    this.interactions.setGhost(active, now);
+    this.pointerReactions.setGhost(active, now);
   }
 
   setBounds(bounds: StageBounds, now: number): void {
@@ -138,9 +138,9 @@ export class Stage implements StageCore {
 
   update(now: number): StageFrame {
     this.advanceTo(now);
-    this.interactions.refresh(now);
+    this.pointerReactions.refresh(now);
     this.effects = this.effects.filter(
-      (e) => now - e.at < (e.effect === 'hearts' ? 600 : CUT_EFFECT_MS),
+      (e) => now - e.at < (e.effect === 'hearts' ? HEARTS_MS : CUT_EFFECT_MS),
     );
     const cats = this.actors
       .map((actor, order) => ({ placement: actor.placement(), order }))
@@ -149,7 +149,7 @@ export class Stage implements StageCore {
       .map((entry) => entry.placement);
     return {
       cats,
-      bubbles: this.interactions.frameBubbles(now),
+      bubbles: this.pointerReactions.frameBubbles(now),
       effects: this.effects.map((e) => ({
         id: e.id,
         effect: e.effect,
@@ -161,7 +161,7 @@ export class Stage implements StageCore {
   }
 
   drainFacts(): Fact[] {
-    return this.interactions.drainFacts();
+    return this.pointerReactions.drainFacts();
   }
 
   debugReport(now: number): StageDebugReport {
@@ -189,15 +189,15 @@ export class Stage implements StageCore {
     const dt = now - this.lastNow;
     if (dt < 0) {
       for (const effect of this.effects) effect.at += dt;
-      this.interactions.shiftTime(dt);
+      this.pointerReactions.shiftTime(dt);
     } else if (dt > 0) {
       const catchUp = dt > LONG_GAP_MS;
       let from = this.lastNow;
-      const expiry = this.interactions.expiry();
+      const expiry = this.pointerReactions.expiry();
       if (expiry !== undefined && expiry <= now) {
         const at = Math.max(from, expiry);
         for (const actor of this.actors) actor.advance(from, at, catchUp);
-        this.interactions.expire(at);
+        this.pointerReactions.expire(at);
         from = at;
       }
       for (const actor of this.actors) actor.advance(from, now, catchUp);
@@ -226,7 +226,7 @@ export class Stage implements StageCore {
       );
     });
     for (const actor of this.actors) {
-      if (!visible.includes(actor.id)) this.interactions.cancelFor(actor, now);
+      if (!visible.includes(actor.id)) this.pointerReactions.cancelFor(actor, now, true);
     }
     this.actors = visible.map((id) => this.actor(id) ?? this.createActor(id, now));
   }
@@ -252,7 +252,7 @@ export class Stage implements StageCore {
     const target = to ?? this.pointer ?? { x: floor.width / 2, y: floor.nearY };
     const unit = STANDARD_CAT_HEIGHT * this.settings.scale;
     const actors = this.actors.filter((actor) => cats.includes(actor.id) && !actor.isAirborne());
-    for (const actor of actors) this.interactions.cancelFor(actor, now);
+    for (const actor of actors) this.pointerReactions.cancelFor(actor, now);
     const left = actors.filter((actor) => actor.x <= target.x).sort((a, b) => b.x - a.x);
     const right = actors.filter((actor) => actor.x > target.x).sort((a, b) => a.x - b.x);
     for (const [side, group] of [

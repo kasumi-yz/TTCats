@@ -485,7 +485,7 @@ export class CatActor {
 
   releaseReaction(t: number): void {
     this.held = false;
-    this.interrupt([this.restStep(this.restPose())], { kind: 'idle' }, 'soft', t);
+    this.interrupt([this.restStep(this.restPose())], { kind: 'petted' }, 'soft', t);
   }
 
   pickUp(t: number): boolean {
