@@ -213,4 +213,10 @@ export const zh = {
     reportedAt: '上报时间',
     disabledPacks: '已停用的猫咪包',
   },
+  game: {
+    catUnavailable: (cat: string) => `猫「${cat}」的猫咪包未加载或已停用，无法执行命令。`,
+    catHidden: (cat: string) => `猫「${cat}」当前已隐藏，请先显示它再执行命令。`,
+    clipUnavailable: (cat: string, clip: string, variant?: number) =>
+      `猫「${cat}」缺少片段「${clip}」${variant === undefined ? '' : `的版本 ${variant}`}，无法播放。`,
+  },
 };
