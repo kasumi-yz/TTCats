@@ -38,6 +38,11 @@ class FakeComfy(BaseHTTPRequestHandler):
         elif self.path == "/system_stats":
             self.reply({"system": {"comfyui_version": "test"}})
         elif self.path.startswith("/history/"):
+            self.server.history_queries += 1
+            if self.server.history_failures:
+                self.server.history_failures -= 1
+                self.reply({"error": "服务暂时忙碌"}, 503)
+                return
             if self.server.failed:
                 self.reply({"test-id": {"status": {"status_str": "error", "messages": ["显存不足"]}}})
             else:
@@ -57,6 +62,7 @@ class FakeComfy(BaseHTTPRequestHandler):
             self.server.uploads.append(body)
             self.reply({"name": f"uploaded-{len(self.server.uploads)}.png", "subfolder": "", "type": "input"})
         elif self.path == "/prompt":
+            self.server.submissions += 1
             self.server.prompt = json.loads(body)["prompt"]
             self.reply({"prompt_id": "test-id", "node_errors": {}})
         else:
@@ -75,6 +81,9 @@ class QueueClipTests(unittest.TestCase):
         self.server.uploads = []
         self.server.failed = False
         self.server.prompt = None
+        self.server.submissions = 0
+        self.server.history_queries = 0
+        self.server.history_failures = 0
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.environment = patch.dict(os.environ, {"TTCATS_ASSET_ROOT": str(self.root)})
@@ -106,6 +115,11 @@ class QueueClipTests(unittest.TestCase):
         self.assertEqual(log["status"], "success")
         self.assertEqual(log["prompt_id"], "test-id")
         self.assertEqual(log["outputs"][0]["sha256"], queue_clip.sha256(next(inbox.glob("*.mp4"))))
+        self.assertEqual(log["prompt"], self.args().prompt)
+        self.assertEqual(log["parameters"]["seed"], 6)
+        self.assertEqual(log["parameters"]["steps"], 20)
+        self.assertEqual(log["generation_attempt"], 1)
+        self.assertFalse(log["model_hash_verification"]["verified_for_this_run"])
         self.assertFalse(list(inbox.glob("*.part")))
 
     def test_generation_error_preserves_log_without_video(self):
@@ -114,9 +128,38 @@ class QueueClipTests(unittest.TestCase):
             queue_clip.run(self.args())
         inbox = self.root / "inbox"
         self.assertFalse(list(inbox.glob("*.mp4")))
-        log = json.loads(next(inbox.glob("*.json")).read_text(encoding="utf-8"))
+        self.assertFalse(list(inbox.glob("*.json")))
+        log = json.loads(next((self.root / "generation-records").rglob("*.json")).read_text(encoding="utf-8"))
         self.assertEqual(log["status"], "failed")
         self.assertEqual(log["prompt_id"], "test-id")
+        self.assertEqual(self.server.history_queries, 1)
+
+    def test_retry_recovers_without_resubmitting_generation(self):
+        self.server.history_failures = 2
+        queue_clip.run(self.args())
+        self.assertEqual(self.server.history_queries, 3)
+        self.assertEqual(self.server.submissions, 1)
+        self.assertEqual(len(list((self.root / "inbox").glob("*.mp4"))), 1)
+
+    def test_retry_limit_preserves_running_task_id(self):
+        self.server.history_failures = 10
+        with self.assertRaisesRegex(queue_clip.GeneratorError, "尚未确认生成失败"):
+            queue_clip.run(self.args())
+        self.assertEqual(self.server.history_queries, 4)
+        self.assertEqual(self.server.submissions, 1)
+        self.assertFalse(list((self.root / "inbox").glob("*.json")))
+
+    def test_attempt_increases_after_failed_generation_with_new_seed(self):
+        self.server.failed = True
+        with self.assertRaises(queue_clip.GeneratorError):
+            queue_clip.run(self.args())
+        self.server.failed = False
+        args = self.args()
+        args.seed = 7
+        queue_clip.run(args)
+        log = json.loads(next((self.root / "inbox").glob("*.json")).read_text(encoding="utf-8"))
+        self.assertEqual(log["generation_attempt"], 2)
+        self.assertEqual(log["parameters"]["seed"], 7)
 
     def test_timeout_identifies_running_task(self):
         class EmptyHistory:

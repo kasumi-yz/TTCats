@@ -63,6 +63,7 @@ uv、ffmpeg 通过 winget 安装，安装器校验通过。没有安装 Wan、�
 
 启动参数为 `--listen 127.0.0.1 --port 8188 --lowvram --reserve-vram 3 --disable-auto-launch --cache-none`。
 ComfyUI 日志确认启用了动态显存加载和两条异步权重搬运流；这里验证的是 ComfyUI 量化权重与原生节点，**不是 SGLang 的官方 BF16/FP32 服务配置**。
+本轮没有另行运行官方部署文档中 SGLang 的 `layerwise offload + kitchen_int8` 配置。选择 Windows 原生 ComfyUI 路线，使用已有 INT8 检查点和 ComfyUI 的动态权重搬运完成低显存验证；这证明该替代路线可运行，不等于已经验证 SGLang 的分层加载实现。
 
 ## 实测结果
 
@@ -135,6 +136,13 @@ A locked camera. A red ball slowly moves from left to right across a solid cyan 
 - 在线生成器：未测试。
 - 用豆豆的姿势帧重新验证：待姿势帧可用后执行。
 - Claude 交叉审查与用户合并：由 PR 流程完成；本报告不把它们视为已通过。
+
+## 审查后修订
+
+2026-10-01 根据用户转交的交叉审查意见修订：日常使用和重装命令改为合并后保留的 `D:\TTCats\experiments\generators`，补齐模型下载、续传和 SHA-256 检查命令；说明视频与档案的对应文件名。
+素材档案（AssetLog）新增实验记录版本、直接可读的提示词和参数、自动累加的生成尝试次数，并明确模型校验值是安装清单值，未在每次运行中重新计算。完整尝试记录保留在 `generation-records`，成功后才将档案放入收件箱。
+状态查询支持有限重试，发生暂时故障不重新提交任务；新增对应测试，包括失败后的尝试编号累加、查询恢复与重试耗尽。修订后脚本共 7 项测试通过。
+本节的修订未重跑显卡性能测试；上面的真实生成结果仍来自首次实测，不应将新记录字段倒填为当时已存在。
 
 ## 来源
 
