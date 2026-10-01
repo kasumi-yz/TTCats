@@ -1,0 +1,9 @@
+[project]
+name = "ttcats-generators"
+version = "0.1.0"
+description = "TTCats 本地 H3 生成器验证与调用"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+package = false
