@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "test-calm",
+  "name": "测试稳稳",
+  "relativeSize": 1,
+  "personality": {
+    "activity": 0.2,
+    "clinginess": 0.2,
+    "initiative": 0.2,
+    "dominance": 0.3,
+    "patience": 0.9
+  },
+  "relationships": [
+    { "cat": "test-close", "closeness": 0.8, "dominance": -0.3 },
+    { "cat": "test-active", "closeness": 0.3, "dominance": -0.6 }
+  ],
+  "sounds": { "meow": [], "purr": [] }
+}

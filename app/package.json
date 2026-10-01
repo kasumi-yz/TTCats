@@ -6,6 +6,7 @@
   "main": "./out/main/index.js",
   "type": "module",
   "scripts": {
+    "gen:test-pack": "tsx scripts/gen-test-pack.ts",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.core.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
