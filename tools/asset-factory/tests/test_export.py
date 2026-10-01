@@ -6,9 +6,9 @@ import pytest
 from PIL import Image
 
 from asset_factory import pipeline
-from asset_factory.export import encode_hit_mask, finalize, validate_clip
+from asset_factory.export import encode_hit_mask, finalize, read_slots, validate_clip
 from asset_factory.models import Confirmation, IngestRecord
-from asset_factory.storage import FactoryError, job_path, load_record, run_tool, sha256, write_json
+from asset_factory.storage import FactoryError, job_path, load_record, run_tool, write_json
 
 
 @pytest.fixture
@@ -84,11 +84,12 @@ def test_unaccepted_candidate_cannot_export(ready):
     assert not (directory / "finalize").exists()
 
 
-def test_missing_provenance_prevents_export(ready):
+@pytest.mark.parametrize("missing", ["generator", "rawVideo"])
+def test_missing_provenance_prevents_export(ready, missing):
     root, job, directory, options_path, options, _ = ready
-    del options["asset_log"]["generator"]
+    del options["asset_log"][missing]
     write_json(options_path, options)
-    with pytest.raises(FactoryError, match="测试猫.*素材档案"):
+    with pytest.raises(FactoryError, match=f"测试猫.*assetLog.{missing} 缺失"):
         finalize(root, job, options_path)
     assert not (directory / "finalize").exists()
 
@@ -100,23 +101,6 @@ def test_provenance_must_refer_to_this_source(ready):
     with pytest.raises(FactoryError, match="测试猫.*rawVideo"):
         finalize(root, job, options_path)
     assert not (directory / "finalize").exists()
-
-
-def test_changed_audio_source_is_not_exported(ready):
-    root, job, directory, options_path, options, _ = ready
-    source = root / "changed.mp4"
-    source.write_bytes(b"different video")
-    record = load_record(directory / "ingest.json", IngestRecord)
-    record.source = str(source)
-    record.source_sha256 = "incorrect"
-    write_json(directory / "ingest.json", record.model_dump(mode="json"))
-    options["asset_log"]["rawVideo"] = str(source)
-    options["sound_start_frame"] = 1
-    write_json(options_path, options)
-    with pytest.raises(FactoryError, match="测试猫.*原始视频已被修改"):
-        finalize(root, job, options_path)
-    assert not (directory / "finalize").exists()
-    assert not list(directory.glob(".processing-*"))
 
 
 def test_export_mask_matches_encoded_soft_alpha(ready):
@@ -147,6 +131,9 @@ def test_export_mask_matches_encoded_soft_alpha(ready):
     )
     expected = b"".join(encode_hit_mask(frame, metadata["hitMaskScale"]) for frame in decoded)
     assert expected == metadata_path.with_suffix(".hitmask.bin").read_bytes()
+    log = json.loads((metadata_path.parents[1] / "export-log.json").read_text(encoding="utf-8"))
+    assert log["video_bytes"] == metadata_path.with_suffix(".webm").stat().st_size
+    assert log["encoding"]["crf"] == 32
 
 
 @pytest.mark.parametrize(
@@ -174,32 +161,16 @@ def test_bad_keypoint_count_prevents_export(ready):
         finalize(root, job, options_path)
 
 
-def test_audio_is_trimmed_and_encoded_when_requested(ready):
+@pytest.mark.parametrize("with_audio", [False, True])
+def test_sound_marker_exports_silent_video(ready, with_audio):
     root, job, directory, options_path, options, _ = ready
     source = root / "source.mkv"
-    run_tool(
-        [
-            "ffmpeg",
-            "-v",
-            "error",
-            "-f",
-            "lavfi",
-            "-i",
-            "color=c=red:s=16x16:r=8:d=1",
-            "-f",
-            "lavfi",
-            "-i",
-            "sine=frequency=440:duration=1",
-            "-c:v",
-            "ffv1",
-            "-c:a",
-            "pcm_s16le",
-            str(source),
-        ]
-    )
+    command = ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=red:s=16x16:r=8:d=1"]
+    if with_audio:
+        command += ["-f", "lavfi", "-i", "sine=frequency=440:duration=1", "-c:a", "pcm_s16le"]
+    run_tool(command + ["-c:v", "ffv1", str(source)])
     record = load_record(directory / "ingest.json", IngestRecord)
     record.source = str(source)
-    record.source_sha256 = sha256(source)
     write_json(directory / "ingest.json", record.model_dump(mode="json"))
     options["sound_start_frame"] = 1
     options["asset_log"]["rawVideo"] = str(source)
@@ -220,7 +191,7 @@ def test_audio_is_trimmed_and_encoded_when_requested(ready):
             ]
         )
     )["streams"]
-    assert any(stream["codec_name"] == "opus" for stream in streams)
+    assert not any(stream["codec_type"] == "audio" for stream in streams)
 
 
 def test_manual_anchor_outside_frame_rejected(ready):
@@ -240,3 +211,29 @@ def test_fractional_coordinates_are_kept(ready):
     metadata = json.loads(finalize(root, job, options_path).read_text(encoding="utf-8"))
     validate_clip(metadata, "测试猫")
     assert all(point["x"] == metadata["footAnchors"][0]["x"] for point in metadata["footAnchors"])
+
+
+@pytest.mark.parametrize("field", ["fps", "name"])
+def test_clip_required_error_names_field(ready, field):
+    root, job, _, options_path, _, _ = ready
+    metadata = json.loads(finalize(root, job, options_path).read_text(encoding="utf-8"))
+    del metadata[field]
+    with pytest.raises(FactoryError, match=f"测试猫.*{field} 缺失"):
+        validate_clip(metadata, "测试猫")
+
+
+def test_extra_provenance_field_names_field(ready):
+    root, job, _, options_path, options, _ = ready
+    options["asset_log"]["unexpected"] = True
+    write_json(options_path, options)
+    with pytest.raises(FactoryError, match="测试猫.*assetLog.unexpected 是额外字段"):
+        finalize(root, job, options_path)
+
+
+def test_partial_slot_read_fails():
+    source = """export const CLIP_SLOTS = {
+    walk: { kind: 'loop', from: 'stand', to: 'stand', need: 'required' },
+    run: { kind: 'loop', /* comment */ from: 'stand', to: 'stand', need: 'optional' }
+    } as const"""
+    with pytest.raises(FactoryError, match="未被完整读取"):
+        read_slots(source)

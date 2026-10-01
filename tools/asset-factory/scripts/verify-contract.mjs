@@ -76,14 +76,31 @@ for (let frame = 0; frame < metadata.frameCount; frame++) {
 assert(transparent > 0 && opaque > 0, "视频必须同时有透明背景和不透明主体");
 assert.equal(hitMaskAt(mask, layout, 0, -1, 0), false);
 assert.equal(hitMaskAt(mask, layout, 0, metadata.width, 0), false);
-let loopAlphaMaxDifference = 0;
-for (let pixel = 0; pixel < pixels; pixel++) {
-  loopAlphaMaxDifference = Math.max(
-    loopAlphaMaxDifference,
-    Math.abs(
-      result.stdout[pixel] -
-        result.stdout[(metadata.frameCount - 1) * pixels + pixel],
-    ),
+const differences = [];
+for (let frame = 0; frame < metadata.frameCount; frame++) {
+  const next = (frame + 1) % metadata.frameCount;
+  let difference = 0;
+  for (let pixel = 0; pixel < pixels; pixel++) {
+    difference += Math.abs(
+      result.stdout[frame * pixels + pixel] -
+        result.stdout[next * pixels + pixel],
+    );
+  }
+  differences.push(difference / pixels);
+}
+const loopSeamDifference = differences.at(-1);
+const adjacentMeanDifference =
+  differences.slice(0, -1).reduce((a, b) => a + b, 0) /
+  (metadata.frameCount - 1);
+if (process.argv.includes("--check-loop")) {
+  assert.equal(metadata.kind, "loop");
+  assert(
+    differences.every((value) => value > 0),
+    "动态合成循环不能包含重复相邻帧或静止接缝",
+  );
+  assert(
+    loopSeamDifference <= adjacentMeanDifference * 2,
+    "合成循环接缝变化不能超过普通相邻变化的两倍",
   );
 }
 console.log(
@@ -100,7 +117,9 @@ console.log(
       maskBytes: mask.length,
       transparentPixels: transparent,
       opaquePixels: opaque,
-      loopAlphaMaxDifference,
+      loopSeamDifference,
+      adjacentMeanDifference,
+      minimumAdjacentDifference: Math.min(...differences),
     },
     null,
     2,

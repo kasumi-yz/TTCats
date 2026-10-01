@@ -30,24 +30,55 @@ def encode_hit_mask(alpha: np.ndarray, scale: int) -> bytes:
     return np.packbits(bits, bitorder="little").tobytes()
 
 
-def validate_clip(metadata: dict, cat: str):
-    repo = Path(__file__).resolve().parents[4]
-    schema = json.loads((repo / "schemas" / "clip.schema.json").read_text(encoding="utf-8"))
-    errors = list(Draft202012Validator(schema).iter_errors(metadata))
-    if errors:
-        paths = [".".join(map(str, error.path)) or "记录（缺失字段或额外字段）" for error in errors]
-        raise FactoryError(f"猫「{cat}」：片段资料不符合共享 schema，请检查 {', '.join(paths)}")
-    # Zod superRefine 未导出到 JSON Schema；直接读取共享表，避免另定一套片段命名。
-    source = (repo / "app/src/shared/schemas/clip.ts").read_text(encoding="utf-8")
-    block = source.split("export const CLIP_SLOTS = {", 1)[1].split("} as const", 1)[0]
+def schema_errors(errors) -> str:
+    details = []
+    for error in errors:
+        path = ".".join(map(str, error.path))
+        if error.validator == "required":
+            details.extend(
+                f"{path + '.' if path else ''}{key} 缺失"
+                for key in error.validator_value
+                if key not in error.instance
+            )
+        elif error.validator == "additionalProperties":
+            properties = error.schema.get("properties", {})
+            patterns = error.schema.get("patternProperties", {})
+            details.extend(
+                f"{path + '.' if path else ''}{key} 是额外字段"
+                for key in error.instance
+                if key not in properties and not any(re.search(p, key) for p in patterns)
+            )
+        else:
+            details.append(f"{path or '记录'} 的值不符合约束（{error.validator}）")
+    return ", ".join(dict.fromkeys(details))
+
+
+def read_slots(source: str):
+    try:
+        block = source.split("export const CLIP_SLOTS = {", 1)[1].split("} as const", 1)[0]
+    except IndexError as error:
+        raise FactoryError("共享片段表格式已改变，请更新素材工厂的接口读取并重新验证") from error
     slots = re.findall(
         r"(?:'([a-z0-9-]+)'|([a-z0-9-]+)):\s*\{\s*kind: '([^']+)',\s*"
         r"from: '([^']+)',\s*to: '([^']+)'",
         block,
     )
-    if not slots:
-        raise FactoryError("共享片段表格式已改变，请更新素材工厂的接口读取并重新验证")
-    known = {quoted or plain: (kind, start, end) for quoted, plain, kind, start, end in slots}
+    if not slots or len(slots) != len(re.findall(r"\bneed\s*:", block)):
+        raise FactoryError("共享片段表未被完整读取，请更新素材工厂的接口读取并重新验证")
+    return {quoted or plain: (kind, start, end) for quoted, plain, kind, start, end in slots}
+
+
+def validate_clip(metadata: dict, cat: str):
+    repo = Path(__file__).resolve().parents[4]
+    schema = json.loads((repo / "schemas" / "clip.schema.json").read_text(encoding="utf-8"))
+    errors = list(Draft202012Validator(schema).iter_errors(metadata))
+    if errors:
+        raise FactoryError(
+            f"猫「{cat}」：片段资料不符合共享 schema，请检查 {schema_errors(errors)}"
+        )
+    # Zod superRefine 未导出到 JSON Schema；直接读取共享表，避免另定一套片段命名。
+    source = (repo / "app/src/shared/schemas/clip.ts").read_text(encoding="utf-8")
+    known = read_slots(source)
     name = metadata["name"]
     if name in known:
         if (metadata["kind"], metadata["fromPose"], metadata["toPose"]) != known[name]:
@@ -163,11 +194,9 @@ def finalize(root: Path, job: str, options_path: Path):
         }
         errors = list(Draft202012Validator(candidate_schema).iter_errors(candidate))
         if errors:
-            fields = ", ".join(
-                ".".join(map(str, error.path)) or "asset_log（缺失字段）" for error in errors
-            )
             raise FactoryError(
-                f"猫「{record.cat}」：候选素材档案不符合共享 schema，请补齐或修正 {fields}"
+                f"猫「{record.cat}」：候选素材档案不符合共享 schema，"
+                f"请补齐或修正 {schema_errors(errors)}"
             )
         if Path(options.asset_log["rawVideo"]).resolve() != Path(record.source).resolve():
             raise FactoryError(f"猫「{record.cat}」：素材档案 rawVideo 与本任务的原始视频不符")
@@ -198,32 +227,7 @@ def finalize(root: Path, job: str, options_path: Path):
                 "-i",
                 str(aligned / "%06d.png"),
             ]
-            if options.sound_start_frame is not None:
-                source = Path(record.source)
-                if not source.is_file():
-                    raise FactoryError(f"猫「{record.cat}」：导出声音需要原始视频，文件已不存在")
-                from .storage import sha256
-
-                if sha256(source) != record.source_sha256:
-                    raise FactoryError(
-                        f"猫「{record.cat}」：原始视频已被修改，不能从其他版本导出声音"
-                    )
-                command += [
-                    "-ss",
-                    str(start / record.fps),
-                    "-i",
-                    str(source),
-                    "-map",
-                    "0:v:0",
-                    "-map",
-                    "1:a:0",
-                    "-c:a",
-                    "libopus",
-                    "-t",
-                    str(len(selected) / record.fps),
-                ]
-            else:
-                command += ["-an"]
+            command += ["-an"]
             command += [
                 "-c:v",
                 "libvpx-vp9",
@@ -231,7 +235,11 @@ def finalize(root: Path, job: str, options_path: Path):
                 "yuva420p",
                 "-auto-alt-ref",
                 "0",
-                "-lossless",
+                "-b:v",
+                "0",
+                "-crf",
+                "32",
+                "-row-mt",
                 "1",
                 str(video),
             ]
@@ -291,6 +299,8 @@ def finalize(root: Path, job: str, options_path: Path):
                 raise FactoryError(f"猫「{record.cat}」：点击遮罩文件长度不符")
             write_json(clips / f"{basename}.json", metadata)
             write_json(temporary / "manifest.json", candidate)
+            log["video_bytes"] = video.stat().st_size
+            log["encoding"] = {"codec": "libvpx-vp9", "crf": 32, "row_mt": 1}
             log["export_range"] = {"start": start, "end": end}
             log["duration_seconds"] = len(selected) / record.fps
             log["manual_seconds"] = confirmed.manual_seconds

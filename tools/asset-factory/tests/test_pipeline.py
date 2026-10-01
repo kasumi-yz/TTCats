@@ -1,4 +1,5 @@
 import json
+import math
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
@@ -9,7 +10,7 @@ from PIL import Image, ImageDraw
 
 from asset_factory import pipeline
 from asset_factory.cli import color
-from asset_factory.imaging import decontaminate, make_suggestion
+from asset_factory.imaging import decontaminate, make_suggestion, preview
 from asset_factory.models import Confirmation, IngestRecord, MatteRecord, Suggestion
 from asset_factory.storage import (
     FactoryError,
@@ -88,7 +89,7 @@ def test_synthetic_pipeline_and_manual_edits(root, video, monkeypatch):
     suggested = load_record(directory / "suggest" / "suggestion.json", Suggestion)
     assert suggested.foot_anchors[0].y == 35
     assert suggested.speed == pytest.approx(8)
-    assert suggested.loop_end - suggested.loop_start >= 5
+    assert suggested.loop_end - suggested.loop_start >= 4
     for name in ("dark", "light"):
         with Image.open(directory / "suggest" / f"preview-{name}.png") as preview:
             assert preview.size == (512, 1536)
@@ -270,3 +271,30 @@ def test_asset_root_rejects_other_repository(tmp_path, monkeypatch):
     monkeypatch.setenv("TTCATS_ASSET_ROOT", str(tmp_path / "素材库"))
     with pytest.raises(FactoryError, match="仓库外"):
         asset_root()
+
+
+def test_loop_suggestion_excludes_repeated_endpoint(tmp_path):
+    period = 12
+    paths = []
+    for index in range(period + 1):
+        phase = index * 2 * math.pi / period
+        rx, ry = 16 + 5 * math.sin(phase), 16 + 5 * math.cos(phase)
+        image = Image.new("RGBA", (80, 80))
+        ImageDraw.Draw(image).ellipse((40 - rx, 60 - 2 * ry, 40 + rx, 60), fill=(220, 60, 20, 255))
+        path = tmp_path / f"{index:06d}.png"
+        image.save(path)
+        paths.append(path)
+    selection = make_suggestion(paths, 12, "测试猫")
+    assert (selection.loop_start, selection.loop_end) == (0, period)
+
+
+def test_preview_crops_to_subject(tmp_path):
+    source = tmp_path / "subject.png"
+    image = Image.new("RGBA", (1344, 768))
+    ImageDraw.Draw(image).rectangle((650, 350, 673, 373), fill=(255, 0, 0, 255))
+    image.save(source)
+    preview([source], tmp_path)
+    with Image.open(tmp_path / "preview-dark.png") as sheet:
+        rgb = np.asarray(sheet)
+        red = (rgb[..., 0] > 200) & (rgb[..., 1] < 40)
+        assert red[:, :256].sum() > 10000

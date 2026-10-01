@@ -65,13 +65,14 @@ def make_suggestion(paths: list[Path], fps: float, cat: str) -> Suggestion:
         trim_start=0,
         trim_end=len(paths),
         loop_start=start,
-        loop_end=last + 1,
+        loop_end=last,
         loop_error=error,
         foot_anchors=anchors,
         speed=anchor_speed(anchors, fps),
         warnings=[
             "所有值都是建议，必须人工确认；没有自动选择合格候选。",
             "锚点来自主体底部轮廓，尾巴、悬空或阴影可能使它偏离真实落脚位置。",
+            "裁剪建议目前保留整段；修改区间后请重新人工核对步速。",
             "步速只按首尾锚点的水平位移估计；镜头移动和迈步会影响结果。",
             "循环误差只比较首尾姿势，不能证明播放不跳帧或动作自然。",
         ],
@@ -81,11 +82,25 @@ def make_suggestion(paths: list[Path], fps: float, cat: str) -> Suggestion:
 def preview(paths: list[Path], destination: Path):
     count = min(6, len(paths))
     indices = np.linspace(0, len(paths) - 1, count).astype(int)
+    boxes = []
+    for index in indices:
+        with Image.open(paths[index]) as image:
+            box = image.convert("RGBA").getchannel("A").getbbox()
+            if box:
+                boxes.append(box)
+    if not boxes:
+        raise FactoryError("预览帧里没有可见主体")
+    crop = (
+        min(b[0] for b in boxes) - 8,
+        min(b[1] for b in boxes) - 8,
+        max(b[2] for b in boxes) + 8,
+        max(b[3] for b in boxes) + 8,
+    )
     for name, color in (("dark", (30, 30, 35)), ("light", (235, 235, 240))):
         sheet = Image.new("RGB", (512, count * 256), color)
         for row, index in enumerate(indices):
             with Image.open(paths[index]) as image:
-                thumb = ImageOps.contain(image.convert("RGBA"), (256, 256))
+                thumb = ImageOps.contain(image.convert("RGBA").crop(crop), (256, 256))
                 for column, frame in enumerate((thumb, ImageOps.mirror(thumb))):
                     position = (column * 256 + (256 - thumb.width) // 2, row * 256)
                     sheet.paste(frame, position, frame)

@@ -1,6 +1,7 @@
 """真实 GPU 集成复现：仅自动接受本脚本绘制的合成球，不接受真实猫的候选。"""
 
 import json
+import math
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -16,11 +17,13 @@ root = asset_root()
 source_dir = root / "factory-tests" / f"synthetic-{uuid4().hex[:12]}"
 source_dir.mkdir(parents=True)
 for frame in range(17):
-    # 周期 16，首尾完全相同；经过对齐的主体是恒定圆形。
-    offset = frame if frame <= 8 else 16 - frame
+    # 第 16 帧回到第 0 帧，只作周期端点参考，导出 [0,16)。
+    # 同时改变宽高：原地化后仍有形变，能检验真实的循环接缝。
+    phase = frame * 2 * math.pi / 16
+    rx, ry = 12 + 4 * math.sin(phase), 12 + 4 * math.cos(phase)
     image = Image.new("RGB", (64, 64), (0, 180, 220))
     draw = ImageDraw.Draw(image)
-    draw.ellipse((14 + offset, 20, 38 + offset, 44), fill=(220, 60, 20))
+    draw.ellipse((32 - rx, 48 - 2 * ry, 32 + rx, 48), fill=(220, 60, 20))
     image.save(source_dir / f"{frame:06d}.png")
 source = source_dir / "synthetic.mkv"
 run_tool(
@@ -46,7 +49,7 @@ matte(root, job, model_dir / MODEL_FILE, manifest["sha256"], (0, 180, 220))
 suggest(root, job)
 directory = job_path(root, job)
 selection = load_record(directory / "suggest" / "suggestion.json", Suggestion, "合成测试")
-selection.loop_start, selection.loop_end = 0, 17
+selection.loop_start, selection.loop_end = 0, 16
 parameters = source_dir / "confirmation.json"
 write_json(
     parameters,

@@ -12,7 +12,7 @@ import { dirname, join, resolve } from "node:path";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { _electron as electron } from "playwright";
+import { _electron as electron } from "@playwright/test";
 
 const require = createRequire(import.meta.url);
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
