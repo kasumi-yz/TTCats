@@ -14,6 +14,8 @@ interface CatView {
   key?: string;
   wanted?: string;
   placement?: CatPlacement;
+  // 镜像相对素材的原始朝向计算，等待新素材时必须沿用当前画面的值。
+  shownMirrored: boolean;
   generation: number;
 }
 
@@ -71,6 +73,7 @@ export async function createOverlayView(
     app.stage.addChild(sprite);
     return {
       sprite,
+      shownMirrored: false,
       generation: 0,
       cache: new ClipCache(async (key) => {
         const clip = content.cats[cat]?.clips.find((c) => `${c.name}:${c.variant}` === key);
@@ -91,7 +94,7 @@ export async function createOverlayView(
         media &&
         p &&
         view.sprite.visible &&
-        hitCat(pointer, p, media.clip, media.mask, media.frame)
+        hitCat(pointer, { ...p, mirrored: view.shownMirrored }, media.clip, media.mask, media.frame)
       )
         return cat;
     }
@@ -207,6 +210,13 @@ export async function createOverlayView(
             target.current = media;
             target.key = key;
             target.cache.activate(key);
+            if (target.placement) {
+              target.shownMirrored = target.placement.mirrored;
+              const scale = target.placement.scale;
+              target.sprite.scale.set(target.shownMirrored ? -scale : scale, scale);
+            }
+            const anchor = media.clip.footAnchors[media.frame];
+            if (anchor) target.sprite.pivot.set(anchor.x, anchor.y);
             target.sprite.texture = media.texture;
             target.sprite.visible = true;
             if (!paused && target.placement)
@@ -216,11 +226,14 @@ export async function createOverlayView(
       }
       const media = view.current;
       if (!media) continue;
-      if (key === view.key) media.sync(p.clipTimeMs, p.playbackRate);
+      if (key === view.key) {
+        view.shownMirrored = p.mirrored;
+        media.sync(p.clipTimeMs, p.playbackRate);
+      }
       const anchor = media.clip.footAnchors[media.frame];
       if (anchor) view.sprite.pivot.set(anchor.x, anchor.y);
       view.sprite.position.set(p.x, p.y);
-      view.sprite.scale.set(p.mirrored ? -p.scale : p.scale, p.scale);
+      view.sprite.scale.set(view.shownMirrored ? -p.scale : p.scale, p.scale);
       view.sprite.alpha = ghost ? 0.35 : 1;
       app.stage.setChildIndex(view.sprite, app.stage.children.length - 1);
     }
