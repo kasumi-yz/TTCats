@@ -1,3 +1,4 @@
+import type { Protocol } from 'electron';
 import {
   cpSync,
   mkdirSync,
@@ -81,6 +82,7 @@ describe('运行时猫咪包加载', () => {
     const catalog = loadContent(dir(), vi.fn());
     expect(Object.keys(catalog.cats)).toHaveLength(2);
     expect(catalog.disabled[0]?.problems[0]).toContain('无法读取猫咪包文件');
+    expect(catalog.disabled[0]?.problems[0]).toContain('clips');
   });
 
   it('同名同版本片段重复时停用，避免随机播放错误素材', () => {
@@ -152,8 +154,11 @@ describe('猫咪包文件协议', () => {
     const privileged = vi.fn<Protocol['registerSchemesAsPrivileged']>();
     registerContentScheme({ registerSchemesAsPrivileged: privileged });
     expect(privileged.mock.calls[0]?.[0][0]?.privileges?.stream).toBe(true);
+    expect(privileged.mock.calls[0]?.[0][0]?.privileges?.corsEnabled).toBe(true);
     const handle = vi.fn();
-    const fetch = vi.fn().mockResolvedValue(new Response('clip', { status: 206 }));
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(new Response('clip', { headers: { 'Content-Type': 'video/webm' } }));
     registerContentProtocol({ handle }, { fetch }, dir(), loadContent(dir(), vi.fn()));
     const handler = handle.mock.calls[0]?.[1] as (request: Request) => Promise<Response> | Response;
     const headers = { Range: 'bytes=0-10' };
@@ -161,6 +166,7 @@ describe('猫咪包文件协议', () => {
       new Request(contentUrl('test-calm', 'clips/walk.webm'), { headers }),
     );
     expect(range.status).toBe(206);
+    expect(range.headers.get('Access-Control-Allow-Origin')).toBe('*');
     expect(Buffer.from(await range.arrayBuffer())).toEqual(
       readFileSync(file('clips/walk.webm')).subarray(0, 11),
     );
@@ -176,9 +182,23 @@ describe('猫咪包文件协议', () => {
       }),
     );
     expect(invalid.status).toBe(416);
+    expect(invalid.headers.get('Access-Control-Allow-Origin')).toBe('*');
     expect(fetch).not.toHaveBeenCalled();
-    expect((await handler(new Request(contentUrl('unknown', 'cat.json')))).status).toBe(403);
+    const denied = await handler(new Request(contentUrl('unknown', 'cat.json')));
+    expect(denied.status).toBe(403);
+    expect(denied.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    const post = await handler(
+      new Request(contentUrl('test-calm', 'cat.json'), { method: 'POST' }),
+    );
+    expect(post.status).toBe(403);
+    expect(post.headers.get('Access-Control-Allow-Origin')).toBe('*');
     expect(fetch).not.toHaveBeenCalled();
+    const full = await handler(new Request(contentUrl('test-calm', 'clips/walk.webm')));
+    expect(full.status).toBe(200);
+    expect(full.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    expect(full.headers.get('Content-Type')).toBe('video/webm');
+    expect(await full.text()).toBe('clip');
+    expect(fetch).toHaveBeenCalledOnce();
   });
 });
 
@@ -209,4 +229,3 @@ it('打包配置只包含 out 和正式 content，显式排除测试猫咪包', 
   expect(config).toContain("'!test-content/**/*'");
   expect(config).toContain('from: ../content');
 });
-import type { Protocol } from 'electron';

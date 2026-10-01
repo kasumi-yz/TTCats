@@ -233,7 +233,8 @@ export const zh = {
     },
   },
   content: {
-    packReadFailed: '无法读取猫咪包文件，请检查 cat.json、clips 目录和文件权限。',
+    packReadFailed: (detail: string) =>
+      `无法读取猫咪包文件，请检查 cat.json、clips 目录和文件权限：${detail}`,
     duplicateClip: (name: string, variant: number) =>
       `片段「${name}」的版本 ${variant} 重复，不能确定该播放哪一段。`,
     missingClips: (names: readonly string[]) => `缺少必需片段：${names.join('、')}`,

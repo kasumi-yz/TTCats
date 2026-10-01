@@ -8,6 +8,10 @@
 
 开发时设置 `TTCATS_CONTENT_DIR` 为 `app/test-content` 的绝对路径；主进程拼装模块调用 `contentDirectory`、`loadContent`。`registerContentScheme(protocol)` 必须在 Electron ready 前调用，ready 后调用 `registerContentProtocol(protocol, net, contentDir, catalog)`。桌面层使用共享的 `contentUrl(catId, packPath)` 读取素材。协议保留 Range 请求，拒绝未加载猫咪包、危险路径与指向包外的链接。
 
+协议开启 CORS，所有响应允许跨来源读取。桌面层的视频元素必须在设置 `src` 前设置 `crossOrigin = 'anonymous'`，才能用作 WebGL/PixiJS 视频纹理。#25 的页面 CSP 还需在 `media-src` 和 `connect-src` 中放行 `ttcats-content:`。真实 Electron 验证命令见 `app/scripts/verify-content-protocol.ts` 开头；验证覆盖 `file://` 和本地 HTTP 页面读取遮罩、上传视频纹理和跳转播放位置。
+
+合成走路、奔跑片段的落脚锚点以 2 号腿为参考，首尾回到标准位置。中间半个周期两条腿抬起时，该点只是对齐参考，不能当作真实落地接触点；中途打断可能产生最多约 7px 的测试素材对齐误差。真实步态和衔接效果需要正式片段另行验收。
+
 `npm run validate:content` 对正式 `content/` 校验档案草稿，对测试猫咪包检查完整性。运行时无论目录来源都严格要求必需片段；目前只有档案的正式豆豆会被停用并报告缺少哪些片段。具体接入应用入口由 #28 主进程拼装完成。
 
 `app/electron-builder.yml` 将正式 `content/` 放到 resources/content，应用文件只包含 out 和 package.json，并显式排除 test-content。已使用 electron-builder 26.15.3 生成 Windows win-unpacked，并检查 app.asar 及 resources/content：归档内不含测试猫咪包，正式资源只有豆豆。仓库目前尚未配置固定的安装包构建命令。

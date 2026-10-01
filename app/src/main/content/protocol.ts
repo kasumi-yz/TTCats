@@ -16,7 +16,13 @@ export function registerContentScheme(
   protocol.registerSchemesAsPrivileged([
     {
       scheme: CONTENT_PROTOCOL,
-      privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true },
+      privileges: {
+        standard: true,
+        secure: true,
+        supportFetchAPI: true,
+        stream: true,
+        corsEnabled: true,
+      },
     },
   ]);
 }
@@ -54,10 +60,13 @@ export function registerContentProtocol(
   contentDir: string,
   catalog: ContentCatalog,
 ): void {
-  protocol.handle(CONTENT_PROTOCOL, (request) => {
+  protocol.handle(CONTENT_PROTOCOL, async (request) => {
     const file = resolveContentFile(request.url, contentDir, catalog);
     if (!file || (request.method !== 'GET' && request.method !== 'HEAD'))
-      return new Response(zh.content.denied, { status: 403 });
+      return new Response(zh.content.denied, {
+        status: 403,
+        headers: { 'Access-Control-Allow-Origin': '*' },
+      });
     const range = request.headers.get('range');
     if (range !== null) {
       // Electron 的 file: fetch 忽略 Range，必须在协议层实现才能可靠跳转视频。
@@ -75,7 +84,10 @@ export function registerContentProtocol(
         start > end ||
         start >= size
       ) {
-        return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
+        return new Response(null, {
+          status: 416,
+          headers: { 'Content-Range': `bytes */${size}`, 'Access-Control-Allow-Origin': '*' },
+        });
       }
       const types: Record<string, string> = {
         '.webm': 'video/webm',
@@ -90,6 +102,7 @@ export function registerContentProtocol(
       return new Response(body, {
         status: 206,
         headers: {
+          'Access-Control-Allow-Origin': '*',
           'Content-Type': types[extname(file)] ?? 'application/octet-stream',
           'Content-Length': String(end - start + 1),
           'Accept-Ranges': 'bytes',
@@ -97,9 +110,16 @@ export function registerContentProtocol(
         },
       });
     }
-    return net.fetch(pathToFileURL(file).href, {
+    const response = await net.fetch(pathToFileURL(file).href, {
       method: request.method,
       headers: request.headers,
+    });
+    const headers = new Headers(response.headers);
+    headers.set('Access-Control-Allow-Origin', '*');
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
     });
   });
 }

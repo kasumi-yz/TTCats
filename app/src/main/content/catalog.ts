@@ -139,8 +139,10 @@ export function validateContentDir(contentDir: string, requireClips = false): Co
         const missing = missingRequiredClips(clips.map((clip) => clip.name));
         if (missing.length) report.problems.push(`${who}：${zh.content.missingClips(missing)}`);
       }
-    } catch {
-      report.problems.push(`${who}：${zh.content.packReadFailed}`);
+    } catch (error) {
+      report.problems.push(
+        `${who}：${zh.content.packReadFailed(error instanceof Error ? error.message : String(error))}`,
+      );
     }
     const problems = report.problems.slice(problemStart);
     if (cat !== undefined && problems.length === 0) report.catalog.cats[folder] = { cat, clips };
