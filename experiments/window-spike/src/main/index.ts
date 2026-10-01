@@ -168,33 +168,45 @@ function poll() {
   if (paintMs.length > 6000) paintMs.shift();
 }
 
-async function createOverlays() {
-  for (const overlay of overlays.splice(0)) overlay.close();
-  for (const display of screen.getAllDisplays()) {
-    const overlay = new BrowserWindow({
-      ...display.bounds,
-      transparent: true,
-      frame: false,
-      show: false,
-      focusable: false,
-      skipTaskbar: true,
-      resizable: false,
-      webPreferences: {
-        preload: path.join(__dirname, 'preload.js'),
-        contextIsolation: true,
-        sandbox: true,
-        backgroundThrottling: false,
-      },
-    });
-    overlay.setIgnoreMouseEvents(true);
-    overlay.setAlwaysOnTop(true, 'screen-saver');
-    await overlay.loadFile(path.resolve('overlay.html'));
-    overlay.showInactive();
-    overlays.push(overlay);
-  }
+let overlayRebuild: Promise<void> = Promise.resolve();
+function createOverlays(): Promise<void> {
+  overlayRebuild = overlayRebuild.then(async () => {
+    for (const overlay of overlays.splice(0)) overlay.close();
+    for (const display of screen.getAllDisplays()) {
+      const overlay = new BrowserWindow({
+        ...display.bounds,
+        transparent: true,
+        frame: false,
+        show: false,
+        focusable: false,
+        skipTaskbar: true,
+        resizable: false,
+        webPreferences: {
+          preload: path.join(__dirname, 'preload.js'),
+          contextIsolation: true,
+          sandbox: true,
+          backgroundThrottling: false,
+        },
+      });
+      overlay.setIgnoreMouseEvents(true);
+      overlay.setAlwaysOnTop(true, 'screen-saver');
+      await overlay.loadFile(path.resolve('overlay.html'));
+      overlay.showInactive();
+      overlays.push(overlay);
+    }
+  });
+  return overlayRebuild;
 }
 
 async function verify() {
+  await Promise.all([createOverlays(), createOverlays(), createOverlays()]);
+  if (
+    overlays.length !== screen.getAllDisplays().length ||
+    BrowserWindow.getAllWindows().length !== overlays.length ||
+    overlays.some((w) => w.isDestroyed())
+  )
+    throw new Error('连续重建后出现多余、丢失或已销毁的桌面层。');
+  verificationChecks.push('serialized-overlay-rebuild');
   // 独立 Electron 进程创建的测试窗口，避免破坏用户的窗口布局。
   const { spawn } = await import('node:child_process');
   const child = spawn(process.execPath, [path.resolve('.'), '--fixture'], {
@@ -215,6 +227,15 @@ async function verify() {
     if (!legacy || legacy.windowDpi !== 96 || legacy.dpi !== fixture.dpi)
       throw new Error('不支持 DPI 的程序没有使用所在显示器的缩放。');
     verificationChecks.push('legacy-monitor-dpi');
+    if (
+      legacy.buttonsFallback ||
+      !legacy.buttons ||
+      Math.abs(legacy.buttons.right - legacy.bounds.right) > 2
+    )
+      throw new Error(
+        `Legacy 按钮区没有贴住右边缘：${JSON.stringify({ bounds: legacy.bounds, buttons: legacy.buttons, outer: outerBounds(legacy.id) })}`,
+      );
+    verificationChecks.push('legacy-buttons-right-edge');
     const blocked = latest.find((w) => w.title === 'M0-B Occluder');
     const segments = computeLedges(latest.filter((w) => w.title.startsWith('M0-B '))).filter(
       (l) => l.id === fixture.id,
@@ -458,13 +479,13 @@ app
       ]),
     );
     screen.on('display-metrics-changed', () => {
-      void createOverlays();
+      void createOverlays().catch(fatal);
     });
     screen.on('display-added', () => {
-      void createOverlays();
+      void createOverlays().catch(fatal);
     });
     screen.on('display-removed', () => {
-      void createOverlays();
+      void createOverlays().catch(fatal);
     });
     const timer = setInterval(() => {
       try {

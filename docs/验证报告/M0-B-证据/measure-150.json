@@ -46,7 +46,7 @@
       "depthPerComponent": 8,
       "detected": true,
       "displayFrequency": 120,
-      "id": 586695528,
+      "id": 1476577633,
       "internal": true,
       "label": "ATNA40CU05-0 ",
       "maximumCursorSize": {
@@ -77,9 +77,11 @@
       "touchSupport": "unknown"
     }
   ],
-  "capturedAt": "2026-09-30T20:17:21.204Z",
+  "capturedAt": "2026-10-01T06:33:07.893Z",
   "windows": [
     {
+      "id": "66176",
+      "pid": 13996,
       "className": "Shell_TrayWnd",
       "bounds": {
         "left": 0,
@@ -95,307 +97,64 @@
       },
       "buttonsFallback": true,
       "dpi": 144,
+      "windowDpi": 144,
       "eligible": false,
       "reason": "shell",
       "maximized": false,
       "fullscreen": false
     },
     {
+      "id": "134466",
+      "pid": 22444,
       "className": "Chrome_WidgetWin_1",
       "bounds": {
-        "left": 1608,
-        "top": 0,
-        "right": 2880,
-        "bottom": 1800
+        "left": 840,
+        "top": 450,
+        "right": 2643,
+        "bottom": 1652
       },
       "buttons": {
-        "left": 2640,
-        "right": 2880,
-        "top": 0,
-        "bottom": 60
+        "left": 2403,
+        "right": 2643,
+        "top": 450,
+        "bottom": 510
       },
       "buttonsFallback": true,
       "dpi": 144,
-      "eligible": false,
-      "reason": "tool",
+      "windowDpi": 144,
+      "eligible": true,
+      "reason": "",
       "maximized": false,
       "fullscreen": false
     },
     {
+      "id": "1641300",
+      "pid": 3876,
       "className": "Chrome_WidgetWin_1",
       "bounds": {
-        "left": 230,
-        "top": 167,
-        "right": 2039,
-        "bottom": 1392
+        "left": 170,
+        "top": 104,
+        "right": 2097,
+        "bottom": 1341
       },
       "buttons": {
-        "left": 1799,
-        "right": 2039,
-        "top": 167,
-        "bottom": 227
+        "left": 1857,
+        "right": 2097,
+        "top": 104,
+        "bottom": 164
       },
       "buttonsFallback": true,
       "dpi": 144,
+      "windowDpi": 144,
       "eligible": true,
       "reason": "",
       "maximized": false,
       "fullscreen": false
     },
     {
-      "className": "Chrome_WidgetWin_1",
-      "bounds": {
-        "left": 915,
-        "top": 453,
-        "right": 2835,
-        "bottom": 1683
-      },
-      "buttons": {
-        "left": 2595,
-        "right": 2835,
-        "top": 453,
-        "bottom": 513
-      },
-      "buttonsFallback": true,
-      "dpi": 144,
-      "eligible": true,
-      "reason": "",
-      "maximized": false,
-      "fullscreen": false
-    },
-    {
-      "className": "Chrome_WidgetWin_1",
-      "bounds": {
-        "left": 286,
-        "top": 112,
-        "right": 2877,
-        "bottom": 1651
-      },
-      "buttons": {
-        "left": 2656,
-        "right": 2876,
-        "top": 112,
-        "bottom": 156
-      },
-      "buttonsFallback": false,
-      "dpi": 144,
-      "eligible": true,
-      "reason": "",
-      "maximized": false,
-      "fullscreen": false
-    },
-    {
-      "className": "Chrome_WidgetWin_1",
-      "bounds": {
-        "left": 39,
-        "top": 30,
-        "right": 1440,
-        "bottom": 1719
-      },
-      "buttons": {
-        "left": 1219,
-        "right": 1439,
-        "top": 30,
-        "bottom": 74
-      },
-      "buttonsFallback": false,
-      "dpi": 144,
-      "eligible": true,
-      "reason": "",
-      "maximized": false,
-      "fullscreen": false
-    },
-    {
-      "className": "ApplicationFrameWindow",
-      "bounds": {
-        "left": 70,
-        "top": 38,
-        "right": 2253,
-        "bottom": 1474
-      },
-      "buttons": {
-        "left": 2013,
-        "right": 2253,
-        "top": 38,
-        "bottom": 98
-      },
-      "buttonsFallback": true,
-      "dpi": 144,
-      "eligible": true,
-      "reason": "",
-      "maximized": false,
-      "fullscreen": false
-    },
-    {
-      "className": "Chrome_WidgetWin_1",
-      "bounds": {
-        "left": 689,
-        "top": 400,
-        "right": 2501,
-        "bottom": 1608
-      },
-      "buttons": {
-        "left": 2261,
-        "right": 2501,
-        "top": 400,
-        "bottom": 460
-      },
-      "buttonsFallback": true,
-      "dpi": 144,
-      "eligible": true,
-      "reason": "",
-      "maximized": false,
-      "fullscreen": false
-    },
-    {
-      "className": "Qt51514QWindowIcon",
-      "bounds": {
-        "left": 1228,
-        "top": 579,
-        "right": 1652,
-        "bottom": 1151
-      },
-      "buttons": {
-        "left": 1412,
-        "right": 1652,
-        "top": 579,
-        "bottom": 639
-      },
-      "buttonsFallback": true,
-      "dpi": 144,
-      "eligible": true,
-      "reason": "",
-      "maximized": false,
-      "fullscreen": false
-    },
-    {
-      "className": "Notepad",
-      "bounds": {
-        "left": 679,
-        "top": 170,
-        "right": 2264,
-        "bottom": 1431
-      },
-      "buttons": {
-        "left": 2041,
-        "right": 2261,
-        "top": 170,
-        "bottom": 214
-      },
-      "buttonsFallback": false,
-      "dpi": 144,
-      "eligible": true,
-      "reason": "",
-      "maximized": false,
-      "fullscreen": false
-    },
-    {
-      "className": "basepopupshadow",
-      "bounds": {
-        "left": 1058,
-        "top": 572,
-        "right": 1822,
-        "bottom": 1228
-      },
-      "buttons": {
-        "left": 1582,
-        "right": 1822,
-        "top": 572,
-        "bottom": 632
-      },
-      "buttonsFallback": true,
-      "dpi": 144,
-      "eligible": false,
-      "reason": "tool",
-      "maximized": false,
-      "fullscreen": false
-    },
-    {
-      "className": "InstallMainWindow",
-      "bounds": {
-        "left": 1065,
-        "top": 579,
-        "right": 1815,
-        "bottom": 1221
-      },
-      "buttons": {
-        "left": 1575,
-        "right": 1815,
-        "top": 579,
-        "bottom": 639
-      },
-      "buttonsFallback": true,
-      "dpi": 144,
-      "eligible": true,
-      "reason": "",
-      "maximized": false,
-      "fullscreen": false
-    },
-    {
-      "className": "Tauri Window",
-      "bounds": {
-        "left": 1217,
-        "top": 215,
-        "right": 2631,
-        "bottom": 1312
-      },
-      "buttons": {
-        "left": 2410,
-        "right": 2630,
-        "top": 215,
-        "bottom": 259
-      },
-      "buttonsFallback": false,
-      "dpi": 144,
-      "eligible": true,
-      "reason": "",
-      "maximized": false,
-      "fullscreen": false
-    },
-    {
-      "className": "CabinetWClass",
-      "bounds": {
-        "left": 155,
-        "top": 503,
-        "right": 1946,
-        "bottom": 1659
-      },
-      "buttons": {
-        "left": 1725,
-        "right": 1945,
-        "top": 503,
-        "bottom": 547
-      },
-      "buttonsFallback": false,
-      "dpi": 144,
-      "eligible": true,
-      "reason": "",
-      "maximized": false,
-      "fullscreen": false
-    },
-    {
-      "className": "HwndWrapper[Overwolf.exe;UI;508cebc9-bef6-46db-b2f5-1a01c79de94d]",
-      "bounds": {
-        "left": 114,
-        "top": 114,
-        "right": 134,
-        "bottom": 134
-      },
-      "buttons": {
-        "left": 114,
-        "right": 134,
-        "top": 114,
-        "bottom": 174
-      },
-      "buttonsFallback": true,
-      "dpi": 144,
-      "eligible": false,
-      "reason": "tool",
-      "maximized": false,
-      "fullscreen": false
-    },
-    {
-      "className": "HwndWrapper[Overwolf.exe;UI;ce276da2-eb0d-4b0a-9f15-9ac961811c83]",
+      "id": "69034",
+      "pid": 25232,
+      "className": "HwndWrapper[Overwolf.exe;UI;22a95e67-7a47-4d5b-b1ab-9904cb603524]",
       "bounds": {
         "left": 30000,
         "top": 30000,
@@ -410,54 +169,39 @@
       },
       "buttonsFallback": true,
       "dpi": 144,
+      "windowDpi": 144,
       "eligible": false,
       "reason": "tool",
       "maximized": false,
       "fullscreen": false
     },
     {
-      "className": "CEF-OSC-WIDGET",
+      "id": "134476",
+      "pid": 25232,
+      "className": "HwndWrapper[Overwolf.exe;UI;2a02cb40-3500-405f-955e-bdb0889f6407]",
       "bounds": {
-        "left": 0,
-        "top": 0,
-        "right": 2880,
-        "bottom": 1800
+        "left": 114,
+        "top": 114,
+        "right": 134,
+        "bottom": 134
       },
       "buttons": {
-        "left": 2640,
-        "right": 2880,
-        "top": 0,
-        "bottom": 60
+        "left": 114,
+        "right": 134,
+        "top": 114,
+        "bottom": 174
       },
       "buttonsFallback": true,
       "dpi": 144,
-      "eligible": false,
-      "reason": "tool",
-      "maximized": false,
-      "fullscreen": true
-    },
-    {
-      "className": "Tao Thread Event Target",
-      "bounds": {
-        "left": 0,
-        "top": 0,
-        "right": 22,
-        "bottom": 22
-      },
-      "buttons": {
-        "left": 0,
-        "right": 22,
-        "top": 0,
-        "bottom": 60
-      },
-      "buttonsFallback": true,
-      "dpi": 144,
+      "windowDpi": 144,
       "eligible": false,
       "reason": "tool",
       "maximized": false,
       "fullscreen": false
     },
     {
+      "id": "66230",
+      "pid": 13996,
       "className": "Progman",
       "bounds": {
         "left": 0,
@@ -473,68 +217,114 @@
       },
       "buttonsFallback": true,
       "dpi": 144,
+      "windowDpi": 144,
       "eligible": false,
       "reason": "shell",
       "maximized": false,
       "fullscreen": true
     }
   ],
+  "ignoredTransparentWindows": [
+    {
+      "id": "1511440",
+      "pid": 3876,
+      "bounds": {
+        "left": 1608,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "extendedStyle": 2621608,
+      "reason": "layered-click-through"
+    },
+    {
+      "id": "135066",
+      "pid": 39308,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 22,
+        "bottom": 22
+      },
+      "extendedStyle": 134742176,
+      "reason": "layered-click-through"
+    },
+    {
+      "id": "200604",
+      "pid": 39308,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 22,
+        "bottom": 22
+      },
+      "extendedStyle": 134742176,
+      "reason": "layered-click-through"
+    },
+    {
+      "id": "132356",
+      "pid": 20028,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "extendedStyle": 134742144,
+      "reason": "alpha-zero"
+    },
+    {
+      "id": "65950",
+      "pid": 11304,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 22,
+        "bottom": 22
+      },
+      "extendedStyle": 134742176,
+      "reason": "layered-click-through"
+    }
+  ],
   "ledges": [
     {
-      "id": "6688716",
-      "left": 230,
-      "right": 1608,
-      "y": 167
+      "id": "134466",
+      "left": 840,
+      "right": 2403,
+      "y": 450
     },
     {
-      "id": "197920",
-      "left": 286,
-      "right": 1608,
-      "y": 112
-    },
-    {
-      "id": "660174",
-      "left": 39,
-      "right": 1219,
-      "y": 30
-    },
-    {
-      "id": "660174",
-      "left": 1439,
-      "right": 1440,
-      "y": 30
-    },
-    {
-      "id": "393816",
-      "left": 1440,
-      "right": 1608,
-      "y": 38
+      "id": "1641300",
+      "left": 170,
+      "right": 1857,
+      "y": 104
     }
   ],
   "pollingMs": {
     "count": 277,
-    "mean": 2.9340101083030987,
-    "p95": 3.5758999999998196,
-    "max": 5.51260000000002
+    "mean": 2.139642960288857,
+    "p95": 2.937000000001717,
+    "max": 3.4464999999981956
   },
   "pollingCpuUs": {
     "count": 277,
-    "mean": 2642.599277978339,
+    "mean": 1859.2057761732851,
     "p95": 16000,
     "max": 16000
   },
-  "pollingCpuOneCorePercent": 2.4439599646237467,
+  "pollingCpuTotalUs": 515000,
+  "pollingCpuOneCorePercent": 1.7164654511433806,
   "sampleIntervalsMs": {
     "count": 276,
-    "mean": 108.51953188405795,
-    "p95": 110.21950000000015,
-    "max": 113.85560000000004
+    "mean": 108.70839420289856,
+    "p95": 110.34409999999843,
+    "max": 113.20229999999998
   },
   "sampleToRendererAckMs": {
-    "count": 277,
-    "mean": 5.342076534295974,
-    "p95": 4.636900000000082,
-    "max": 236.3578
+    "count": 276,
+    "mean": 4.406766666666663,
+    "p95": 3.7220000000015716,
+    "max": 203.322
   },
   "commandedMovementToRendererAckMs": {
     "count": 0,

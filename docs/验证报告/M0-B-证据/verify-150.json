@@ -46,7 +46,7 @@
       "depthPerComponent": 8,
       "detected": true,
       "displayFrequency": 120,
-      "id": 586695528,
+      "id": 1476577633,
       "internal": true,
       "label": "ATNA40CU05-0 ",
       "maximumCursorSize": {
@@ -77,11 +77,11 @@
       "touchSupport": "unknown"
     }
   ],
-  "capturedAt": "2026-09-30T21:22:38.936Z",
+  "capturedAt": "2026-10-01T06:31:42.509Z",
   "windows": [
     {
-      "id": "4982928",
-      "pid": 55480,
+      "id": "461244",
+      "pid": 24188,
       "title": "M0-B Fixture",
       "className": "Chrome_WidgetWin_1",
       "bounds": {
@@ -105,8 +105,8 @@
       "fullscreen": false
     },
     {
-      "id": "6361454",
-      "pid": 55480,
+      "id": "3084640",
+      "pid": 24188,
       "title": "M0-B Occluder",
       "className": "Chrome_WidgetWin_1",
       "bounds": {
@@ -130,8 +130,8 @@
       "fullscreen": false
     },
     {
-      "id": "2621666",
-      "pid": 55480,
+      "id": "722032",
+      "pid": 24188,
       "title": "M0-B Legacy",
       "className": "Static",
       "bounds": {
@@ -141,10 +141,10 @@
         "bottom": 1114
       },
       "buttons": {
-        "left": 2419,
-        "right": 2639,
+        "left": 2504,
+        "right": 2839,
         "top": 750,
-        "bottom": 795
+        "bottom": 818
       },
       "buttonsFallback": false,
       "dpi": 144,
@@ -157,20 +157,8 @@
   ],
   "ignoredTransparentWindows": [
     {
-      "id": "7146784",
-      "pid": 9776,
-      "bounds": {
-        "left": 0,
-        "top": 0,
-        "right": 2880,
-        "bottom": 1728
-      },
-      "extendedStyle": 136839208,
-      "reason": "layered-click-through"
-    },
-    {
-      "id": "9570356",
-      "pid": 55480,
+      "id": "461240",
+      "pid": 24188,
       "bounds": {
         "left": 2261,
         "top": 750,
@@ -181,8 +169,8 @@
       "reason": "alpha-zero"
     },
     {
-      "id": "19927616",
-      "pid": 55480,
+      "id": "3737106",
+      "pid": 24188,
       "bounds": {
         "left": 2261,
         "top": 750,
@@ -193,8 +181,8 @@
       "reason": "layered-click-through"
     },
     {
-      "id": "463522",
-      "pid": 35812,
+      "id": "1511440",
+      "pid": 3876,
       "bounds": {
         "left": 1608,
         "top": 0,
@@ -205,20 +193,32 @@
       "reason": "layered-click-through"
     },
     {
-      "id": "1248190",
-      "pid": 29464,
+      "id": "135066",
+      "pid": 39308,
       "bounds": {
-        "left": 1058,
-        "top": 572,
-        "right": 1822,
-        "bottom": 1228
+        "left": 0,
+        "top": 0,
+        "right": 22,
+        "bottom": 22
       },
       "extendedStyle": 134742176,
       "reason": "layered-click-through"
     },
     {
-      "id": "262628",
-      "pid": 22500,
+      "id": "200604",
+      "pid": 39308,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 22,
+        "bottom": 22
+      },
+      "extendedStyle": 134742176,
+      "reason": "layered-click-through"
+    },
+    {
+      "id": "132356",
+      "pid": 20028,
       "bounds": {
         "left": 0,
         "top": 0,
@@ -229,8 +229,8 @@
       "reason": "alpha-zero"
     },
     {
-      "id": "131356",
-      "pid": 4204,
+      "id": "65950",
+      "pid": 11304,
       "bounds": {
         "left": 0,
         "top": 0,
@@ -241,42 +241,64 @@
       "reason": "layered-click-through"
     }
   ],
+  "ledges": [
+    {
+      "id": "461244",
+      "left": 759,
+      "right": 1720,
+      "y": 330
+    },
+    {
+      "id": "3084640",
+      "left": 909,
+      "right": 1198,
+      "y": 210
+    },
+    {
+      "id": "722032",
+      "left": 2261,
+      "right": 2504,
+      "y": 750
+    }
+  ],
   "pollingMs": {
-    "count": 152,
-    "mean": 3.6074539473684397,
-    "p95": 5.5974999999998545,
-    "max": 11.2192
+    "count": 154,
+    "mean": 2.5325675324674637,
+    "p95": 3.6103000000002794,
+    "max": 10.295599999999922
   },
   "pollingCpuUs": {
-    "count": 152,
-    "mean": 2572.3684210526317,
+    "count": 154,
+    "mean": 2129.87012987013,
     "p95": 16000,
-    "max": 32000
+    "max": 63000
   },
-  "pollingCpuTotalUs": 391000,
-  "pollingCpuOneCorePercent": 2.483756439337079,
+  "pollingCpuTotalUs": 328000,
+  "pollingCpuOneCorePercent": 2.0546562362794534,
   "sampleIntervalsMs": {
-    "count": 151,
-    "mean": 104.25353841059604,
-    "p95": 110.86990000000014,
-    "max": 125.76070000000072
+    "count": 153,
+    "mean": 104.33817647058824,
+    "p95": 110.33279999999968,
+    "max": 124.80770000000007
   },
   "sampleToRendererAckMs": {
-    "count": 151,
-    "mean": 9.355333774834413,
-    "p95": 8.907800000000861,
-    "max": 242.75560000000002
+    "count": 149,
+    "mean": 3.8791228187918874,
+    "p95": 6.566299999998591,
+    "max": 13.907199999999875
   },
   "commandedMovementToRendererAckMs": {
     "count": 5,
-    "mean": 96.48159999999989,
-    "p95": 99.48890000000029,
-    "max": 108.96219999999994
+    "mean": 80.90767999999989,
+    "p95": 96.0002000000004,
+    "max": 99.03229999999894
   },
-  "fastWindowIds": ["4982928"],
+  "fastWindowIds": ["461244"],
   "verificationChecks": [
+    "serialized-overlay-rebuild",
     "transparent-occluders",
     "legacy-monitor-dpi",
+    "legacy-buttons-right-edge",
     "canvas-css-size",
     "known-window-position",
     "native-enumeration",

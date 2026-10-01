@@ -117,6 +117,7 @@ export function enumerateWindows(monitors: MonitorInfo[]): WindowInfo[] {
       return overlap(b) - overlap(a);
     })[0];
     const dpi = monitor.dpi;
+    const windowDpi = getDpi(hwnd) || 96;
     const maximized = Boolean(zoomed(hwnd));
     const fullscreen = monitors.some(
       (m) =>
@@ -153,11 +154,13 @@ export function enumerateWindows(monitors: MonitorInfo[]): WindowInfo[] {
       getRect(hwnd, raw)
     ) {
       buttons = {
-        left: raw.left + relative.left,
-        right: raw.left + relative.right,
-        top: raw.top + relative.top,
-        bottom: raw.top + relative.bottom,
+        left: Math.round(raw.left + relative.left * (dpi / windowDpi)),
+        right: Math.round(raw.left + relative.right * (dpi / windowDpi)),
+        top: Math.round(raw.top + relative.top * (dpi / windowDpi)),
+        bottom: Math.round(raw.top + relative.bottom * (dpi / windowDpi)),
       };
+      // 虚拟化按钮坐标的边框舍入仍可能留缝；倍率不同则保守预留到可见右边缘。
+      if (dpi !== windowDpi) buttons.right = Math.max(buttons.right, bounds.right);
     }
     // 自绘标题栏没有可靠按钮边界时，保守扣掉右侧 160 DIP，报告记录该退路。
     const buttonsFallback = !buttons;
@@ -177,7 +180,7 @@ export function enumerateWindows(monitors: MonitorInfo[]): WindowInfo[] {
       buttons,
       buttonsFallback,
       dpi,
-      windowDpi: getDpi(hwnd) || 96,
+      windowDpi,
       eligible: !reason,
       reason,
       maximized,
@@ -254,6 +257,7 @@ export function createNativeFixtures(): void {
     ['M0-B Legacy', 0],
   ] as const) {
     const oldContext = setDpiContext(-1);
+    if (!oldContext) throw new Error(`无法为 ${title} 切换 DPI 上下文。`);
     let hwnd: unknown;
     try {
       hwnd = createWindow(
@@ -271,7 +275,7 @@ export function createNativeFixtures(): void {
         null,
       );
     } finally {
-      setDpiContext(oldContext);
+      if (!setDpiContext(oldContext)) throw new Error(`无法为 ${title} 恢复 DPI 上下文。`);
     }
     if (!hwnd) throw new Error(`无法创建 ${title} 测试窗口。`);
     if (exStyle & WS_EX_LAYERED) {

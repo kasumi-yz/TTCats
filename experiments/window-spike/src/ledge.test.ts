@@ -28,6 +28,12 @@ test('按钮右侧的像素碎线不能提供可站立的窗口顶边', () => {
   target.buttons = { left: 850, right: 998, top: 100, bottom: 140 };
   assert.deepEqual(computeLedges([target]), [{ id: 'target', left: 0, right: 850, y: 100 }]);
 });
+test('144 DPI 下不足 8 逻辑像素的碎线不能成为窗口顶边', () => {
+  const target = window('target', 0, 100, 1000, 500);
+  target.dpi = 144;
+  target.buttons = { left: 12, right: 989, top: 100, bottom: 140 };
+  assert.deepEqual(computeLedges([target]), [{ id: 'target', left: 0, right: 12, y: 100 }]);
+});
 test('窗口顶边不能出现在遮挡窗口或标题栏按钮下面', () => {
   const target = window('target', 0, 100, 1000, 500);
   target.buttons = { left: 850, right: 1000, top: 100, bottom: 140 };
