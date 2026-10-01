@@ -45,7 +45,11 @@ export class FileLog {
         body = JSON.stringify(message.slice(0, Math.floor(body.length / 4)));
       }
       const line = prefix + body + '\n';
-      const size = fs.existsSync(this.file) ? fs.statSync(this.file).size : 0;
+      const existing = fs.existsSync(this.file) ? fs.statSync(this.file) : undefined;
+      if (existing !== undefined && !existing.isFile()) {
+        throw new Error(zh.recovery.logWriteFailed(this.file));
+      }
+      const size = existing?.size ?? 0;
       if (size + Buffer.byteLength(line) > this.maxBytes) this.rotate();
       fs.appendFileSync(this.file, line, 'utf8');
     } catch (cause) {

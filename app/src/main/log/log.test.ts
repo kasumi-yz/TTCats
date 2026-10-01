@@ -52,15 +52,19 @@ describe('日志为排查故障留下有限大小的记录', () => {
     const log = logger();
     const before = process.listenerCount('uncaughtException');
     const detach = attachMainLog(log);
-    EventEmitter.prototype.emit.call(
-      process,
-      'uncaughtExceptionMonitor',
-      new Error('main-fault'),
-      'uncaughtException',
-    );
-    EventEmitter.prototype.emit.call(process, 'warning', new Error('main-warning'));
-    expect(fs.readFileSync(log.file, 'utf8')).toContain('main-fault');
-    expect(process.listenerCount('uncaughtException')).toBe(before);
-    detach();
+    try {
+      EventEmitter.prototype.emit.call(
+        process,
+        'uncaughtExceptionMonitor',
+        new Error('main-fault'),
+        'uncaughtException',
+      );
+      expect(fs.readFileSync(log.file, 'utf8')).toContain('main-fault');
+      EventEmitter.prototype.emit.call(process, 'warning', new Error('main-warning'));
+      expect(fs.readFileSync(log.file, 'utf8')).toContain('main-warning');
+      expect(process.listenerCount('uncaughtException')).toBe(before);
+    } finally {
+      detach();
+    }
   });
 });
