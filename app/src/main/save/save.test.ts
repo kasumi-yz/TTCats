@@ -1,4 +1,6 @@
 import * as fs from 'node:fs';
+// eslint-disable-next-line no-restricted-imports -- 系统临时目录仅用于测试，不是应用的平台实现。
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
@@ -44,8 +46,8 @@ function backupFiles(): string[] {
 }
 
 beforeEach(() => {
-  // 临时目录在测试文件下面创建；清理目标始终是这个 mkdtemp 返回的绝对路径。
-  directory = fs.mkdtempSync(join(import.meta.dirname, 'test-save-'));
+  // 清理目标始终是系统临时目录下 mkdtemp 返回的绝对路径。
+  directory = fs.mkdtempSync(join(tmpdir(), 'ttcats-test-save-'));
   now = 1000;
   logs = [];
   stores = [];
@@ -174,6 +176,63 @@ describe('存档：重启后的状态和崩溃恢复', () => {
 });
 
 describe('存档：迁移和降级保护', () => {
+  it.each(['missing-migration', 'throwing-migration', 'stricter-schema'])(
+    '%s 导致回到默认状态后，连续保存六次仍保留原存档字节供修复',
+    (kind) => {
+      const original = store();
+      for (let index = 0; index < 6; index++) save(original, `real-${index}`);
+      const bytes = fs.readFileSync(original.file);
+      const upgraded = store({
+        currentVersion: 2,
+        schema:
+          kind === 'stricter-schema'
+            ? stateSchema.refine((state) => state.visibleCats.length === 0)
+            : stateSchema,
+        migrations:
+          kind === 'missing-migration'
+            ? {}
+            : {
+                1: (state) => {
+                  if (kind === 'throwing-migration') throw new Error('migration failed');
+                  return state;
+                },
+              },
+      });
+      const loaded = upgraded.load();
+      expect(loaded.source).toBe('default');
+      for (let index = 0; index < 6; index++) {
+        upgraded.requestSave(loaded.state);
+        upgraded.flush();
+      }
+      const preserved = fs
+        .readdirSync(directory)
+        .filter((name) => name.startsWith('save.invalid.'));
+      expect(preserved).toHaveLength(1);
+      const file = join(directory, preserved[0] ?? '');
+      expect(fs.readFileSync(file)).toEqual(bytes);
+      expect(logs).toContain(zh.save.written(file));
+      expect(backupFiles()).toHaveLength(5);
+      // 修复迁移后，保留的原件确实能恢复用户数据。
+      fs.writeFileSync(original.file, fs.readFileSync(file));
+      expect(
+        store({ currentVersion: 2, migrations: { 1: (state) => state } }).load().state,
+      ).toEqual({
+        visibleCats: ['real-5'],
+      });
+    },
+  );
+
+  it('非法 JSON 原件按字节保留，不能用 UTF-8 解码后的内容替代', () => {
+    const target = store();
+    const bytes = Buffer.from([0xff, 0xfe, 0x7b, 0x00]);
+    fs.writeFileSync(target.file, bytes);
+    save(target, 'doudou');
+    const [preserved] = fs
+      .readdirSync(directory)
+      .filter((name) => name.startsWith('save.invalid.'));
+    expect(fs.readFileSync(join(directory, preserved ?? ''))).toEqual(bytes);
+  });
+
   it('逐版本迁移再校验当前状态，原件在显式保存前不变', () => {
     const target = store({
       currentVersion: 3,
@@ -264,6 +323,38 @@ describe('存档：迁移和降级保护', () => {
 });
 
 describe('存档：合并写入和安全替换', () => {
+  it('成功写入和坏备份检查不重复刷日志，恢复时仍报告坏备份', () => {
+    const target = store();
+    save(target, 'doudou');
+    const badBackup = join(directory, 'save.backup.0000000000000001.json');
+    fs.writeFileSync(badBackup, '{');
+    target.loadLatestBackup();
+    expect(logs).toContain(zh.save.invalidJson(badBackup));
+    logs.length = 0;
+    save(target, 'kubo');
+    save(target, 'mahjong');
+    expect(logs).toEqual([]);
+  });
+
+  it('原件保留失败时禁止覆盖，修复后待写状态可以重试', () => {
+    const target = store();
+    fs.writeFileSync(target.file, '{');
+    const bytes = fs.readFileSync(target.file);
+    const originalOpen = fs.openSync;
+    const open = vi.spyOn(fs, 'openSync').mockImplementation((file, flags, mode) => {
+      if (String(file).includes('save.invalid.')) throw new Error('preserve failed');
+      return originalOpen(file, flags, mode);
+    });
+    target.requestSave({ visibleCats: ['doudou'] });
+    expect(() => {
+      target.flush();
+    }).toThrow(zh.save.writeFailed(target.file));
+    expect(fs.readFileSync(target.file)).toEqual(bytes);
+    open.mockRestore();
+    target.flush();
+    expect(target.load().state.visibleCats).toEqual(['doudou']);
+  });
+
   it('频繁变化只写最后一份快照，而且后续修改对象不能偷偷改变待写状态', () => {
     const target = store();
     const state = { visibleCats: ['doudou'] };
@@ -364,7 +455,6 @@ describe('存档：合并写入和安全替换', () => {
     expect(() => {
       target.flush();
     }).toThrow(zh.save.writeFailed(target.file));
-    expect(logs).toContain(zh.save.readFailed(target.file));
     read.mockRestore();
     expect(target.load().state.visibleCats).toEqual(['doudou']);
   });

@@ -1,14 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import { join } from 'node:path';
-import { z } from 'zod';
+import type { z } from 'zod';
+import { SaveEnvelopeSchema } from '../../shared/schemas/save';
 import { zh } from '../../shared/strings.zh-CN';
-
-// #18 尚未合并：字段与其 SaveEnvelopeSchema 一致，不依赖具体 GameState。
-const envelopeSchema = z.strictObject({
-  saveVersion: z.int().min(1),
-  savedAt: z.number().nonnegative(),
-  state: z.unknown(),
-});
 
 export interface SaveOptions<T> {
   /** 由主进程传入数据目录，正式应用使用 %APPDATA%\\TTCats。 */
@@ -120,12 +115,12 @@ export class SaveStore<T> {
     try {
       fs.mkdirSync(this.options.directory, { recursive: true });
       // 即使调用方未先 load，也必须检查磁盘上的新版本存档。
-      const previous = this.read(this.file);
+      const previous = this.read(this.file, false);
       if (previous.kind === 'newer') throw new Error(zh.save.writeProtected);
       if (previous.kind === 'unreadable') throw new Error(zh.save.readFailed(this.file));
       // 新版数据也可能只在备份里；不能通过轮换备份逐步删除它。
       for (const file of this.backups()) {
-        const backup = this.read(file);
+        const backup = this.read(file, false);
         if (backup.kind === 'newer') throw new Error(zh.save.writeProtected);
         if (backup.kind === 'unreadable') throw new Error(zh.save.readFailed(file));
       }
@@ -135,6 +130,7 @@ export class SaveStore<T> {
         `{"saveVersion":${this.options.currentVersion},"savedAt":${savedAt},"state":${this.pending}}\n`,
       );
       if (previous.kind === 'valid') this.backupMain();
+      if (previous.kind === 'invalid') this.preserveInvalidMain();
       this.pruneBackups();
       // 同目录 rename：替换失败时不删除主文件，保留原件和已刷盘的临时文件。
       fs.renameSync(temporary, this.file);
@@ -143,7 +139,6 @@ export class SaveStore<T> {
       if (this.readOnly) throw new Error(zh.save.writeProtected, { cause });
       throw new Error(zh.save.writeFailed(this.file), { cause });
     }
-    this.options.log(zh.save.written(this.file));
   }
 
   private validate(state: unknown, file: string): T {
@@ -157,23 +152,26 @@ export class SaveStore<T> {
     return result.data;
   }
 
-  private read(file: string): ReadResult<T> {
+  private read(file: string, report = true): ReadResult<T> {
+    const log = (message: string): void => {
+      if (report) this.options.log(message);
+    };
     let raw: string;
     try {
       raw = fs.readFileSync(file, 'utf8');
     } catch (error) {
       if (isMissing(error)) {
-        this.options.log(zh.save.fileMissing(file));
+        log(zh.save.fileMissing(file));
         return { kind: 'missing' };
       }
-      this.options.log(zh.save.readFailed(file));
+      log(zh.save.readFailed(file));
       return { kind: 'unreadable' };
     }
     let json: unknown;
     try {
       json = JSON.parse(raw) as unknown;
     } catch {
-      this.options.log(zh.save.invalidJson(file));
+      log(zh.save.invalidJson(file));
       return { kind: 'invalid' };
     }
     // 新版可能改变外层格式，先检查版本，不能因旧 schema 不认识字段就覆盖它。
@@ -185,9 +183,9 @@ export class SaveStore<T> {
         return { kind: 'newer' };
       }
     }
-    const envelope = envelopeSchema.safeParse(json);
+    const envelope = SaveEnvelopeSchema.safeParse(json);
     if (!envelope.success) {
-      this.options.log(zh.save.invalidEnvelope(file));
+      log(zh.save.invalidEnvelope(file));
       return { kind: 'invalid' };
     }
     let state: unknown = envelope.data.state;
@@ -198,26 +196,24 @@ export class SaveStore<T> {
     ) {
       const migrate = this.options.migrations?.[version];
       if (migrate === undefined) {
-        this.options.log(zh.save.migrationMissing(file, version, version + 1));
+        log(zh.save.migrationMissing(file, version, version + 1));
         return { kind: 'invalid' };
       }
       try {
         state = migrate(state);
       } catch {
-        this.options.log(zh.save.migrationFailed(file, version, version + 1));
+        log(zh.save.migrationFailed(file, version, version + 1));
         return { kind: 'invalid' };
       }
     }
     try {
       const validated = this.validate(state, file);
       if (envelope.data.saveVersion < this.options.currentVersion) {
-        this.options.log(
-          zh.save.migrated(file, envelope.data.saveVersion, this.options.currentVersion),
-        );
+        log(zh.save.migrated(file, envelope.data.saveVersion, this.options.currentVersion));
       }
       return { kind: 'valid', state: validated, savedAt: envelope.data.savedAt };
     } catch (error) {
-      this.options.log(error instanceof Error ? error.message : zh.save.invalidEnvelope(file));
+      log(error instanceof Error ? error.message : zh.save.invalidEnvelope(file));
       return { kind: 'invalid' };
     }
   }
@@ -245,7 +241,7 @@ export class SaveStore<T> {
     }
   }
 
-  private writeSynced(file: string, data: string): void {
+  private writeSynced(file: string, data: string | Uint8Array): void {
     const descriptor = fs.openSync(file, 'w');
     try {
       fs.writeFileSync(descriptor, data, 'utf8');
@@ -253,6 +249,14 @@ export class SaveStore<T> {
     } finally {
       fs.closeSync(descriptor);
     }
+  }
+
+  private preserveInvalidMain(): void {
+    const file = join(this.options.directory, `save.invalid.${randomUUID()}.json`);
+    // 原始字节保留；迁移修好后可人工恢复，不参与备份轮换或自动加载。
+    this.writeSynced(`${file}.tmp`, fs.readFileSync(this.file));
+    fs.renameSync(`${file}.tmp`, file);
+    this.options.log(zh.save.written(file));
   }
 
   private backupMain(): void {
