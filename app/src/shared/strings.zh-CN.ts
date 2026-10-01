@@ -159,4 +159,10 @@ export const zh = {
     invalidTime: '存档保存时间必须是非负有限数。',
     wholeState: '整个存档状态',
   },
+  game: {
+    catUnavailable: (cat: string) => `猫「${cat}」的猫咪包未加载或已停用，无法执行命令。`,
+    catHidden: (cat: string) => `猫「${cat}」当前已隐藏，请先显示它再执行命令。`,
+    clipUnavailable: (cat: string, clip: string, variant?: number) =>
+      `猫「${cat}」缺少片段「${clip}」${variant === undefined ? '' : `的版本 ${variant}`}，无法播放。`,
+  },
 };
