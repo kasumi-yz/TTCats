@@ -40,7 +40,7 @@ npx tsx app/src/main/recovery/desktop.verify.ts
 
 桌面自动验收将原生提示替换成同文字的窗口，以便 Playwright 读到中文并截图；原生提示的按钮和打开日志文件夹调用由单元测试覆盖。没有人工点过原生按钮。没有做性能测试，也没有声称完成 #29 的整体验收。
 
-2026-10-01 Windows 实测（Electron 44.5.1）：四次调试崩溃后只重载 3 次并进入安全模式；四类页面错误均写入日志；真实卡死恢复用时 11968 ms。`npm run check` 通过：12 个测试文件、215 个测试，未跳过测试；构建和启动冒烟测试通过。
+2026-10-01 Windows 实测（Electron 44.5.1）：四次调试崩溃后只重载 3 次并进入安全模式；四类页面错误均写入日志；真实卡死恢复用时 11968 ms。同步最新 main 后，`npm run check` 通过：13 个测试文件、258 个测试，未跳过测试；构建和启动冒烟测试通过。
 
 安全模式证据目录：`C:\Users\60120\AppData\Local\Temp\ttcats-recovery-desktop-Hy1FZo`；卡死恢复证据目录：`C:\Users\60120\AppData\Local\Temp\ttcats-recovery-hang-Q1VWKj`。前者的提示窗口截图随本模块保留：
 
