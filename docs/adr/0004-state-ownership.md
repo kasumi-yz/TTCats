@@ -1,5 +1,5 @@
 ---
-status: proposed（待 M0 验证）
+status: accepted（M0-A 验证，2026-10-01）
 ---
 
 # 需要存档的状态归主进程管，画面上的状态归桌面层管
@@ -21,4 +21,6 @@ status: proposed（待 M0 验证）
 ## Consequences
 
 - core 拆成两块：core/game 在主进程运行，core/stage 在桌面层运行。两块都必须是纯 TypeScript，不依赖 Electron、DOM 或 PixiJS。
+- M0-A 实测：窗口隐藏后 `requestAnimationFrame` 立刻停止，计时器大约 1 分钟后被节流，按帧数或按计时器次数累加都会算错；主进程按真实时间结算是对的。
+- 系统睡眠不做手动实测（用户决定，2026-10-01）。core/game 的时间全部由调用方传入，所以用单元测试模拟"时间突然跳过一大段"来覆盖。
 - "离线"要分情况处理：退出程序、系统睡眠、隐藏某只猫，算作离线；全屏时自动隐藏、开着勿扰模式，不算离线。具体规则见 `docs/设计方案.md` 中的 D16。
