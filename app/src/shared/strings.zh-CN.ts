@@ -245,4 +245,22 @@ export const zh = {
     endpointMismatch: (name: string) => `片段「${name}」首尾帧与姿势帧不一致。`,
     generated: '测试猫咪包已生成，全部片段首尾帧已核对。',
   },
+  recovery: {
+    invalidLogOptions: '日志配置不对：单文件至少 256 字节，备份份数必须是 0～20 的整数。',
+    invalidTimeout: '桌面层无响应等待时间必须是非负有限数。',
+    invalidTime: '崩溃恢复时间必须是非负有限数。',
+    logWriteFailed: (file: string) => `无法写入日志「${file}」，请检查文件权限和磁盘。`,
+    retry: (count: number) =>
+      `桌面层发生故障，正在自动重新加载（5 分钟内第 ${count} 次，最多 3 次）。`,
+    unresponsive: '桌面层长时间没有响应，正在终止故障的渲染进程。',
+    safeModeTitle: 'TTCats 已进入安全模式',
+    openLogs: '打开日志文件夹',
+    close: '关闭',
+    safeMode: (cats: readonly string[], hasBackup: boolean, identified: boolean) =>
+      `桌面层在 5 分钟内连续发生了 4 次故障，已停止自动重试并进入安全模式。本次运行里桌面上的猫不会再出现，面板仍可使用。${hasBackup ? '已加载最近一份正常的备份存档。' : '没有可用的备份存档，暂时使用默认设置，原存档仍保留。'}${cats.length > 0 ? `${identified ? '已确定故障来源，本次运行已停用猫咪包' : '无法确定故障来源，本次运行已停用所有当前显示的猫咪包'}：${cats.join('、')}。` : '当前没有显示中的猫咪包。'}请打开日志文件夹查看故障记录，修复或移除出问题的猫咪包后，退出并重新打开 TTCats。`,
+    rendererLogSkipped: (name: string, count: number) =>
+      `来源「${name}」报错过于频繁，已省略 ${count} 条日志。`,
+    failed:
+      '桌面层恢复失败，已停止自动重试并隐藏桌面层，原存档仍保留。请打开日志文件夹查看故障记录，修复问题后退出并重新打开 TTCats。',
+  },
 };
