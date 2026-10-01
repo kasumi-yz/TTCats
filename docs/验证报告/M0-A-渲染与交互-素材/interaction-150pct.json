@@ -1,5 +1,5 @@
 {
-  "time": "2026-09-30T20:42:11.621Z",
+  "time": "2026-10-01T05:29:18.029Z",
   "scaleFactor": 1.5,
   "workArea": {
     "x": 0,
@@ -12,7 +12,7 @@
     "chrome": "152.0.7977.130",
     "node": "24.21.0"
   },
-  "interferences": 0,
+  "interferences": 2,
   "passed": 23,
   "failed": 0,
   "results": [
@@ -59,8 +59,8 @@
       "detail": "隔 5ms 及以上 5/5 点中；全部 40 次里有 4 次点击丢失（猫和下面的窗口都没收到）",
       "data": {
         "0": {
-          "lost": 4,
-          "cat-a": 1
+          "probe": 1,
+          "lost": 4
         },
         "5": {
           "cat-a": 5
@@ -89,11 +89,10 @@
       "scenario": "快速移到猫身上马上点",
       "name": "鼠标刚离开猫就点旁边的空白处",
       "pass": true,
-      "detail": "隔 5ms 及以上 5/5 落到下面的窗口；共 1/25 次被桌面层吃掉或丢失",
+      "detail": "隔 0ms 及以上 5/5 落到下面的窗口；共 0/25 次被桌面层吃掉或丢失",
       "data": {
         "0": {
-          "swallowed": 1,
-          "probe": 4
+          "probe": 5
         },
         "5": {
           "probe": 5
@@ -143,7 +142,7 @@
       "scenario": "按住 Ctrl 拖动",
       "name": "拖到一半按 Ctrl：继续拖完，松手后穿透",
       "pass": true,
-      "detail": "按 Ctrl 后仍在拖=true，猫到了松手位置=true，下面的窗口收到 0 个事件，松手后 16ms 恢复穿透（光标还在猫身上）"
+      "detail": "按 Ctrl 后仍在拖=true，猫到了松手位置=true，下面的窗口收到 0 个事件，松手后 14ms 恢复穿透（光标还在猫身上）"
     },
     {
       "scenario": "两只猫重叠",
@@ -179,25 +178,25 @@
       "scenario": "焦点",
       "name": "在记事本里打字时点猫",
       "pass": true,
-      "detail": "点到猫=true，点猫后记事本仍在前台=true，记事本里的内容=\"abcdef\""
+      "detail": "点到猫=true，点猫后测试文档仍在前台=true，测试文档里的内容=\"abcdef\""
     },
     {
       "scenario": "防卡死",
       "name": "从猫身上移到空白处",
       "pass": true,
-      "detail": "14ms 恢复穿透（触发原因：leave）"
+      "detail": "16ms 恢复穿透（触发原因：leave）"
     },
     {
       "scenario": "防卡死",
       "name": "从猫身上移到桌面层外面（任务栏）",
       "pass": true,
-      "detail": "30ms 恢复穿透（触发原因：cursorOutside）"
+      "detail": "29ms 恢复穿透（触发原因：cursorOutside）"
     },
     {
       "scenario": "防卡死",
       "name": "渲染进程卡住 1 秒时从猫身上移开",
       "pass": true,
-      "detail": "61ms 恢复穿透（触发原因：leaseExpired）；200ms 时点空白处落到了下面的窗口"
+      "detail": "63ms 恢复穿透（触发原因：leaseExpired）；200ms 时点空白处落到了下面的窗口"
     }
   ],
   "lostClicks": [
