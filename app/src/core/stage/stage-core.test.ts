@@ -635,6 +635,57 @@ describe('屏幕和设置变化', () => {
     }
   });
 
+  it.each([
+    { width: 2560, height: 1392 },
+    { width: 1280, height: 688 },
+  ])('走到一半调整屏幕大小（$width×$height），下一帧从新位置接着走，方向和步速不变', (bounds) => {
+    const env: ActorEnv = {
+      random: () => 0.5,
+      floor: new Floor({ bounds: SCREEN, scale: 1, floorDepth: 0 }),
+      scale: 1,
+      activityLevel: 'natural',
+      addEffect: () => undefined,
+    };
+    const actor = new CatActor(testCat('a'), testClips(['run']), env, {
+      x: 960,
+      d: 0.5,
+      facing: 'right',
+      now: T0,
+    });
+    actor.interrupt(
+      [{ kind: 'move', gait: 'walk', x: 100, d: 0.5 }],
+      { kind: 'summon' },
+      'cut',
+      T0,
+    );
+    actor.advance(T0, T0 + 1000, false);
+    const mid = actor.placement();
+    expect(mid.clip).toBe('walk');
+    env.floor = new Floor({ bounds, scale: 1, floorDepth: 0 });
+    actor.rescaleX(bounds.width / SCREEN.width);
+    const rescaled = actor.placement();
+    expect(rescaled.x).toBeCloseTo((mid.x * bounds.width) / SCREEN.width, 6);
+    actor.advance(T0 + 1000, T0 + 1100, false);
+    const next = actor.placement();
+    expect(next.clip).toBe('walk');
+    expect(next.x - rescaled.x).toBeCloseTo((-80 * next.playbackRate * 100) / 1000, 6);
+  });
+
+  it('改缩放把位置收回地板时，走路接着走、不跳位', () => {
+    const { stage } = setup({ settings: { floorDepth: 0 } });
+    stage.handleCommand({ type: 'cat/summon', cats: ['a'], to: { x: 1800, y: 1000 } }, T0);
+    let t = T0;
+    let p = placementOf(stage.update(t));
+    while (p.clip !== 'walk' && t < T0 + 10_000) p = placementOf(stage.update((t += 33)));
+    p = placementOf(stage.update((t += 700)));
+    stage.applySnapshot(snapshot(['a'], { floorDepth: 0, scale: 2 }, 2), t);
+    const after = placementOf(stage.update(t));
+    const next = placementOf(stage.update(t + 33));
+    expect(after.x).toBeCloseTo(p.x, 6);
+    expect(next.x - after.x).toBeGreaterThan(0);
+    expect(next.x - after.x).toBeLessThan(10);
+  });
+
   it('桌面层大小为 0 时不出现 NaN，恢复后照常', () => {
     const { stage } = setup();
     stage.setBounds({ width: 0, height: 0 }, T0 + 100);

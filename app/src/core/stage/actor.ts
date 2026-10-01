@@ -467,7 +467,6 @@ export class CatActor {
     if (move !== undefined) {
       move.fromX *= factor;
       move.toX *= factor;
-      move.cycleStartX *= factor;
     }
     for (const step of this.queue) {
       if (step.kind === 'move') step.x *= factor;
@@ -479,6 +478,12 @@ export class CatActor {
   clampToFloor(): void {
     this.x = this.env.floor.clampX(this.x, this.cat.relativeSize);
     this.d = clamp01(this.d);
+    // 位置被挪过：重新定这一遍的起点，让下一帧从现在的位置接着走，步速不变
+    const move = this.seg.move;
+    if (move !== undefined) {
+      const cycleStart = this.seg.end - clipDurationMs(this.seg.clip);
+      move.cycleStartX = this.x - move.dir * move.cycleSpeed * (this.seg.elapsed - cycleStart);
+    }
   }
 
   /** 最终缩放 = 用户设置的缩放 × 相对体型 × 远近缩放。 */
