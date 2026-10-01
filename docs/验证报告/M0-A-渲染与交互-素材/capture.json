@@ -1,0 +1,104 @@
+{
+  "time": "2026-09-30T21:02:23.624Z",
+  "scaleFactor": 1.5,
+  "point": {
+    "x": 1297,
+    "y": 823
+  },
+  "background": {
+    "x": 1297,
+    "y": 435
+  },
+  "rows": [
+    {
+      "method": "GDI BitBlt（ffmpeg gdigrab）",
+      "protection": false,
+      "rgb": [
+        204,
+        187,
+        130
+      ],
+      "bg": [
+        255,
+        0,
+        255
+      ],
+      "result": "能看到猫"
+    },
+    {
+      "method": "Chromium 屏幕采集（desktopCapturer）",
+      "protection": false,
+      "rgb": [
+        204,
+        187,
+        130
+      ],
+      "bg": [
+        255,
+        0,
+        255
+      ],
+      "result": "能看到猫"
+    },
+    {
+      "method": "Win+Shift+S（系统截图工具）",
+      "protection": false,
+      "rgb": [
+        204,
+        187,
+        130
+      ],
+      "bg": [
+        255,
+        0,
+        255
+      ],
+      "result": "能看到猫"
+    },
+    {
+      "method": "GDI BitBlt（ffmpeg gdigrab）",
+      "protection": true,
+      "rgb": [
+        255,
+        0,
+        255
+      ],
+      "bg": [
+        255,
+        0,
+        255
+      ],
+      "result": "看不到猫"
+    },
+    {
+      "method": "Chromium 屏幕采集（desktopCapturer）",
+      "protection": true,
+      "rgb": [
+        255,
+        0,
+        255
+      ],
+      "bg": [
+        255,
+        0,
+        255
+      ],
+      "result": "看不到猫"
+    },
+    {
+      "method": "Win+Shift+S（系统截图工具）",
+      "protection": true,
+      "rgb": [
+        255,
+        0,
+        255
+      ],
+      "bg": [
+        255,
+        0,
+        255
+      ],
+      "result": "看不到猫"
+    }
+  ]
+}

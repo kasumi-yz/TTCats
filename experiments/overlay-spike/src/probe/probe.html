@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>TTCats 探针窗口</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font: 14px 'Microsoft YaHei', sans-serif;
+        color: #fff;
+        overflow: hidden;
+      }
+      textarea {
+        position: absolute;
+        left: 12px;
+        top: 12px;
+        width: 260px;
+        height: 60px;
+      }
+      #log {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        white-space: pre;
+        font: 12px Consolas, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <textarea placeholder="在这里打字，测试焦点"></textarea>
+    <div id="log"></div>
+    <script src="probe.js"></script>
+  </body>
+</html>

@@ -1,0 +1,204 @@
+{
+  "time": "2026-10-01T05:10:18.286Z",
+  "minutesPerPhase": 2,
+  "warmupExcludedMs": 15000,
+  "gpuMode": "low-power",
+  "preload": "lazy",
+  "fpsCap": 30,
+  "resolution": "系统缩放",
+  "glRenderer": "ANGLE (AMD, AMD Radeon 780M Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11-32.0.12019.1028)",
+  "activeGpu": "AMD Radeon 780M Graphics",
+  "versions": {
+    "electron": "44.5.1",
+    "chrome": "152.0.7977.130",
+    "node": "24.21.0"
+  },
+  "cpuCount": 16,
+  "otherElectronApps": [
+    {
+      "name": "AdsPower Global",
+      "count": 10
+    },
+    {
+      "name": "ChatGPT",
+      "count": 11
+    },
+    {
+      "name": "claude",
+      "count": 12
+    },
+    {
+      "name": "Discord",
+      "count": 6
+    },
+    {
+      "name": "lghub_agent",
+      "count": 1
+    },
+    {
+      "name": "msedgewebview2",
+      "count": 26
+    },
+    {
+      "name": "NVIDIA Overlay",
+      "count": 5
+    },
+    {
+      "name": "Overwolf",
+      "count": 1
+    },
+    {
+      "name": "OverwolfBrowser",
+      "count": 5
+    },
+    {
+      "name": "SteelSeriesGG",
+      "count": 1
+    }
+  ],
+  "exclusivity": {
+    "ok": true,
+    "seen": []
+  },
+  "phases": [
+    {
+      "phase": "hidden",
+      "samples": 105,
+      "cpuMachineAvg": 0.1,
+      "cpuMachineMax": 0.3,
+      "cpuOneCoreAvg": 0.8,
+      "cpuOneCoreMax": 4.5,
+      "workingSetAvgMB": 525,
+      "workingSetMaxMB": 540.1,
+      "privateAvgMB": 323.6,
+      "privateMaxMB": 341,
+      "byType": {
+        "Browser": {
+          "cpuAvg": 0,
+          "wsAvgMB": 117.8
+        },
+        "GPU": {
+          "cpuAvg": 0,
+          "wsAvgMB": 239.9
+        },
+        "Utility": {
+          "cpuAvg": 0,
+          "wsAvgMB": 46.9
+        },
+        "Tab": {
+          "cpuAvg": 0,
+          "wsAvgMB": 120.4
+        }
+      },
+      "gpuByEngine": [
+        {
+          "engine": "0x00000000_0x0001676C 3D",
+          "avg": 0,
+          "max": 0
+        },
+        {
+          "engine": "0x00000000_0x0001676C High Priority 3D",
+          "avg": 0,
+          "max": 0
+        }
+      ]
+    },
+    {
+      "phase": "fullscreen",
+      "note": "检测到全屏（状态码 2），2ms 后桌面层自动隐藏，visible=false；关掉全屏窗口后 232ms 桌面层恢复显示",
+      "samples": 104,
+      "cpuMachineAvg": 0.1,
+      "cpuMachineMax": 2.4,
+      "cpuOneCoreAvg": 1.1,
+      "cpuOneCoreMax": 38,
+      "workingSetAvgMB": 540.8,
+      "workingSetMaxMB": 749.6,
+      "privateAvgMB": 340.4,
+      "privateMaxMB": 561.8,
+      "byType": {
+        "Browser": {
+          "cpuAvg": 0,
+          "wsAvgMB": 117.9
+        },
+        "GPU": {
+          "cpuAvg": 0,
+          "wsAvgMB": 253.5
+        },
+        "Utility": {
+          "cpuAvg": 0,
+          "wsAvgMB": 46.9
+        },
+        "Tab": {
+          "cpuAvg": 0,
+          "wsAvgMB": 122.6
+        }
+      },
+      "gpuByEngine": [
+        {
+          "engine": "0x00000000_0x0001676C 3D",
+          "avg": 0,
+          "max": 0
+        },
+        {
+          "engine": "0x00000000_0x0001676C High Priority 3D",
+          "avg": 0,
+          "max": 0
+        }
+      ]
+    }
+  ],
+  "timing": [
+    {
+      "seq": 16,
+      "t": 1790831291364,
+      "type": "hiddenReport",
+      "hiddenMs": 120049,
+      "intervalTicks": 62,
+      "expectedIntervalTicks": 120,
+      "rafTicks": 2,
+      "rvfcTicks": 0,
+      "naiveFullnessDrop": 1.0333333333332746,
+      "naiveFrameFullnessDrop": 0.0005555555555645242,
+      "mainHiddenMs": 120049,
+      "wallFullnessDrop": 2.0008166666666654
+    },
+    {
+      "seq": 28,
+      "t": 1790831356095,
+      "type": "hiddenReport",
+      "hiddenMs": 61846,
+      "intervalTicks": 61,
+      "expectedIntervalTicks": 61,
+      "rafTicks": 2,
+      "rvfcTicks": 0,
+      "naiveFullnessDrop": 1.0166666666666089,
+      "naiveFrameFullnessDrop": 0.0005555555555645242,
+      "mainHiddenMs": 61845,
+      "wallFullnessDrop": 1.0307499999999976
+    },
+    {
+      "seq": 33,
+      "t": 1790831415760,
+      "type": "hiddenReport",
+      "hiddenMs": 59179,
+      "intervalTicks": 59,
+      "expectedIntervalTicks": 59,
+      "rafTicks": 3,
+      "rvfcTicks": 0,
+      "naiveFullnessDrop": 0.9833333333332774,
+      "naiveFrameFullnessDrop": 0.0008333333333467863,
+      "mainHiddenMs": 59178,
+      "wallFullnessDrop": 0.9863
+    }
+  ],
+  "switchStats": {
+    "count": 21,
+    "avgMs": 28.57619047623926,
+    "maxMs": 43.40000000037253,
+    "interruptLatencyAvgMs": {
+      "crossfade": null,
+      "hardcut": null,
+      "transition": null
+    }
+  }
+}

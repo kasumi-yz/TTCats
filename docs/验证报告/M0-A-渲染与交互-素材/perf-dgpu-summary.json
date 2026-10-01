@@ -1,0 +1,196 @@
+{
+  "time": "2026-09-30T21:55:50.707Z",
+  "minutesPerPhase": 5,
+  "warmupExcludedMs": 15000,
+  "gpuMode": "default",
+  "preload": "lazy",
+  "fpsCap": 30,
+  "resolution": "系统缩放",
+  "glRenderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4060 Laptop GPU (0x000028E0) Direct3D11 vs_5_0 ps_5_0, D3D11-32.0.15.6603)",
+  "activeGpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "versions": {
+    "electron": "44.5.1",
+    "chrome": "152.0.7977.130",
+    "node": "24.21.0"
+  },
+  "cpuCount": 16,
+  "otherElectronApps": [
+    {
+      "name": "ChatGPT",
+      "count": 13
+    },
+    {
+      "name": "claude",
+      "count": 14
+    },
+    {
+      "name": "electron",
+      "count": 1
+    },
+    {
+      "name": "lghub_agent",
+      "count": 1
+    },
+    {
+      "name": "msedgewebview2",
+      "count": 19
+    },
+    {
+      "name": "NVIDIA Overlay",
+      "count": 5
+    },
+    {
+      "name": "Overwolf",
+      "count": 1
+    },
+    {
+      "name": "OverwolfBrowser",
+      "count": 4
+    },
+    {
+      "name": "SteelSeriesGG",
+      "count": 1
+    }
+  ],
+  "exclusivity": {
+    "ok": true,
+    "seen": []
+  },
+  "phases": [
+    {
+      "phase": "playing",
+      "samples": 282,
+      "cpuMachineAvg": 1.7,
+      "cpuMachineMax": 2,
+      "cpuOneCoreAvg": 27.2,
+      "cpuOneCoreMax": 32,
+      "workingSetAvgMB": 547.2,
+      "workingSetMaxMB": 566.3,
+      "privateAvgMB": 503.9,
+      "privateMaxMB": 535.1,
+      "byType": {
+        "Browser": {
+          "cpuAvg": 0.1,
+          "wsAvgMB": 117
+        },
+        "GPU": {
+          "cpuAvg": 0.6,
+          "wsAvgMB": 226.7
+        },
+        "Utility": {
+          "cpuAvg": 0,
+          "wsAvgMB": 47.7
+        },
+        "Tab": {
+          "cpuAvg": 1,
+          "wsAvgMB": 155.8
+        }
+      },
+      "gpuByEngine": [
+        {
+          "engine": "0x00000000_0x00016564 3D",
+          "avg": 0,
+          "max": 0
+        },
+        {
+          "engine": "0x00000000_0x00016564 High Priority 3D",
+          "avg": 0,
+          "max": 0
+        },
+        {
+          "engine": "0x00000000_0x000185CF 3D",
+          "avg": 0.9,
+          "max": 14
+        },
+        {
+          "engine": "0x00000000_0x000185CF VideoDecode",
+          "avg": 0,
+          "max": 0
+        },
+        {
+          "engine": "0x00000000_0x000185CF Copy",
+          "avg": 4.1,
+          "max": 5
+        }
+      ]
+    },
+    {
+      "phase": "hidden",
+      "samples": 283,
+      "cpuMachineAvg": 0,
+      "cpuMachineMax": 0.2,
+      "cpuOneCoreAvg": 0,
+      "cpuOneCoreMax": 3.2,
+      "workingSetAvgMB": 508,
+      "workingSetMaxMB": 510.1,
+      "privateAvgMB": 455.5,
+      "privateMaxMB": 460.1,
+      "byType": {
+        "Browser": {
+          "cpuAvg": 0,
+          "wsAvgMB": 120.6
+        },
+        "GPU": {
+          "cpuAvg": 0,
+          "wsAvgMB": 219
+        },
+        "Utility": {
+          "cpuAvg": 0,
+          "wsAvgMB": 47.8
+        },
+        "Tab": {
+          "cpuAvg": 0,
+          "wsAvgMB": 120.7
+        }
+      },
+      "gpuByEngine": [
+        {
+          "engine": "0x00000000_0x00016564 3D",
+          "avg": 0,
+          "max": 0
+        },
+        {
+          "engine": "0x00000000_0x00016564 High Priority 3D",
+          "avg": 0,
+          "max": 0
+        },
+        {
+          "engine": "0x00000000_0x000185CF 3D",
+          "avg": 0,
+          "max": 0
+        },
+        {
+          "engine": "0x00000000_0x000185CF VideoDecode",
+          "avg": 0,
+          "max": 0
+        }
+      ]
+    }
+  ],
+  "timing": [
+    {
+      "seq": 297,
+      "t": 1790805349276,
+      "type": "hiddenReport",
+      "hiddenMs": 300025,
+      "intervalTicks": 66,
+      "expectedIntervalTicks": 300,
+      "rafTicks": 134,
+      "rvfcTicks": 82,
+      "naiveFullnessDrop": 1.0999999999999375,
+      "naiveFrameFullnessDrop": 0.03722222222282312,
+      "wallFullnessDrop": 5.0334
+    }
+  ],
+  "switchStats": {
+    "count": 293,
+    "avgMs": 37.13071672338675,
+    "maxMs": 42.899999998509884,
+    "interruptLatencyAvgMs": {
+      "crossfade": null,
+      "hardcut": null,
+      "transition": null
+    }
+  },
+  "cpuCorrection": "2026-10-01 修正：原脚本把 Electron 已按整机算好的 CPU 百分比又除了一次逻辑 CPU 个数。cpuMachine* 改为原来 cpuOneCore* 的数值（即正确的整机百分比），cpuOneCore* 由整机值乘以逻辑 CPU 个数换算（受原数据保留一位小数影响，是近似值）。"
+}

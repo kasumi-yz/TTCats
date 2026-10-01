@@ -1,0 +1,221 @@
+{
+  "region": {
+    "x": 740,
+    "y": 666,
+    "w": 1400,
+    "h": 478
+  },
+  "scaleFactor": 1.5,
+  "recordStart": 1790796582555,
+  "seconds": 16,
+  "interrupts": [
+    {
+      "seq": 8,
+      "t": 1790796583450,
+      "type": "interrupt",
+      "id": "cat-a",
+      "mode": "crossfade",
+      "from": "loop_stand",
+      "frame": 14,
+      "target": "sit",
+      "atSec": 0.895
+    },
+    {
+      "seq": 10,
+      "t": 1790796583451,
+      "type": "interrupt",
+      "id": "cat-b",
+      "mode": "hardcut",
+      "from": "loop_stand",
+      "frame": 14,
+      "target": "sit",
+      "atSec": 0.896
+    },
+    {
+      "seq": 12,
+      "t": 1790796583451,
+      "type": "interrupt",
+      "id": "cat-c",
+      "mode": "transition",
+      "from": "loop_stand",
+      "frame": 13,
+      "target": "sit",
+      "atSec": 0.896
+    },
+    {
+      "seq": 15,
+      "t": 1790796586050,
+      "type": "interrupt",
+      "id": "cat-a",
+      "mode": "crossfade",
+      "from": "loop_sit",
+      "frame": 14,
+      "target": "stand",
+      "atSec": 3.495
+    },
+    {
+      "seq": 17,
+      "t": 1790796586050,
+      "type": "interrupt",
+      "id": "cat-b",
+      "mode": "hardcut",
+      "from": "loop_sit",
+      "frame": 14,
+      "target": "stand",
+      "atSec": 3.495
+    },
+    {
+      "seq": 19,
+      "t": 1790796586051,
+      "type": "interrupt",
+      "id": "cat-c",
+      "mode": "transition",
+      "from": "loop_sit",
+      "frame": 10,
+      "target": "stand",
+      "atSec": 3.496
+    },
+    {
+      "seq": 22,
+      "t": 1790796588650,
+      "type": "interrupt",
+      "id": "cat-a",
+      "mode": "crossfade",
+      "from": "loop_stand",
+      "frame": 14,
+      "target": "sit",
+      "atSec": 6.095
+    },
+    {
+      "seq": 24,
+      "t": 1790796588650,
+      "type": "interrupt",
+      "id": "cat-b",
+      "mode": "hardcut",
+      "from": "loop_stand",
+      "frame": 14,
+      "target": "sit",
+      "atSec": 6.095
+    },
+    {
+      "seq": 26,
+      "t": 1790796588651,
+      "type": "interrupt",
+      "id": "cat-c",
+      "mode": "transition",
+      "from": "loop_stand",
+      "frame": 5,
+      "target": "sit",
+      "atSec": 6.096
+    },
+    {
+      "seq": 29,
+      "t": 1790796591250,
+      "type": "interrupt",
+      "id": "cat-a",
+      "mode": "crossfade",
+      "from": "loop_sit",
+      "frame": 14,
+      "target": "stand",
+      "atSec": 8.695
+    },
+    {
+      "seq": 31,
+      "t": 1790796591250,
+      "type": "interrupt",
+      "id": "cat-b",
+      "mode": "hardcut",
+      "from": "loop_sit",
+      "frame": 14,
+      "target": "stand",
+      "atSec": 8.695
+    },
+    {
+      "seq": 33,
+      "t": 1790796591251,
+      "type": "interrupt",
+      "id": "cat-c",
+      "mode": "transition",
+      "from": "loop_sit",
+      "frame": 2,
+      "target": "stand",
+      "atSec": 8.696
+    },
+    {
+      "seq": 35,
+      "t": 1790796593850,
+      "type": "interrupt",
+      "id": "cat-a",
+      "mode": "crossfade",
+      "from": "loop_stand",
+      "frame": 14,
+      "target": "sit",
+      "atSec": 11.295
+    },
+    {
+      "seq": 37,
+      "t": 1790796593850,
+      "type": "interrupt",
+      "id": "cat-b",
+      "mode": "hardcut",
+      "from": "loop_stand",
+      "frame": 14,
+      "target": "sit",
+      "atSec": 11.295
+    },
+    {
+      "seq": 39,
+      "t": 1790796593850,
+      "type": "interrupt",
+      "id": "cat-c",
+      "mode": "transition",
+      "from": "tr_sit_stand",
+      "frame": 16,
+      "target": "sit",
+      "atSec": 11.295
+    },
+    {
+      "seq": 42,
+      "t": 1790796596450,
+      "type": "interrupt",
+      "id": "cat-a",
+      "mode": "crossfade",
+      "from": "loop_sit",
+      "frame": 14,
+      "target": "stand",
+      "atSec": 13.895
+    },
+    {
+      "seq": 44,
+      "t": 1790796596450,
+      "type": "interrupt",
+      "id": "cat-b",
+      "mode": "hardcut",
+      "from": "loop_sit",
+      "frame": 14,
+      "target": "stand",
+      "atSec": 13.895
+    },
+    {
+      "seq": 46,
+      "t": 1790796596450,
+      "type": "interrupt",
+      "id": "cat-c",
+      "mode": "transition",
+      "from": "loop_sit",
+      "frame": 42,
+      "target": "stand",
+      "atSec": 13.895
+    }
+  ],
+  "switchStats": {
+    "count": 26,
+    "avgMs": 298.54999999988536,
+    "maxMs": 1947.2000000029802,
+    "interruptLatencyAvgMs": {
+      "crossfade": 28.61666666592161,
+      "hardcut": 35.04999999950329,
+      "transition": 1190.2666666681569
+    }
+  }
+}
