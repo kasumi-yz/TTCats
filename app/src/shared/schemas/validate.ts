@@ -1,4 +1,4 @@
-// 草稿，M0 后定稿。
+// M1 定稿（#18）。
 // 用 schema 校验内容，把 zod 的报错翻成中文，并说清楚是哪个字段出了什么问题（硬性规则 4）。
 import { z } from 'zod';
 import { zh } from '../strings.zh-CN';

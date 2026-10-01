@@ -1,4 +1,4 @@
-// 草稿，M0 后定稿。
+// M1 定稿（#18）。
 // 各个 schema 共用的小类型。
 import { z } from 'zod';
 import { zh } from '../strings.zh-CN';

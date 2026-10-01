@@ -13,4 +13,4 @@
 注意：JSON Schema 只包含字段和格式规则。跨字段的规则（比如落脚锚点的数量要等于帧数、标准片段的起止姿势）
 只在 `npm run validate:content` 里检查。素材工厂（Python）可以用 `jsonschema` 库做基础校验。
 
-目前都是**草稿，M0 后定稿**。
+`cat`、`clip` 已经定稿（#18）；`event` 在 M3 定稿，`candidate-manifest` 在素材工厂 v0（#4）对接时定稿。
