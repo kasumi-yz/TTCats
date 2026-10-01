@@ -1,5 +1,9 @@
 // 界面文字和报错文字都集中放在这里（AGENTS.md 语言约定）。
 // 代码里不要散落中文字符串，需要新文字就加到这个文件。
+//
+// 按模块分段：每个模块一段，键名用模块名（比如 save、overlay、panels、stage）。
+// 各个 issue 只加自己模块的那一段、不改别人的，这样并行开发时不容易冲突。
+// 新的一段加在文件末尾、`};` 的前面。
 import type { Pose } from './schemas/pose';
 
 export const zh = {
@@ -46,6 +50,7 @@ export const zh = {
     optional: '是否可选',
     video: '视频文件',
     hitMask: '点击遮罩',
+    hitMaskScale: '点击遮罩缩小倍数',
     fps: '帧率',
     frameCount: '帧数',
     width: '宽度',
@@ -66,6 +71,15 @@ export const zh = {
     status: '挑选状态',
     assetLog: '素材档案',
     clip: '片段元数据',
+    visibleCats: '显示哪几只猫',
+    activityLevel: '活跃度',
+    scale: '缩放',
+    floorDepth: '地板纵深',
+    showInScreenCapture: '截图里是否显示猫',
+    saveVersion: '存档版本',
+    savedAt: '保存时间',
+    state: '存档状态',
+    settings: '设置',
   } as Readonly<Record<string, string>>,
 
   validation: {

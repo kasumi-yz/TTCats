@@ -1,10 +1,11 @@
-// 草稿，M0 后定稿。
+// M1 定稿（#18）。事件（event）和素材工厂的候选 manifest 还是草稿，分别在 M3 和素材工厂 v0（#4）定稿。
 export * from './common';
 export * from './pose';
 export * from './cat';
 export * from './clip';
 export * from './event';
 export * from './settings';
+export * from './save';
 export * from './candidate-manifest';
 export * from './validate';
 

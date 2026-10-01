@@ -1,4 +1,4 @@
-// 草稿，M0 后定稿。
+// 草稿，M3（事件）定稿。
 // 事件（Event）配置：content/events/ 下每个 *.json 是一个事件（D6）。
 // 事件什么时候触发、冷却多久由 core/game 在主进程里判断；怎么演由 core/stage 在桌面层执行。
 import { z } from 'zod';
