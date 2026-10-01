@@ -1,0 +1,136 @@
+{
+  "electron": "44.5.1",
+  "node": "24.21.0",
+  "checks": [
+    {
+      "name": "windowed",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "ctrl-up",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "ctrl-162-down",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "name": "ctrl-162-up",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "ctrl-163-down",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "name": "ctrl-163-up",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "swap-0-setting",
+      "actual": 0,
+      "expected": 0
+    },
+    {
+      "name": "swap-0-up",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "swap-0-physical-left-down",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "name": "swap-0-physical-left-up",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "swap-0-physical-right-down",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "swap-0-physical-right-up",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "swap-1-setting",
+      "actual": 1,
+      "expected": 1
+    },
+    {
+      "name": "swap-1-up",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "swap-1-physical-left-down",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "swap-1-physical-left-up",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "swap-1-physical-right-down",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "name": "swap-1-physical-right-up",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "fullscreen",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "name": "fullscreen-video-playing",
+      "actual": true,
+      "expected": true
+    },
+    {
+      "name": "fullscreen-exit",
+      "actual": false,
+      "expected": false
+    },
+    {
+      "name": "swap-restored",
+      "actual": 0,
+      "expected": 0
+    }
+  ],
+  "timings": {
+    "isFullscreen": {
+      "calls": 20000,
+      "meanMicroseconds": 86.51501000000002,
+      "minBatchMeanMicroseconds": 81.4259,
+      "maxBatchMeanMicroseconds": 94.2553
+    },
+    "isCtrlDown": {
+      "calls": 20000,
+      "meanMicroseconds": 0.067755,
+      "minBatchMeanMicroseconds": 0.0625,
+      "maxBatchMeanMicroseconds": 0.09309999999999999
+    },
+    "isLeftButtonDown": {
+      "calls": 20000,
+      "meanMicroseconds": 0.08080499999999999,
+      "minBatchMeanMicroseconds": 0.07740000000000001,
+      "maxBatchMeanMicroseconds": 0.09540000000000001
+    }
+  }
+}
