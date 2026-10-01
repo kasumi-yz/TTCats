@@ -1,4 +1,4 @@
-// 草稿，M0 后定稿。
+// 草稿，素材工厂 v0（#4）对接时定稿。
 // 素材工厂（AssetFactory）的输出格式：每个候选（Candidate）文件夹里的 manifest.json（ADR-0006）。
 // 素材工厂是 Python 写的，用 schemas/candidate-manifest.schema.json 校验这份文件。
 import { z } from 'zod';
