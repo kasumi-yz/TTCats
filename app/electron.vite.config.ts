@@ -6,7 +6,13 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
-        input: { index: resolve(import.meta.dirname, 'src/main/index.ts') },
+        // 独立入口供 Electron 主进程验证原生模块，后续桌面层直接导入源码接口。
+        input: {
+          index: resolve(import.meta.dirname, 'src/main/index.ts'),
+          platform: resolve(import.meta.dirname, 'src/main/platform/index.ts'),
+        },
+        external: ['koffi'],
+        output: { exports: 'named' },
       },
     },
   },
