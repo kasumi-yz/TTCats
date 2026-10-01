@@ -181,7 +181,7 @@ export const zh = {
     age: '年龄',
     unknown: '未提供',
     ageYears: (years: number) => `${years} 岁`,
-    notBorn: '尚未到生日',
+    notBorn: '还没出生',
     personality: '性格参数',
     personalityLabels: {
       activity: '活跃',
@@ -198,7 +198,7 @@ export const zh = {
     hide: '隐藏',
     clip: '片段',
     playClip: '播放片段',
-    interactions: { poke: '模拟单击', pet: '模拟撸猫', pickUp: '模拟拎起', drop: '模拟放下' },
+    simulations: { poke: '模拟单击', pet: '模拟撸猫', pickUp: '模拟拎起', drop: '模拟放下' },
     crash: '让桌面层崩溃（测试恢复）',
     savedState: '主进程存档状态',
     stageState: '桌面层画面状态',

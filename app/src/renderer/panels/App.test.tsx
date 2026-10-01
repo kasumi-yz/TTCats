@@ -113,6 +113,32 @@ function fakeBridge(content = catalog()) {
 afterEach(cleanup);
 
 describe('面板通过主进程管理猫和设置', () => {
+  it('滑块在等待后台确认时跟手，只有更新版本的快照才能取代草稿', async () => {
+    const fake = fakeBridge();
+    render(<App bridge={fake.bridge} search="?panel=settings" />);
+    const scale = await screen.findByRole<HTMLInputElement>('slider', { name: text.scale });
+    const depth = screen.getByRole<HTMLInputElement>('slider', { name: text.floorDepth });
+    fireEvent.change(scale, { target: { value: '150' } });
+    fireEvent.change(scale, { target: { value: '175' } });
+    fireEvent.change(depth, { target: { value: '25' } });
+    expect(scale.value).toBe('175');
+    expect(depth.value).toBe('25');
+    expect(fake.sendCommand.mock.calls.map(([command]) => command)).toEqual([
+      { type: 'settings/update', patch: { scale: 1.5 } },
+      { type: 'settings/update', patch: { scale: 1.75 } },
+      { type: 'settings/update', patch: { floorDepth: 0.25 } },
+    ]);
+    fake.pushSnapshot(snapshot(0));
+    fake.pushSnapshot(snapshot(1));
+    expect(scale.value).toBe('175');
+    expect(depth.value).toBe('25');
+    const confirmed = snapshot(2);
+    confirmed.settings.scale = 1.6;
+    confirmed.settings.floorDepth = 0.3;
+    fake.pushSnapshot(confirmed);
+    expect(scale.value).toBe('160');
+    expect(depth.value).toBe('30');
+  });
   it('设置只发送命令，不抢先修改显示值；以主进程的新快照为准', async () => {
     const fake = fakeBridge();
     const user = userEvent.setup();
@@ -205,7 +231,7 @@ describe('面板通过主进程管理猫和设置', () => {
       ...(['poke', 'pet', 'pickUp', 'drop'] as const).map(
         (interaction) =>
           [
-            text.interactions[interaction],
+            text.simulations[interaction],
             { type: 'debug/simulate', cat: cat.id, interaction },
           ] as const,
       ),
@@ -255,14 +281,15 @@ describe('面板通过主进程管理猫和设置', () => {
           clip: 'idle-sit',
           variant: 2,
           behavior: '等待召唤',
-          x: 100,
-          y: 200,
+          x: 100.123456,
+          y: 200.654321,
         },
       ],
     });
     expect(screen.getByText(zh.poses.sit)).toBeTruthy();
     expect(screen.getByText('idle-sit')).toBeTruthy();
     expect(screen.getByText('等待召唤')).toBeTruthy();
+    expect(screen.getByText('100, 201')).toBeTruthy();
     fake.pushReport({ at: 10, cats: [] });
     expect(screen.getByText('idle-sit')).toBeTruthy();
     expect(screen.getByText('猫咪包「broken-cat」缺少站姿片段')).toBeTruthy();

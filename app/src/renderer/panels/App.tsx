@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ContentCatalog } from '../../shared/core-api';
 import type {
   PanelsBridge,
+  PanelName,
   StageDebugReport,
   StateSnapshot,
   ToMainCommand,
@@ -25,7 +26,7 @@ export function App({
   const [error, setError] = useState<string>();
   const query = new URLSearchParams(search);
   const panel = query.get('panel');
-  const page = panel === 'profile' || panel === 'debug' ? panel : 'settings';
+  const page: PanelName = panel === 'profile' || panel === 'debug' ? panel : 'settings';
 
   useEffect(() => {
     if (!bridge) return;
@@ -101,6 +102,11 @@ type PanelProps = {
 
 function SettingsPanel({ snapshot, content, send }: PanelProps) {
   const settings = snapshot.settings;
+  const [scaleDraft, setScaleDraft] = useState<{ revision: number; value: number }>();
+  const [floorDepthDraft, setFloorDepthDraft] = useState<{ revision: number; value: number }>();
+  const scale = scaleDraft?.revision === snapshot.revision ? scaleDraft.value : settings.scale;
+  const floorDepth =
+    floorDepthDraft?.revision === snapshot.revision ? floorDepthDraft.value : settings.floorDepth;
   const cats = Object.values(content.cats);
   const update = (patch: Partial<Settings>) => {
     send({ type: 'settings/update', patch });
@@ -140,31 +146,35 @@ function SettingsPanel({ snapshot, content, send }: PanelProps) {
       </label>
       <label className="field">
         {text.scale}
-        <span>{Math.round(settings.scale * 100)}%</span>
+        <span>{Math.round(scale * 100)}%</span>
         <input
           aria-label={text.scale}
           type="range"
           min="50"
           max="200"
           step="1"
-          value={settings.scale * 100}
+          value={scale * 100}
           onChange={(event) => {
-            update({ scale: Number(event.target.value) / 100 });
+            const value = Number(event.target.value) / 100;
+            setScaleDraft({ revision: snapshot.revision, value });
+            update({ scale: value });
           }}
         />
       </label>
       <label className="field">
         {text.floorDepth}
-        <span>{Math.round(settings.floorDepth * 100)}%</span>
+        <span>{Math.round(floorDepth * 100)}%</span>
         <input
           aria-label={text.floorDepth}
           type="range"
           min="0"
           max="100"
           step="1"
-          value={settings.floorDepth * 100}
+          value={floorDepth * 100}
           onChange={(event) => {
-            update({ floorDepth: Number(event.target.value) / 100 });
+            const value = Number(event.target.value) / 100;
+            setFloorDepthDraft({ revision: snapshot.revision, value });
+            update({ floorDepth: value });
           }}
         />
       </label>
@@ -336,7 +346,7 @@ function DebugPanel({
                 if (catId) send({ type: 'debug/simulate', cat: catId, interaction });
               }}
             >
-              {text.interactions[interaction]}
+              {text.simulations[interaction]}
             </button>
           ))}
         </div>
@@ -403,7 +413,7 @@ function DebugPanel({
                   <dd>{cat.behavior}</dd>
                   <dt>{text.position}</dt>
                   <dd>
-                    {cat.x}, {cat.y}
+                    {Math.round(cat.x)}, {Math.round(cat.y)}
                   </dd>
                 </dl>
               </article>
