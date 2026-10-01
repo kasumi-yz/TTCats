@@ -219,4 +219,17 @@ export const zh = {
     clipUnavailable: (cat: string, clip: string, variant?: number) =>
       `猫「${cat}」缺少片段「${clip}」${variant === undefined ? '' : `的版本 ${variant}`}，无法播放。`,
   },
+
+  stage: {
+    /** 调试台里显示的行为（Behavior）说明。 */
+    behaviors: {
+      idle: '待着',
+      rest: { stand: '站一会儿', sit: '坐下歇着', sleep: '去睡觉' },
+      wander: '溜达',
+      action: (clip: string) => `做动作「${clip}」`,
+      summon: '被召唤过来',
+      sleepCommand: '被叫去睡觉',
+      debugClip: (clip: string) => `调试：播放「${clip}」`,
+    },
+  },
 };
