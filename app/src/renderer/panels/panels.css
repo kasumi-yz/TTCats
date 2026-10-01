@@ -1,0 +1,130 @@
+:root {
+  font-family: 'Microsoft YaHei', sans-serif;
+  color: #26322e;
+  background: #f3f5f1;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+.panel {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 28px;
+}
+.brand {
+  color: #62756a;
+  font-size: 13px;
+  letter-spacing: 2px;
+  margin: 0;
+}
+h1 {
+  margin: 6px 0 24px;
+}
+h2 {
+  font-size: 20px;
+  margin-top: 0;
+}
+h3 {
+  font-size: 16px;
+}
+.card {
+  background: #fff;
+  border: 1px solid #dce3da;
+  border-radius: 12px;
+  padding: 22px;
+  margin-bottom: 16px;
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 22px;
+}
+legend {
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0;
+}
+.field {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin: 22px 0;
+}
+.field select,
+.field input,
+.field meter {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+input {
+  accent-color: #39664e;
+}
+select,
+button {
+  font: inherit;
+  border: 1px solid #bfcfc3;
+  border-radius: 6px;
+  padding: 9px 12px;
+  background: #f8faf7;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:hover {
+  background: #e8f0e8;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid #88b298;
+  outline-offset: 3px;
+}
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.danger {
+  color: #934332;
+  margin-top: 8px;
+}
+.muted {
+  color: #62756a;
+  font-size: 13px;
+  line-height: 1.7;
+}
+dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 20px;
+}
+dt {
+  color: #62756a;
+}
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 400px) {
+  .panel {
+    padding: 16px;
+  }
+  .card {
+    padding: 16px;
+  }
+}
