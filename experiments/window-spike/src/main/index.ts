@@ -200,6 +200,13 @@ function createOverlays(): Promise<void> {
 
 async function verify() {
   await Promise.all([createOverlays(), createOverlays(), createOverlays()]);
+  // 系统显示器事件可能在三个测试请求之后追加重建。
+  // 等队列真正清空后再核对，避免把正在重建的中间状态当成丢失窗口。
+  for (;;) {
+    const pendingRebuild = overlayRebuild;
+    await pendingRebuild;
+    if (pendingRebuild === overlayRebuild) break;
+  }
   if (
     overlays.length !== screen.getAllDisplays().length ||
     BrowserWindow.getAllWindows().length !== overlays.length ||
