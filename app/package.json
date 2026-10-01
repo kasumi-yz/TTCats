@@ -17,10 +17,12 @@
     "gen:schemas": "tsx scripts/gen-schemas.ts",
     "check:schemas": "tsx scripts/gen-schemas.ts --check",
     "check": "npm run typecheck && npm run lint && npm test && npm run validate:content && npm run check:schemas",
-    "test:smoke": "playwright test"
+    "test:smoke": "playwright test",
+    "perf": "tsx scripts/perf.ts"
   },
   "dependencies": {
     "koffi": "^3.3.2",
+    "pixi.js": "^8.21.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "zod": "^4.6.5"

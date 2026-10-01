@@ -1,6 +1,16 @@
-# renderer/overlay
+# 桌面层渲染
 
-桌面层（Overlay）：透明、置顶、默认鼠标穿过、不抢焦点的窗口，猫在里面活动（ADR-0003）。
-运行 core/stage，用 PixiJS 渲染。
+正式 index.html / index.ts 使用 core/stage，通过正式 OverlayBridge 收集输入并传送事实。
 
-M0-A 验证后，在 M1 的桌面层渲染 issue 里实现。
+- PixiJS 8 透明 WebGL 画布限 30fps，requestVideoFrameCallback 的 mediaTime 决定实际视频帧并更新纹理。
+- 用实际帧的落脚锚点对齐位置和点击遮罩，不以计划帧代替显示帧。
+- StageFrame 决定片段、版本、位置、缩放、镜像、纵深、速度、气泡和特效；渲染层不规划下一行为。
+- 每只猫缓存当前片段及最近两段。加载中的条目受保护，可临时超出三段，完成后淘汰最久未用条目。
+- 新片段未就绪时将旧视频停在最后一帧，加载后按最新 clipTimeMs 校正；过期请求不能抢回画面。报错带猫 id 和文件名。
+- 暂停时停止 ticker 和视频并保留缓存；绘制帧不再包含某只猫时释放其资源，迟到的加载也必须释放。
+- 每 50ms 按当前画面续租约，不使用 mouseleave。拖动用 pointer capture，主进程 dragCancel 兜底丢失的松手事件。
+- ghost 由主进程决定时长；半透明时不新增互动，已开始的拖动继续。
+
+缓存策略按 #25 在 2026-10-01 的最新评论执行，覆盖 ADR-0002 尚未更新的“当前及下一片段”措辞。硬切前后姿势不一致时也保持旧末帧，切换后由 StageFrame 的 cut 小特效覆盖；观感仍需 #7 真实片段复测。
+
+接线与验证见 ../../main/overlay/README.md。test-driver 只供 #24 未合并时验收，不由正式入口导入。

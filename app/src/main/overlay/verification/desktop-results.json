@@ -1,0 +1,62 @@
+{
+  "display": {
+    "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1200
+    },
+    "workArea": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1152
+    },
+    "scaleFactor": 1.5
+  },
+  "checks": [
+    {
+      "name": "transparent topmost nonactivating window",
+      "at": 1790872764108
+    },
+    {
+      "name": "blank click reaches underlying real window",
+      "at": 1790872765215
+    },
+    {
+      "name": "transparent leg gap passes through",
+      "at": 1790872765563
+    },
+    {
+      "name": "drag outside cat, Ctrl mid-drag, release and focus preserved",
+      "at": 1790872766170
+    },
+    {
+      "name": "Ctrl release retains ghost for two seconds",
+      "at": 1790872768386
+    },
+    {
+      "name": "renderer stalled: main restores passthrough under 200ms",
+      "at": 1790872769634
+    },
+    {
+      "name": "cold clip retains old sprite; rapid interruptions keep playback alive",
+      "at": 1790872770724
+    },
+    {
+      "name": "per-cat cache bounded to current plus recent two",
+      "at": 1790872771159
+    },
+    {
+      "name": "real foreground fullscreen pauses drawing",
+      "at": 1790872772515
+    },
+    {
+      "name": "three queued rebuilds finish with one live overlay",
+      "at": 1790872773554
+    }
+  ],
+  "recoveryMs": 76.56000000000131,
+  "failures": 0,
+  "driver": "test-only (#24 not merged)"
+}

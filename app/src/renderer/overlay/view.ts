@@ -1,0 +1,319 @@
+import { Application, Container, Graphics, Sprite, Text } from 'pixi.js';
+import type { CatPlacement, ContentCatalog, StageCore } from '../../shared/core-api';
+import type { OverlayBridge, Unsubscribe } from '../../shared/ipc';
+import { OVERLAY_TIMING } from '../../shared/ipc';
+import { zh } from '../../shared/strings.zh-CN';
+import { ClipCache } from './cache';
+import { hitCat } from './coordinates';
+import { ClipMedia } from './media';
+
+interface CatView {
+  cache: ClipCache<ClipMedia>;
+  sprite: Sprite;
+  current?: ClipMedia;
+  key?: string;
+  wanted?: string;
+  placement?: CatPlacement;
+  generation: number;
+}
+
+export async function createOverlayView(
+  content: ContentCatalog,
+  stage: StageCore,
+  bridge: OverlayBridge,
+) {
+  const unsubscribe: Unsubscribe[] = [
+    bridge.onSnapshot((snapshot) => {
+      stage.applySnapshot(snapshot, Date.now());
+    }),
+    bridge.onStageCommand((command) => {
+      stage.handleCommand(command, Date.now());
+    }),
+  ];
+  const app = new Application();
+  try {
+    await app.init({
+      resizeTo: window,
+      backgroundAlpha: 0,
+      antialias: true,
+      resolution: window.devicePixelRatio,
+      autoDensity: true,
+      preference: 'webgl',
+      powerPreference: 'low-power',
+    });
+  } catch (error) {
+    unsubscribe.forEach((off) => {
+      off();
+    });
+    throw error;
+  }
+  document.body.append(app.canvas);
+  app.ticker.maxFPS = 30;
+  const cats = new Map<string, CatView>();
+  const decorations = new Container();
+  app.stage.addChild(decorations);
+  let paused = false;
+  let ghost = false;
+  let debug = false;
+  let lastDebug = 0;
+  let dragging: number | undefined;
+  let pointer = { x: -1, y: -1 };
+  let disposed = false;
+  let drew = 0;
+  const errors: string[] = [];
+  const failed = (error: unknown): void => {
+    errors.push(String(error));
+    console.error(error);
+  };
+  const makeCat = (cat: string): CatView => {
+    const sprite = new Sprite();
+    sprite.visible = false;
+    app.stage.addChild(sprite);
+    return {
+      sprite,
+      generation: 0,
+      cache: new ClipCache(async (key) => {
+        const clip = content.cats[cat]?.clips.find((c) => `${c.name}:${c.variant}` === key);
+        if (!clip) throw new Error(zh.overlay.missingClip(cat, key));
+        return ClipMedia.load(cat, clip);
+      }),
+    };
+  };
+  const hit = (): string | null => {
+    if (ghost && dragging === undefined) return null;
+    const sorted = [...cats.entries()]
+      .reverse()
+      .sort((a, b) => (b[1].placement?.depth ?? 0) - (a[1].placement?.depth ?? 0));
+    for (const [cat, view] of sorted) {
+      const media = view.current;
+      const p = view.placement;
+      if (
+        media &&
+        p &&
+        view.sprite.visible &&
+        hitCat(pointer, p, media.clip, media.mask, media.frame)
+      )
+        return cat;
+    }
+    return null;
+  };
+  const renew = (): void => {
+    bridge.sendOverlay({ type: 'hover', onCat: !paused && hit() !== null });
+  };
+  const cancel = (): void => {
+    stage.handlePointer({ type: 'cancel' }, Date.now());
+    const capture = dragging;
+    dragging = undefined;
+    if (capture !== undefined && app.canvas.hasPointerCapture(capture))
+      app.canvas.releasePointerCapture(capture);
+    bridge.sendOverlay({ type: 'drag', active: false });
+    bridge.sendOverlay({ type: 'hover', onCat: false });
+  };
+  const abort = new AbortController();
+  const eventOptions = { signal: abort.signal };
+  window.addEventListener(
+    'mousemove',
+    (event) => {
+      pointer = { x: event.clientX, y: event.clientY };
+      if (!paused) stage.handlePointer({ type: 'move', ...pointer, cat: hit() }, Date.now());
+      renew();
+    },
+    eventOptions,
+  );
+  app.canvas.addEventListener(
+    'pointerdown',
+    (event) => {
+      pointer = { x: event.clientX, y: event.clientY };
+      const cat = hit();
+      if (event.button !== 0 || !cat || paused || ghost) return;
+      stage.handlePointer({ type: 'down', ...pointer, cat }, Date.now());
+      dragging = event.pointerId;
+      app.canvas.setPointerCapture(event.pointerId);
+      bridge.sendOverlay({ type: 'drag', active: true });
+    },
+    eventOptions,
+  );
+  app.canvas.addEventListener(
+    'pointerup',
+    (event) => {
+      if (event.pointerId !== dragging) return;
+      pointer = { x: event.clientX, y: event.clientY };
+      stage.handlePointer({ type: 'up', ...pointer }, Date.now());
+      const capture = dragging;
+      dragging = undefined;
+      if (app.canvas.hasPointerCapture(capture)) app.canvas.releasePointerCapture(capture);
+      bridge.sendOverlay({ type: 'drag', active: false });
+      bridge.sendOverlay({ type: 'hover', onCat: false });
+    },
+    eventOptions,
+  );
+  app.canvas.addEventListener('pointercancel', cancel, eventOptions);
+  app.canvas.addEventListener(
+    'lostpointercapture',
+    () => {
+      if (dragging !== undefined) cancel();
+    },
+    eventOptions,
+  );
+  app.canvas.addEventListener(
+    'contextmenu',
+    (event) => {
+      event.preventDefault();
+      pointer = { x: event.clientX, y: event.clientY };
+      const cat = hit();
+      if (cat && !paused && !ghost) bridge.sendOverlay({ type: 'catMenu', cat });
+    },
+    eventOptions,
+  );
+  window.addEventListener(
+    'resize',
+    () => {
+      stage.setBounds({ width: innerWidth, height: innerHeight }, Date.now());
+    },
+    eventOptions,
+  );
+
+  const draw = (): void => {
+    if (disposed || paused) return;
+    const now = Date.now();
+    const frame = stage.update(now);
+    const visible = new Set(frame.cats.map((p) => p.cat));
+    for (const [cat, view] of cats) {
+      if (!visible.has(cat)) {
+        view.generation++;
+        view.cache.dispose();
+        view.sprite.destroy();
+        cats.delete(cat);
+      }
+    }
+    for (const p of frame.cats) {
+      let view = cats.get(p.cat);
+      if (!view) {
+        view = makeCat(p.cat);
+        cats.set(p.cat, view);
+      }
+      view.placement = p;
+      const key = `${p.clip}:${p.variant}`;
+      if (key !== view.wanted) {
+        view.wanted = key;
+        const generation = ++view.generation;
+        view.current?.freezeLastFrame();
+        const target = view;
+        void view.cache
+          .request(key)
+          .then((media) => {
+            if (disposed || generation !== target.generation) return;
+            target.current?.video.pause();
+            target.current = media;
+            target.key = key;
+            target.cache.activate(key);
+            target.sprite.texture = media.texture;
+            target.sprite.visible = true;
+            if (!paused && target.placement)
+              media.sync(target.placement.clipTimeMs, target.placement.playbackRate);
+          })
+          .catch(failed);
+      }
+      const media = view.current;
+      if (!media) continue;
+      if (key === view.key) media.sync(p.clipTimeMs, p.playbackRate);
+      const anchor = media.clip.footAnchors[media.frame];
+      if (anchor) view.sprite.pivot.set(anchor.x, anchor.y);
+      view.sprite.position.set(p.x, p.y);
+      view.sprite.scale.set(p.mirrored ? -p.scale : p.scale, p.scale);
+      view.sprite.alpha = ghost ? 0.35 : 1;
+      app.stage.setChildIndex(view.sprite, app.stage.children.length - 1);
+    }
+    app.stage.setChildIndex(decorations, app.stage.children.length - 1);
+    for (const child of decorations.removeChildren()) child.destroy();
+    for (const bubble of frame.bubbles) {
+      const p = cats.get(bubble.cat)?.placement;
+      if (!p) continue;
+      const text = new Text({
+        text: bubble.text,
+        style: { fontFamily: 'sans-serif', fontSize: 16, fill: 0x333333 },
+      });
+      text.anchor.set(0.5, 1);
+      text.position.set(p.x, p.y - 170 * p.scale);
+      text.alpha = Math.min(1, bubble.ageMs / 150);
+      decorations.addChild(text);
+    }
+    for (const effect of frame.effects) {
+      const graphics = new Graphics();
+      const age = effect.ageMs / (effect.effect === 'cut' ? 300 : 1200);
+      if (effect.effect === 'hearts') {
+        graphics
+          .moveTo(0, 5)
+          .bezierCurveTo(-18, -7, -8, -18, 0, -10)
+          .bezierCurveTo(8, -18, 18, -7, 0, 5)
+          .fill(0xff769e);
+      } else {
+        graphics.circle(-8, 0, 12).circle(8, 2, 14).circle(0, -10, 11).fill(0xeeeeee);
+      }
+      graphics.position.set(effect.x, effect.y - age * 35);
+      graphics.alpha = Math.max(0, 1 - age);
+      graphics.scale.set(1 + age);
+      decorations.addChild(graphics);
+    }
+    for (const fact of stage.drainFacts()) bridge.sendFact(fact);
+    if (debug && now - lastDebug >= 500) {
+      bridge.sendOverlay({ type: 'stageDebug', report: stage.debugReport(now) });
+      lastDebug = now;
+    }
+    drew++;
+  };
+  app.ticker.add(draw);
+  unsubscribe.push(
+    bridge.onOverlay((message) => {
+      if (message.type === 'ghost') {
+        ghost = message.active;
+        stage.setGhostMode(ghost, Date.now());
+        renew();
+      }
+      if (message.type === 'dragCancel') cancel();
+      if (message.type === 'stageDebug') debug = message.enabled;
+      if (message.type === 'paused') {
+        paused = message.paused;
+        if (paused) {
+          cancel();
+          app.stop();
+          for (const view of cats.values()) view.current?.video.pause();
+        } else {
+          app.start();
+        }
+        renew();
+      }
+    }),
+  );
+  const timer = setInterval(renew, OVERLAY_TIMING.hoverRenewMs);
+  return {
+    app,
+    inspect: () => ({
+      drew,
+      paused,
+      ghost,
+      dragging: dragging !== undefined,
+      errors,
+      cats: [...cats.entries()].map(([cat, view]) => ({
+        cat,
+        ...view.placement,
+        frame: view.current?.frame,
+        current: view.key,
+        wanted: view.wanted,
+        cache: view.cache.keys(),
+        visible: view.sprite.visible,
+        videoTime: view.current?.video.currentTime,
+      })),
+    }),
+    dispose(): void {
+      disposed = true;
+      abort.abort();
+      clearInterval(timer);
+      unsubscribe.forEach((off) => {
+        off();
+      });
+      for (const view of cats.values()) view.cache.dispose();
+      app.destroy(true, { children: true });
+    },
+  };
+}
