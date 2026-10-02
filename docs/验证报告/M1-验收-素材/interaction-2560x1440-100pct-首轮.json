@@ -1,0 +1,353 @@
+{
+  "time": "2026-10-02T11:55:26.164Z",
+  "display": {
+    "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 2560,
+      "height": 1440
+    },
+    "workArea": {
+      "x": 0,
+      "y": 0,
+      "width": 2560,
+      "height": 1392
+    },
+    "scaleFactor": 1
+  },
+  "overlaySize": {
+    "width": 2560,
+    "height": 1392
+  },
+  "versions": {
+    "electron": "44.5.1",
+    "chrome": "152.0.7977.130",
+    "node": "24.21.0"
+  },
+  "floorDepthDuringTest": 0.02,
+  "cats": {
+    "A": "test-active",
+    "B": "test-close",
+    "C": "test-calm"
+  },
+  "interferences": [
+    {
+      "scenario": "焦点",
+      "attempt": 1,
+      "reason": "光标在 527,1335，应该在 549,1318（有人动了鼠标）"
+    },
+    {
+      "scenario": "焦点",
+      "attempt": 1,
+      "reason": "光标在 1280,399，应该在 1280,418（有人动了鼠标）"
+    },
+    {
+      "scenario": "焦点",
+      "attempt": 2,
+      "reason": "光标在 607,1335，应该在 627,1318（有人动了鼠标）"
+    },
+    {
+      "scenario": "焦点",
+      "attempt": 3,
+      "reason": "光标在 1280,408，应该在 1280,418（有人动了鼠标）"
+    },
+    {
+      "scenario": "M1 互动",
+      "attempt": 1,
+      "reason": "光标在 965,1336，应该在 975,1319（有人动了鼠标）"
+    },
+    {
+      "scenario": "防卡死",
+      "attempt": 1,
+      "reason": "光标在 1280,408，应该在 1280,418（有人动了鼠标）"
+    }
+  ],
+  "passed": 26,
+  "failed": 1,
+  "results": [
+    {
+      "scenario": "准备",
+      "name": "探针窗口成为前台",
+      "pass": true,
+      "detail": "前台窗口：TTCats interaction probe"
+    },
+    {
+      "scenario": "基础",
+      "name": "窗口样式",
+      "pass": true,
+      "detail": "不抢焦点 WS_EX_NOACTIVATE=true，置顶 TOPMOST=true，默认穿透 TRANSPARENT=true"
+    },
+    {
+      "scenario": "基础",
+      "name": "点空白处",
+      "pass": true,
+      "detail": "点击落到：probe"
+    },
+    {
+      "scenario": "基础",
+      "name": "鼠标移到猫身上后关闭穿透",
+      "pass": true,
+      "detail": "用时 14ms"
+    },
+    {
+      "scenario": "基础",
+      "name": "点猫的包围框内的透明处（两腿之间）",
+      "pass": true,
+      "detail": "点击落到：probe"
+    },
+    {
+      "scenario": "悬停后点猫",
+      "name": "悬停后点猫 20 次",
+      "pass": true,
+      "detail": "20/20 次由猫接住；{\"test-active\":20}；每次点击前后都核对了光标、Ctrl、幽灵模式、窗口顺序",
+      "data": {
+        "tally": {
+          "test-active": 20
+        },
+        "misses": []
+      }
+    },
+    {
+      "scenario": "快速移到猫身上马上点",
+      "name": "移动后隔多久点击才一定能点中猫",
+      "pass": true,
+      "detail": "隔 5ms 及以上 5/5 点中；全部 40 次里有 5 次点击丢失或被吃掉",
+      "data": {
+        "0": {
+          "lost": 5
+        },
+        "5": {
+          "cat": 5
+        },
+        "10": {
+          "cat": 5
+        },
+        "20": {
+          "cat": 5
+        },
+        "35": {
+          "cat": 5
+        },
+        "50": {
+          "cat": 5
+        },
+        "80": {
+          "cat": 5
+        },
+        "120": {
+          "cat": 5
+        }
+      }
+    },
+    {
+      "scenario": "快速移到猫身上马上点",
+      "name": "鼠标刚离开猫就点旁边的空白处",
+      "pass": true,
+      "detail": "隔 5ms 及以上 5/5 落到下面的窗口；共 4/25 次被桌面层吃掉或丢失",
+      "data": {
+        "0": {
+          "lost": 2,
+          "swallowed": 2,
+          "probe": 1
+        },
+        "5": {
+          "probe": 5
+        },
+        "10": {
+          "probe": 5
+        },
+        "20": {
+          "probe": 5
+        },
+        "50": {
+          "probe": 5
+        }
+      }
+    },
+    {
+      "scenario": "拖动时鼠标移出猫的范围",
+      "name": "整个拖动过程由桌面层接收",
+      "pass": true,
+      "detail": "拖动中=true，拎起=true，松手时放下=true，猫落在松手位置=true（x=1166.5，应为 1166.6），下面的窗口收到 0 个鼠标事件"
+    },
+    {
+      "scenario": "拖动时鼠标移出猫的范围",
+      "name": "松手后离开猫，恢复穿透",
+      "pass": true,
+      "detail": "用时 2ms"
+    },
+    {
+      "scenario": "拖动时鼠标移出猫的范围",
+      "name": "之后点空白处",
+      "pass": true,
+      "detail": "点击落到：probe"
+    },
+    {
+      "scenario": "按住 Ctrl 拖动",
+      "name": "先按 Ctrl 再拖：穿过猫，拖到下面的窗口",
+      "pass": true,
+      "detail": "幽灵模式=true，猫身上仍穿透=true，猫收到点击=false，下面的窗口收到 Ctrl+按下=true，猫没动=true"
+    },
+    {
+      "scenario": "按住 Ctrl 拖动",
+      "name": "松开 Ctrl 后保持 2 秒",
+      "pass": true,
+      "detail": "松开约 1 秒时点猫 → probe；约 2.6 秒时点猫 → test-active"
+    },
+    {
+      "scenario": "按住 Ctrl 拖动",
+      "name": "拖到一半按 Ctrl：继续拖完，松手后穿透",
+      "pass": true,
+      "detail": "按 Ctrl 后仍在拖=true，猫到了松手位置=true，下面的窗口收到 0 个鼠标事件，松手后 14ms 恢复穿透"
+    },
+    {
+      "scenario": "两只猫重叠",
+      "name": "两只猫都不透明的地方 → 前面的猫",
+      "pass": true,
+      "detail": "点击落到：test-calm（应为 test-calm）"
+    },
+    {
+      "scenario": "两只猫重叠",
+      "name": "只有后面的猫的地方 → 后面的猫",
+      "pass": true,
+      "detail": "点击落到：test-close（应为 test-close）"
+    },
+    {
+      "scenario": "两只猫重叠",
+      "name": "只有前面的猫的地方 → 前面的猫",
+      "pass": true,
+      "detail": "点击落到：test-calm（应为 test-calm）"
+    },
+    {
+      "scenario": "两只猫重叠",
+      "name": "猫的透明处（腿缝），也没被另一只猫盖住 → 下面的窗口",
+      "pass": true,
+      "detail": "点击落到：probe（应为 probe）"
+    },
+    {
+      "scenario": "焦点",
+      "name": "在探针窗口打字时点猫、拖猫",
+      "pass": true,
+      "detail": "点到猫=true，拖了猫=true，输入框内容=\"abcdef\"，前台窗口=TTCats interaction probe"
+    },
+    {
+      "scenario": "焦点",
+      "name": "（整个场景）",
+      "pass": false,
+      "detail": "连续 3 次被打断，没有结果"
+    },
+    {
+      "scenario": "M1 互动",
+      "name": "单击猫",
+      "pass": true,
+      "detail": "点击落到：test-active，猫的反应片段：poked"
+    },
+    {
+      "scenario": "M1 互动",
+      "name": "撸猫（在猫身上来回划）",
+      "pass": true,
+      "detail": "撸猫结束=true（时长 1255ms），播过呼噜片段=true，误触发其他互动 0 次",
+      "data": {
+        "clips": [
+          "idle-stand",
+          "purr"
+        ]
+      }
+    },
+    {
+      "scenario": "M1 互动",
+      "name": "拎起放下",
+      "pass": true,
+      "detail": "拎起=true，拎着时播悬空片段=true，放下=true，落在松手的位置=true"
+    },
+    {
+      "scenario": "M1 互动",
+      "name": "右键菜单不抢焦点",
+      "pass": true,
+      "detail": "请求菜单=true，菜单弹出=true，菜单开着时前台=TTCats interaction probe，关菜单的方式=点回输入框，之后前台=TTCats interaction probe，输入框内容=\"abcdef\"，误触发互动 0 次"
+    },
+    {
+      "scenario": "防卡死",
+      "name": "从猫身上移到空白处",
+      "pass": true,
+      "detail": "15ms 恢复穿透"
+    },
+    {
+      "scenario": "防卡死",
+      "name": "从猫身上移到桌面层外面（任务栏）",
+      "pass": true,
+      "detail": "30ms 恢复穿透"
+    },
+    {
+      "scenario": "防卡死",
+      "name": "渲染进程卡住 1 秒时从猫身上移开",
+      "pass": true,
+      "detail": "60ms 恢复穿透；200ms 时点空白处落到了下面的窗口"
+    }
+  ],
+  "lostClicks": [
+    {
+      "scenario": "快速移到猫身上马上点",
+      "at": {
+        "x": 548.6994137086567,
+        "y": 1318.0062642196272
+      },
+      "overlayDowns": [],
+      "probe": []
+    },
+    {
+      "scenario": "快速移到猫身上马上点",
+      "at": {
+        "x": 548.6994137086567,
+        "y": 1318.0062642196272
+      },
+      "overlayDowns": [],
+      "probe": []
+    },
+    {
+      "scenario": "快速移到猫身上马上点",
+      "at": {
+        "x": 548.6994137086567,
+        "y": 1318.0062642196272
+      },
+      "overlayDowns": [],
+      "probe": []
+    },
+    {
+      "scenario": "快速移到猫身上马上点",
+      "at": {
+        "x": 548.6994137086567,
+        "y": 1318.0062642196272
+      },
+      "overlayDowns": [],
+      "probe": []
+    },
+    {
+      "scenario": "快速移到猫身上马上点",
+      "at": {
+        "x": 548.6994137086567,
+        "y": 1318.0062642196272
+      },
+      "overlayDowns": [],
+      "probe": []
+    },
+    {
+      "scenario": "快速移到猫身上马上点",
+      "at": {
+        "x": 690.099703312902,
+        "y": 1308.0265076689193
+      },
+      "overlayDowns": [],
+      "probe": []
+    },
+    {
+      "scenario": "快速移到猫身上马上点",
+      "at": {
+        "x": 690.099703312902,
+        "y": 1308.0265076689193
+      },
+      "overlayDowns": [],
+      "probe": []
+    }
+  ]
+}

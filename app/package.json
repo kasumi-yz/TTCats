@@ -18,7 +18,10 @@
     "check:schemas": "tsx scripts/gen-schemas.ts --check",
     "check": "npm run typecheck && npm run lint && npm test && npm run validate:content && npm run check:schemas",
     "test:smoke": "playwright test",
-    "perf": "tsx scripts/perf.ts"
+    "perf": "tsx scripts/perf.ts",
+    "perf:app": "tsx scripts/perf-app.ts",
+    "interaction-test": "tsx scripts/interaction-test.ts",
+    "start:test-pack": "electron-vite build && tsx scripts/start-test-pack.ts"
   },
   "dependencies": {
     "koffi": "^3.3.2",
