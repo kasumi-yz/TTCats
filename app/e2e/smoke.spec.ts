@@ -714,3 +714,70 @@ for (const discard of [false, true]) {
     }
   });
 }
+
+test('声音：真实解码、调试命令、呼噜停止与空闲挂起', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-audio-'));
+  const app = await launch(directory);
+  try {
+    const overlay = await pageFor(app, '/overlay/');
+    const debug = await openDebug(app);
+    const audible = () =>
+      app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows().some(
+          (window) =>
+            window.webContents.getURL().includes('/overlay/') &&
+            window.webContents.isCurrentlyAudible(),
+        ),
+      );
+    const sound = async (kind: 'meow' | 'purr') => {
+      await overlay.evaluate((sound) => {
+        (
+          globalThis as unknown as { ttcats: { sendCommand: (command: unknown) => void } }
+        ).ttcats.sendCommand({ type: 'debug/sound', cat: 'test-calm', sound });
+      }, kind);
+    };
+    await expect.poll(async () => (await report(debug))?.audio?.suspended).toBe(true);
+    for (const kind of ['meow', 'purr'] as const) {
+      await sound(kind);
+      await expect.poll(audible, { intervals: [50, 100] }).toBe(true);
+      await expect
+        .poll(async () => (await report(debug))?.audio?.playing, { intervals: [50, 100] })
+        .toContainEqual({ cat: 'test-calm', sound: kind });
+      await expect
+        .poll(async () => (await report(debug))?.audio)
+        .toEqual({ playing: [], suspended: true });
+    }
+    // 用正式设置命令关闭喵叫：声音命令仍到达，但播放器不能出声。
+    await overlay.evaluate(
+      'window.ttcats.sendCommand({type:"settings/update",patch:{meowEnabled:false}})',
+    );
+    await expect.poll(async () => (await snapshot(overlay)).settings.meowEnabled).toBe(false);
+    await sound('meow');
+    const at = (await report(debug))?.at ?? 0;
+    await expect.poll(async () => (await report(debug))?.at ?? 0).toBeGreaterThan(at + 1000);
+    expect((await report(debug))?.audio).toEqual({ playing: [], suspended: true });
+    await sound('purr');
+    await expect.poll(audible).toBe(true);
+    await setFullscreen(app, true);
+    await expect.poll(() => overlayVisible(app)).toBe(false);
+    await expect
+      .poll(async () => (await report(debug))?.audio)
+      .toEqual({ playing: [], suspended: true });
+    await setFullscreen(app, false);
+    await expect.poll(() => overlayVisible(app)).toBe(true);
+    await sound('purr');
+    await expect
+      .poll(async () => (await report(debug))?.audio?.playing)
+      .toContainEqual({ cat: 'test-calm', sound: 'purr' });
+    await overlay.evaluate(
+      'window.ttcats.sendCommand({type:"cat/setVisible",cat:"test-calm",visible:false})',
+    );
+    await expect
+      .poll(async () => (await report(debug))?.audio)
+      .toEqual({ playing: [], suspended: true });
+    const log = readFileSync(join(directory, 'TTCats/logs/main.log'), 'utf8');
+    expect(log).not.toContain('无法播放声音文件');
+  } finally {
+    await app.close();
+  }
+});

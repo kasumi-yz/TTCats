@@ -302,6 +302,10 @@ export const zh = {
     loadFailed: (cat: string, file: string) => `${cat}：无法加载片段文件 ${file}。`,
     badMask: (cat: string, file: string) => `${cat}：点击遮罩 ${file} 的长度不正确。`,
   },
+  overlayAudio: {
+    failed: (cat: string, file: string, detail: string) =>
+      `${cat}：无法播放声音文件 ${file}。原因：${detail}`,
+  },
   integration: {
     summon: '召唤',
     visibility: '显示或隐藏猫',
