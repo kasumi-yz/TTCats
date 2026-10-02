@@ -1,4 +1,4 @@
-// #24 合并前的开发/验收驱动；不由正式 index.html 引入、不随正式程序发布。
+// 固定位置的窗口与输入链路验收驱动；正式入口与默认性能测量不使用。
 import type { ContentCatalog, StageCore, CatPlacement } from '../../shared/core-api';
 import type { Fact, StateSnapshot } from '../../shared/ipc';
 import type { Clip } from '../../shared/schemas';

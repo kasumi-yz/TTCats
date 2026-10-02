@@ -33,7 +33,13 @@ void app.whenReady().then(async () => {
     system: await createPlatform(),
     settings: snapshot.settings,
     preload: join(import.meta.dirname, '../preload/index.cjs'),
-    load: (window) => window.loadFile(join(import.meta.dirname, 'renderer/overlay/test.html')),
+    load: (window) =>
+      window.loadFile(
+        join(import.meta.dirname, 'renderer/overlay/test.html'),
+        process.env['TTCATS_OVERLAY_DRIVER'] === 'stage'
+          ? { query: { driver: 'stage' } }
+          : undefined,
+      ),
     onMessage: (message) => {
       messages.push(message);
     },

@@ -38,13 +38,15 @@ npm run perf -w app -- --moving-pointer
 
 正式性能默认三种状态各测 300 秒，各自先预热 15 秒，约每秒采样一次，统计所有应用进程 CPU 和私有内存的平均与峰值。CPU 使用 [Electron CPUUsage](https://www.electronjs.org/docs/latest/api/structures/cpu-usage) 的整机百分比之和，不再除以核心数；私有内存按 KB / 1024 转成 MB。全屏探针在同一个测试应用中，因此它的进程也计入全屏状态统计。每 15 秒检查其他 electron / python / pythonw / ComfyUI；查询失败或发现竞争进程会失败，不输出通过结论。`--seconds=10` 可用于探索，不替代默认正式测量。
 
-`--moving-pointer` 单独测正常播放 300 秒，预热 15 秒。每16ms发送一次真实系统鼠标移动，在三只猫和空白之间往返；不点击。专用普通探针覆盖工作区，它的进程也计入统计。记录发送次数和桌面层实际收到的 mousemove 次数；若输入未到达桌面层则失败。该测试同样需要保持桌面解锁、停止人工输入及独占机器。汇总写入 `verification/perf-moving-summary.json`，逐进程原始采样保留在 `app/out/overlay-check/results/perf-moving-raw.json`，不覆盖静止鼠标的三状态汇总。
+`--moving-pointer` 单独测正常播放 300 秒，预热 15 秒。每16ms发送一次真实系统鼠标移动，横扫地板上的猫和空白；不点击。专用普通探针覆盖工作区，它的进程也计入统计。记录发送次数和桌面层实际收到的 mousemove 次数；若输入未到达桌面层则失败。该测试同样需要保持桌面解锁、停止人工输入及独占机器。#24 合并后，性能脚本默认使用真实 core/stage（可用 `--test-driver` 指定固定位置驱动）。真实行为模块的移动测量写入 `verification/perf-stage-moving-summary.json` 和 `app/out/overlay-check/results/perf-stage-moving-raw.json`；固定驱动写入 `perf-moving-summary.json` 和 `perf-moving-raw.json`。不覆盖静止鼠标的三状态汇总。
 
-本轮移动鼠标复测：300秒、282次采样，CPU平均1.54%、峰值2.98%，私有内存平均600.63MB、峰值613.79MB。平均CPU及内存峰值达标。发送11820次系统移动，桌面层记录11871个mousemove事件；独占检查通过。此次原始采样同时复制到 `verification/perf-moving-raw.json` 并提交，方便复核各进程数据。旧三状态汇总仍是首次实现的历史证据，本轮没有重测全部隐藏和全屏状态的性能。
+固定位置驱动的移动鼠标复测：300秒、282次采样，CPU平均1.54%、峰值2.98%，私有内存平均600.63MB、峰值613.79MB。平均CPU及内存峰值达标。发送11820次系统移动，桌面层记录11871个mousemove事件；独占检查通过。此次原始采样按每行一个样本另存为 `verification/perf-moving-raw.jsonl` 并提交，方便复核各进程数据。旧三状态汇总仍是首次实现的历史证据，本轮没有重测全部隐藏和全屏状态的性能。
+
+同步 #24（main 239d793）后的真实 core/stage 移动鼠标复测同样测300秒、282次采样：CPU平均1.73%、峰值2.11%，私有内存平均594.76MB、峰值605.78MB，达标。汇总为 `verification/perf-stage-moving-summary.json`，原始采样为 `verification/perf-stage-moving-raw.jsonl`。两份归档的原始采样都已独立重算，样本数量、CPU平均和内存峰值与各自汇总一致。素材仍是合成测试猫；真实猫素材与完整主进程接线后的整应用验收仍归后续任务。
 
 脚本将原始采样写入 `app/out/overlay-check/results/perf-raw.json`，汇总和桌面交互证据在本目录 `verification/`。本次逐进程原始采样被后续桌面复测的旧版构建清理；保留了完整三阶段汇总和终端阶段结果。构建已改为保留 results，后续复测不会再清理测量文件。汇总含屏幕、GPU 信息与测量口径。未采集 GPU Engine 利用率；GPU 信息只用于确认设备和渲染器，不能当成 GPU 占用数据。
 
-独立 `desktop.fixture.ts`、renderer 的 `test.html` / `test-entry.ts` / `test-driver.ts` 只由验收构建引用，不从正式入口导入。#24 未合并时按 #25 许可使用测试驱动验收鼠标输入链路；它不能代替 #24 的互动业务逻辑验收。正式 renderer/index.ts 使用现有 createStageCore。
+独立 `desktop.fixture.ts`、renderer 的 `test.html` / `test-entry.ts` / `test-driver.ts` 只由验收构建引用，不从正式入口导入。`--verify` 使用固定位置驱动复测窗口与输入链路，不能代替 #24 的互动业务逻辑验收。性能测量及正式 renderer/index.ts 使用真实 createStageCore，猫会自主行动，素材仍是3只合成测试猫。
 
 ## 本机结果
 

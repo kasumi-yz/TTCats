@@ -62,5 +62,5 @@
   ],
   "recoveryMs": 74.9455999999991,
   "failures": 0,
-  "driver": "test-only (#24 not merged)"
+  "driver": "test-driver (fixed-position window/input fixture)"
 }

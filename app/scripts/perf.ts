@@ -17,6 +17,7 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 const root = join(appRoot, '..');
 const verification = process.argv.includes('--verify');
 const movingPointer = process.argv.includes('--moving-pointer');
+const realStage = !verification && !process.argv.includes('--test-driver');
 assert.ok(!verification || !movingPointer, '--verify and --moving-pointer are separate runs');
 const seconds = Number(process.argv.find((a) => a.startsWith('--seconds='))?.slice(10) ?? 300);
 assert.ok(Number.isFinite(seconds) && seconds >= 10);
@@ -70,13 +71,19 @@ mkdirSync(evidence, { recursive: true });
 exclusivity();
 const electron = await _electron.launch({
   args: [join(output, 'desktop.mjs')],
-  env: { ...process.env, TTCATS_OVERLAY_CONTENT: join(appRoot, 'test-content') },
+  env: {
+    ...process.env,
+    TTCATS_OVERLAY_CONTENT: join(appRoot, 'test-content'),
+    TTCATS_OVERLAY_DRIVER: realStage ? 'stage' : 'test',
+  },
   timeout: 30000,
 });
 electron.process().stderr?.on('data', (data: Buffer) => process.stderr.write(data));
 async function overlayPage(): Promise<Page> {
   await expect.poll(() => electron.evaluate('Boolean(globalThis.overlayFixture)')).toBe(true);
-  const page = electron.windows().find((p) => p.url().endsWith('/overlay/test.html'));
+  const page = electron
+    .windows()
+    .find((p) => p.url().split('?')[0]?.endsWith('/overlay/test.html'));
   assert.ok(page);
   page.on('console', (message) => {
     console.log('renderer console', message.text());
@@ -314,7 +321,13 @@ async function verify(page: Page): Promise<void> {
   writeFileSync(
     join(evidence, 'desktop-results.json'),
     JSON.stringify(
-      { display, checks, recoveryMs, failures: 0, driver: 'test-only (#24 not merged)' },
+      {
+        display,
+        checks,
+        recoveryMs,
+        failures: 0,
+        driver: 'test-driver (fixed-position window/input fixture)',
+      },
       null,
       2,
     ) + '\n',
@@ -450,6 +463,7 @@ try {
       exclusive: true,
       fps: 30,
       cats: 3,
+      driver: realStage ? 'core/stage' : 'test-driver',
       movingPointer,
       pointerMoves,
       pointerEvents,
@@ -463,11 +477,25 @@ try {
       summaries,
     };
     writeFileSync(
-      join(results, movingPointer ? 'perf-moving-raw.json' : 'perf-raw.json'),
+      join(
+        results,
+        movingPointer
+          ? realStage
+            ? 'perf-stage-moving-raw.json'
+            : 'perf-moving-raw.json'
+          : 'perf-raw.json',
+      ),
       JSON.stringify(samples),
     );
     writeFileSync(
-      join(evidence, movingPointer ? 'perf-moving-summary.json' : 'perf-summary.json'),
+      join(
+        evidence,
+        movingPointer
+          ? realStage
+            ? 'perf-stage-moving-summary.json'
+            : 'perf-moving-summary.json'
+          : 'perf-summary.json',
+      ),
       JSON.stringify(summary, null, 2) + '\n',
     );
     for (const s of summaries) {
