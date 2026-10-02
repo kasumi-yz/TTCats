@@ -92,6 +92,8 @@ export class Stage implements StageCore {
 
   handleCommand(command: StageCommand, now: number): void {
     this.advanceTo(now);
+    // 重新入场在 #59、调试台的声音在 #61 里实现，在那之前先忽略。
+    if (command.type === 'cat/entrance' || command.type === 'debug/sound') return;
     if (command.type !== 'debug/simulate' && command.type !== 'cat/summon') {
       const actor = this.actor(command.cat);
       if (actor?.isAirborne()) return;
@@ -157,6 +159,8 @@ export class Stage implements StageCore {
         y: e.y,
         ageMs: Math.max(0, now - e.at),
       })),
+      // 声音提示在 #61 里实现。
+      sounds: [],
     };
   }
 
