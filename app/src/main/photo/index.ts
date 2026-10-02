@@ -70,7 +70,13 @@ export function createPhoto(options: {
         const image = source?.thumbnail;
         if (!image || image.isEmpty()) throw new Error(zh.photo.captureFailed);
         const actual = image.getSize();
-        if (actual.width !== size.width || actual.height !== size.height)
+        // DIP 已经取整，乘回缩放可能差一个物理像素；保留实际图像，不拉伸补齐。
+        if (
+          actual.width <= 0 ||
+          actual.height <= 0 ||
+          Math.abs(actual.width - size.width) > 1 ||
+          Math.abs(actual.height - size.height) > 1
+        )
           throw new Error(
             zh.photo.sizeMismatch(size.width, size.height, actual.width, actual.height),
           );
@@ -86,15 +92,17 @@ export function createPhoto(options: {
           window.isDestroyed() ||
           !window.isVisible() ||
           JSON.stringify(window.getBounds()) !== JSON.stringify(bounds) ||
-          layerSize.width !== Math.round(bounds.width * display.scaleFactor) ||
-          layerSize.height !== Math.round(bounds.height * display.scaleFactor)
+          layerSize.width <= 0 ||
+          layerSize.height <= 0 ||
+          Math.abs(layerSize.width - Math.round(bounds.width * display.scaleFactor)) > 1 ||
+          Math.abs(layerSize.height - Math.round(bounds.height * display.scaleFactor)) > 1
         )
           throw new Error(zh.photo.desktopChanged);
         return composePhoto(
           image,
           layer,
-          Math.round((bounds.x - display.bounds.x) * display.scaleFactor),
-          Math.round((bounds.y - display.bounds.y) * display.scaleFactor),
+          Math.round(((bounds.x - display.bounds.x) * actual.width) / display.bounds.width),
+          Math.round(((bounds.y - display.bounds.y) * actual.height) / display.bounds.height),
         );
       });
       const pictures = app.getPath('pictures');
@@ -111,14 +119,15 @@ export function createPhoto(options: {
       } catch (error) {
         throw new Error(zh.photo.clipboardFailed(file, String(error)), { cause: error });
       }
-      const ratio = Math.min(1, 480 / Math.max(size.width, size.height));
+      const photoSize = photo.getSize();
+      const ratio = Math.min(1, 480 / Math.max(photoSize.width, photoSize.height));
       if (!window.isDestroyed() && !window.webContents.isCrashed()) {
         window.webContents.send(IPC_CHANNELS.mainToOverlay, {
           type: 'photo',
           thumbnail: photo
             .resize({
-              width: Math.round(size.width * ratio),
-              height: Math.round(size.height * ratio),
+              width: Math.round(photoSize.width * ratio),
+              height: Math.round(photoSize.height * ratio),
             })
             .toDataURL(),
           area: {
