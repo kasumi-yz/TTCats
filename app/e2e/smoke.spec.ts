@@ -273,8 +273,10 @@ test('正式调试台：命令抵达桌面层、三猫画面报告、双窗口�
     await debug.getByRole('button', { name: zh.panels.simulations.drop, exact: true }).click();
     await expect.poll(async () => (await current())?.clip).not.toBe('dangle');
     await debug.getByRole('button', { name: zh.panels.hide, exact: true }).click();
+    await expect.poll(async () => (await current())?.behavior).toBe(zh.stageLifecycle.exit);
+    // M2 隐藏要先落地、走到屏幕外，不能沿用 M1 立刻消失的 5 秒期限。
     await expect
-      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat))
+      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat), { timeout: 60_000 })
       .not.toContain('test-calm');
     await debug.getByRole('button', { name: zh.panels.show, exact: true }).click();
     await expect
