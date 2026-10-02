@@ -26,7 +26,7 @@ function setup(
     ]),
     snapshot: snapshot([id], { floorDepth: 1 }),
     bounds: SCREEN,
-    now: T0,
+    now: T0 - 60_000,
     random: options.random ?? (() => 0),
   });
   const p = at(stage.update(T0).cats, 0);
@@ -303,8 +303,8 @@ describe('靠近、幽灵模式和生命周期', () => {
       expect(placement(stage, 1100).clipTimeMs).toBe(first.clipTimeMs);
       if (behavior === '凑近鼠标') expect(first.x).toBeGreaterThan(p.x);
       if (behavior === '走开') {
-        // 猫贴着左边时，向右侧可走的地板让开。
-        expect(first.x).toBeGreaterThan(p.x);
+        // 入场后在地板中间，向远离右侧鼠标的左侧让开。
+        expect(first.x).toBeLessThan(p.x);
       }
     }
   });
@@ -357,12 +357,14 @@ describe('靠近、幽灵模式和生命周期', () => {
       simulate(interaction);
       stage.drainFacts();
       stage.applySnapshot(snapshot([], { floorDepth: 1 }, 2), T0 + 100);
-      expect(stage.update(T0 + 100).cats).toEqual([]);
+      expect(stage.update(T0 + 100).cats).toHaveLength(1);
       expect(stage.drainFacts().map((f) => f.type)).toEqual([
         interaction === 'pet' ? 'cat/petted' : 'cat/dropped',
       ]);
-      stage.applySnapshot(snapshot([id], { floorDepth: 1 }, 3), T0 + 200);
-      expect(placement(stage, 200).clip).toBe('idle-stand');
+      expect(stage.update(T0 + 60_000).cats).toEqual([]);
+      stage.applySnapshot(snapshot([id], { floorDepth: 1 }, 3), T0 + 60_100);
+      expect(placement(stage, 60_100).clip).toBe('walk');
+      expect(stage.drainFacts()).toEqual([]);
     }
   });
 

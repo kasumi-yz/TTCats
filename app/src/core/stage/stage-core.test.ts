@@ -43,6 +43,8 @@ function setup(
 ) {
   const cats = options.cats ?? [{ cat: testCat('a') }];
   const log: LoggedSegment[] = [];
+  const random = seeded(options.seed ?? 1);
+  let entered = false;
   const stage = new Stage({
     content: catalog(cats),
     snapshot: snapshot(
@@ -50,10 +52,17 @@ function setup(
       options.settings,
     ),
     bounds: options.bounds ?? SCREEN,
-    now: T0,
-    random: seeded(options.seed ?? 1),
+    now: T0 - MIN,
+    random: () => (entered ? random() : 0),
     observer: { segmentStarted: (cat, seg, at) => log.push({ ...seg, cat, at }) },
   });
+  // 本文件测试入场后的既有行为；进出场全过程由 lifecycle.test.ts 覆盖。
+  stage.update(T0);
+  entered = true;
+  log.splice(
+    0,
+    log.findIndex((s) => s.at >= T0),
+  );
   return { stage, log };
 }
 
@@ -446,8 +455,15 @@ describe('命令', () => {
     const to = { x: start.x < 960 ? start.x + 300 : start.x - 300, y: 900 };
     stage.handleCommand({ type: 'cat/summon', cats: ['a'], to }, T0 + 3_000);
     expect(at(stage.debugReport(T0 + 3_000).cats, 0).behavior).toBe('被召唤过来');
-    const frames = run(stage, T0 + 3_000, T0 + 20_000);
-    const final = placementOf(at(frames, -1));
+    let final: CatPlacement | undefined;
+    for (let t = T0 + 3_033; t < T0 + 20_000; t += 33) {
+      const p = placementOf(stage.update(t));
+      if (stage.debugReport(t).cats[0]?.behavior === '被召唤过来' && p.clip === 'idle-stand') {
+        final = p;
+        break;
+      }
+    }
+    final = defined(final);
     expect(final.clip).toBe('idle-stand');
     expect(Math.abs(final.x - to.x)).toBeLessThan(300);
     expect(final.mirrored).toBe(final.x > to.x);
@@ -681,7 +697,8 @@ describe('屏幕和设置变化', () => {
 
   it('改缩放把位置收回地板时，走路接着走、不跳位', () => {
     const { stage } = setup({ settings: { floorDepth: 0 } });
-    stage.handleCommand({ type: 'cat/summon', cats: ['a'], to: { x: 1800, y: 1000 } }, T0);
+    const start = placementOf(stage.update(T0));
+    stage.handleCommand({ type: 'cat/summon', cats: ['a'], to: { x: start.x + 400, y: 1000 } }, T0);
     let t = T0;
     let p = placementOf(stage.update(t));
     while (p.clip !== 'walk' && t < T0 + 10_000) p = placementOf(stage.update((t += 33)));
@@ -730,13 +747,14 @@ describe('屏幕和设置变化', () => {
         .sort(),
     ).toEqual(['a', 'b']);
     stage.applySnapshot(snapshot(['b'], {}, 5), T0 + 10);
-    expect(stage.update(T0 + 10).cats.map((c) => c.cat)).toEqual(['b']);
-    stage.applySnapshot(snapshot(['a', 'b'], {}, 4), T0 + 20);
-    expect(stage.update(T0 + 20).cats.map((c) => c.cat)).toEqual(['b']);
-    stage.applySnapshot(snapshot(['a', 'b', 'nobody'], {}, 6), T0 + 30);
+    expect(stage.debugReport(T0 + 10).cats.find((c) => c.cat === 'a')?.behavior).toBe('正在出场');
+    expect(stage.update(T0 + MIN).cats.map((c) => c.cat)).toEqual(['b']);
+    stage.applySnapshot(snapshot(['a', 'b'], {}, 4), T0 + MIN + 20);
+    expect(stage.update(T0 + MIN + 20).cats.map((c) => c.cat)).toEqual(['b']);
+    stage.applySnapshot(snapshot(['a', 'b', 'nobody'], {}, 6), T0 + MIN + 30);
     expect(
       stage
-        .update(T0 + 30)
+        .update(T0 + MIN + 30)
         .cats.map((c) => c.cat)
         .sort(),
     ).toEqual(['a', 'b']);

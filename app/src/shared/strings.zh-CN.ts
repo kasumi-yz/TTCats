@@ -251,6 +251,12 @@ export const zh = {
       debugClip: (clip: string) => `调试：播放「${clip}」`,
     },
   },
+  stageLifecycle: {
+    entrance: '正在入场',
+    exit: '正在出场',
+    goToCorner: '去角落睡觉',
+    doNotDisturbSleep: '勿扰睡觉',
+  },
   stagePointer: {
     friendly: '喵～',
     reserved: '喵？',
