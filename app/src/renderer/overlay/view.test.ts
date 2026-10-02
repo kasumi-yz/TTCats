@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CatPlacement, StageCore, StageFrame } from '../../shared/core-api';
 import type { Clip } from '../../shared/schemas';
 import { catalog, testCat, testClip } from '../../core/stage/test-fixtures';
-import type { OverlayBridge, StageCommand, StateSnapshot } from '../../shared/ipc';
+import type { MainToOverlay, OverlayBridge, StageCommand, StateSnapshot } from '../../shared/ipc';
 import { defaultSettings } from '../../shared/schemas/settings';
 
 const mock = vi.hoisted(() => {
@@ -87,6 +87,8 @@ vi.mock('pixi.js', () => ({
       },
     };
     stage = new mock.Container();
+    start = vi.fn();
+    stop = vi.fn();
     init() {
       return mock.ready;
     }
@@ -125,6 +127,7 @@ function setup() {
   };
   let onSnapshot: ((snapshot: StateSnapshot) => void) | undefined;
   let onCommand: ((command: StageCommand) => void) | undefined;
+  let onOverlay: ((message: MainToOverlay) => void) | undefined;
   const off = vi.fn();
   const sendOverlay = vi.fn();
   const bridge: OverlayBridge = {
@@ -141,7 +144,10 @@ function setup() {
       onCommand = listener;
       return off;
     },
-    onOverlay: () => off,
+    onOverlay: (listener) => {
+      onOverlay = listener;
+      return off;
+    },
   };
   const applySnapshot = vi.fn();
   const handleCommand = vi.fn();
@@ -167,6 +173,7 @@ function setup() {
     sendOverlay,
     pushSnapshot: () => onSnapshot?.(snapshot),
     pushCommand: () => onCommand?.({ type: 'cat/sleep', cat: 'test' }),
+    pushOverlay: (message: MainToOverlay) => onOverlay?.(message),
   };
 }
 
@@ -207,6 +214,48 @@ const smallClip = () =>
   });
 
 describe('桌面层审查回归', () => {
+  it('穿透点击按消息坐标和最前猫的遮罩转发，幽灵模式也保留命中，暂停时丢弃', async () => {
+    const fixture = setup();
+    const clip = smallClip();
+    mock.load.mockImplementation((_cat: string, loaded: Clip) => Promise.resolve(media(loaded)));
+    fixture.stage.update = () => ({
+      cats: [placement('a'), placement('b')],
+      bubbles: [],
+      effects: [],
+      sounds: [],
+    });
+    const view = await createOverlayView(
+      catalog([
+        { cat: testCat('a'), clips: [clip] },
+        { cat: testCat('b'), clips: [clip] },
+      ]),
+      fixture.stage,
+      fixture.bridge,
+    );
+    try {
+      mock.draw();
+      await vi.waitFor(() => {
+        expect(view.inspect().cats.every((cat) => cat.visible)).toBe(true);
+      });
+      fixture.pushOverlay({ type: 'ghost', active: true });
+      fixture.pushOverlay({ type: 'clickThrough', x: 100, y: 95 });
+      expect(fixture.handlePointer).toHaveBeenLastCalledWith(
+        { type: 'clickThrough', x: 100, y: 95, cat: 'b' },
+        expect.any(Number),
+      );
+      fixture.pushOverlay({ type: 'clickThrough', x: 200, y: 95 });
+      expect(fixture.handlePointer).toHaveBeenLastCalledWith(
+        { type: 'clickThrough', x: 200, y: 95, cat: null },
+        expect.any(Number),
+      );
+      fixture.pushOverlay({ type: 'paused', paused: true });
+      fixture.handlePointer.mockClear();
+      fixture.pushOverlay({ type: 'clickThrough', x: 200, y: 95 });
+      expect(fixture.handlePointer).not.toHaveBeenCalled();
+    } finally {
+      view.dispose();
+    }
+  });
   it('同纵深时点击最前面的猫，绘制顺序变化后不能沿用创建顺序', async () => {
     const fixture = setup();
     const clip = smallClip();

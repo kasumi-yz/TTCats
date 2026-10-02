@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import fs, { readFileSync } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import { extname, resolve, sep } from 'node:path';
-import { app, Tray, Menu, dialog, globalShortcut, shell } from 'electron';
+import { app, Tray, Menu, dialog, globalShortcut, screen, shell } from 'electron';
 import koffi from 'koffi';
 
 // 只观察原生边界，业务仍执行正式构建入口。
@@ -22,7 +22,16 @@ globalThis.smoke = {
   saveDialogs: [],
   savePath: null,
   shownItems: [],
+  pointerInput: null,
 };
+// #60 冒烟仅替换输入采样，保留正式的看门狗、IPC、遮罩和 Stage；真鼠标穿透由 #69 验收。
+app.once('ready', () => {
+  const cursorScreenPoint = screen.getCursorScreenPoint.bind(screen);
+  screen.getCursorScreenPoint = () => {
+    const input = globalThis.smoke.pointerInput;
+    return input ? { x: input.x, y: input.y } : cursorScreenPoint();
+  };
+});
 // 在文件系统边界模拟存档目录拒绝写入，保留正式 SaveStore、退出流程和日志。
 const openSync = fs.openSync;
 fs.openSync = function (path, ...args) {
@@ -44,10 +53,20 @@ app.on('browser-window-created', (_event, window) => {
 const load = koffi.load;
 koffi.load = function (...args) {
   const library = load(...args);
-  if (args[0] !== 'shell32.dll') return library;
+  if (args[0] !== 'shell32.dll' && args[0] !== 'user32.dll') return library;
   return {
     ...library,
     func(...signature) {
+      if (String(signature[0]).includes('GetAsyncKeyState')) {
+        const native = library.func(...signature);
+        return (key) => {
+          const input = globalThis.smoke.pointerInput;
+          if (!input) return native(key);
+          return (key === 0x11 ? input.ctrlDown : (key === 1 || key === 2) && input.leftDown)
+            ? -32768
+            : 0;
+        };
+      }
       if (String(signature[0]).includes('SHQueryUserNotificationState'))
         return (state) => {
           state[0] = globalThis.smoke.fullscreen ? 3 : 5;
