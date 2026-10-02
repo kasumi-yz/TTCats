@@ -352,6 +352,7 @@ export const zh = {
     failedTitle: '导出诊断信息失败',
     failed: (error: string) =>
       `导出诊断信息失败：${error}\n请检查保存位置是否可写、磁盘空间是否足够，然后再试一次。`,
+    gpuTimeout: (ms: number) => `显卡信息查询超过 ${ms} 毫秒没有返回。`,
     noSave: '（没有找到存档文件 save.json，可能是第一次运行，或者存档还没写过。）',
     readme: (files: { name: string; about: string }[]) =>
       [

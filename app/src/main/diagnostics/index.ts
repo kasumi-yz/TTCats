@@ -1,9 +1,20 @@
-import { existsSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeSync,
+} from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import { app, dialog, screen, shell, type BrowserWindow } from 'electron';
 import type { ContentCatalog } from '../../shared/core-api';
 import { zh } from '../../shared/strings.zh-CN';
-import { buildDiagnosticsZip, type Privacy } from './bundle';
+import type { SystemInfo } from '../platform';
+import { buildDiagnosticsZip } from './bundle';
 
 export { buildDiagnosticsZip, DIAGNOSTICS_FILES, redact, type DiagnosticsInput } from './bundle';
 
@@ -20,6 +31,8 @@ export interface DiagnosticsOptions {
   stopping: () => boolean;
   overlayWindow: () => BrowserWindow | undefined;
   report: (message: string) => void;
+  /** 来自 platform 层（硬性规则 3）；用户目录和用户名只用来脱敏，不写进压缩包。 */
+  system: () => SystemInfo;
   now?: () => number;
 }
 
@@ -46,11 +59,6 @@ export function contentSummary(content: ContentCatalog, directory: string, safeM
   };
 }
 
-function privacy(): Privacy {
-  const home = app.getPath('home');
-  return { home, username: process.env['USERNAME'] ?? basename(home) };
-}
-
 async function gpuInfo(): Promise<unknown> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -58,7 +66,7 @@ async function gpuInfo(): Promise<unknown> {
       app.getGPUInfo('basic'),
       new Promise((_, reject) => {
         timer = setTimeout(() => {
-          reject(new Error(`getGPUInfo 超过 ${GPU_TIMEOUT_MS} 毫秒没有返回`));
+          reject(new Error(text.gpuTimeout(GPU_TIMEOUT_MS)));
         }, GPU_TIMEOUT_MS);
       }),
     ]);
@@ -78,17 +86,12 @@ function readLogs(directory: string): { name: string; text: string }[] {
     .map((name) => ({ name, text: readFileSync(join(directory, name), 'utf8') }));
 }
 
-async function systemInfo(overlay: BrowserWindow | undefined) {
+async function systemInfo(system: SystemInfo, overlay: BrowserWindow | undefined) {
   const primary = screen.getPrimaryDisplay().id;
-  const memory = process.getSystemMemoryInfo();
-  // 操作系统模块只能在 platform/ 里用（硬性规则 3），这里只用 Electron 的跨平台接口和系统环境变量。
   return {
-    os: { version: process.getSystemVersion(), arch: process.arch },
-    cpu: {
-      identifier: process.env['PROCESSOR_IDENTIFIER'] ?? null,
-      cores: Number(process.env['NUMBER_OF_PROCESSORS']) || null,
-    },
-    memory: { totalKB: memory.total, freeKB: memory.free },
+    os: system.os,
+    cpu: system.cpu,
+    memory: system.memory,
     gpu: await gpuInfo(),
     displays: screen.getAllDisplays().map((display) => ({
       id: display.id,
@@ -112,6 +115,27 @@ async function systemInfo(overlay: BrowserWindow | undefined) {
 }
 
 /**
+ * 在目标目录里用本次独有的临时文件写完，再替换用户在保存对话框里确认过的目标。
+ * 临时文件排他创建（wx），不会覆盖目录里原有的文件；失败时只删除本次创建的那一个。
+ */
+export function writeFileReplacing(target: string, data: Uint8Array): void {
+  const temporary = join(dirname(target), `.${basename(target)}.${randomUUID()}.tmp`);
+  const handle = openSync(temporary, 'wx');
+  try {
+    try {
+      let written = 0;
+      while (written < data.length) written += writeSync(handle, data, written);
+    } finally {
+      closeSync(handle);
+    }
+    renameSync(temporary, target);
+  } catch (error) {
+    rmSync(temporary, { force: true });
+    throw error;
+  }
+}
+
+/**
  * 处理 diagnostics/export（D13）：弹出保存对话框，把日志、存档、版本、系统信息和内容状态打成 zip。
  * 安全模式下照常可用；退出过程中拒绝。导出完成后在文件夹里选中文件，失败时中文提示并写日志。
  */
@@ -130,6 +154,7 @@ export function createDiagnosticsExport(options: DiagnosticsOptions): () => Prom
     }
     const target = result.filePath;
     options.report(text.started);
+    const system = options.system();
     const zip = buildDiagnosticsZip({
       logs: readLogs(options.logDirectory),
       save: existsSync(options.saveFile) ? readFileSync(options.saveFile, 'utf8') : null,
@@ -141,19 +166,11 @@ export function createDiagnosticsExport(options: DiagnosticsOptions): () => Prom
         isPackaged: app.isPackaged,
         exportedAt: now(),
       },
-      system: await systemInfo(options.overlayWindow()),
+      system: await systemInfo(system, options.overlayWindow()),
       content: contentSummary(options.content, options.contentDirectory, options.safeMode()),
-      privacy: privacy(),
+      privacy: { home: system.home, username: system.username },
     });
-    // 先写临时文件再替换，半截的压缩包不会留在用户选的位置。
-    const temporary = `${target}.tmp`;
-    try {
-      writeFileSync(temporary, zip);
-      renameSync(temporary, target);
-    } catch (error) {
-      rmSync(temporary, { force: true });
-      throw error;
-    }
+    writeFileReplacing(target, zip);
     options.report(text.saved(target));
     shell.showItemInFolder(target);
   };

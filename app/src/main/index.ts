@@ -24,7 +24,7 @@ import { registerIpcRoutes } from './ipc-router';
 import { attachMainLog, createApplicationLog } from './log';
 import { configureOverlayGpu, createOverlay } from './overlay';
 import { createPanelWindows, sendToWindow } from './panel-windows';
-import { createPlatform } from './platform';
+import { createPlatform, readSystemInfo } from './platform';
 import { attachRecovery } from './recovery';
 import { SaveStore } from './save';
 import { attachShutdown } from './shutdown';
@@ -127,6 +127,7 @@ if (!app.requestSingleInstanceLock()) {
         stopping,
         overlayWindow: () => overlay?.window,
         report,
+        system: readSystemInfo,
       });
       const detachIpc = registerIpcRoutes({
         ipc: ipcMain,

@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 // eslint-disable-next-line no-restricted-imports -- 临时目录仅用于测试。
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,10 +14,18 @@ import { strFromU8, unzipSync } from 'fflate';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { catalog, testCat } from '../../core/stage/test-fixtures';
 import { zh } from '../../shared/strings.zh-CN';
-import { createDiagnosticsExport, DIAGNOSTICS_FILES, redact, timestamp } from '.';
+import type { SystemInfo } from '../platform';
+import {
+  createDiagnosticsExport,
+  DIAGNOSTICS_FILES,
+  redact,
+  timestamp,
+  writeFileReplacing,
+} from '.';
 
 const home = 'C:\\Users\\Zhang San';
 const username = 'zhangsan';
+const placeholder = zh.diagnostics.userPlaceholder;
 const native = vi.hoisted(() => ({
   showSaveDialog: vi.fn(),
   showMessageBox: vi.fn(),
@@ -29,8 +45,7 @@ vi.mock('electron', () => {
   };
   return {
     app: {
-      getPath: (name: string) =>
-        name === 'home' ? 'C:\\Users\\Zhang San' : 'C:\\Users\\Zhang San\\Desktop',
+      getPath: () => 'C:\\Users\\Zhang San\\Desktop',
       getVersion: () => '1.2.3',
       isPackaged: false,
       getGPUInfo: native.getGPUInfo,
@@ -48,22 +63,21 @@ vi.mock('electron', () => {
   };
 });
 
+const system: SystemInfo = {
+  home,
+  username,
+  os: { version: 'Windows 11 Home', release: '10.0.26200', arch: 'x64' },
+  cpu: { model: 'Test CPU', cores: 8 },
+  memory: { totalBytes: 16_000_000_000, freeBytes: 8_000_000_000 },
+};
 let directory: string;
-// Node 里没有 Electron 给 process 加的系统查询。
-Object.assign(process, {
-  getSystemVersion: () => '10.0.26200',
-  getSystemMemoryInfo: () => ({ total: 16_000_000, free: 8_000_000 }),
-});
-
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.stubEnv('USERNAME', username);
   directory = mkdtempSync(join(tmpdir(), 'ttcats-diagnostics-'));
   native.getGPUInfo.mockResolvedValue({ gpuDevice: [{ vendorId: 4318 }] });
   native.showMessageBox.mockResolvedValue({ response: 0 });
 });
 afterEach(() => {
-  vi.unstubAllEnvs();
   rmSync(directory, { recursive: true, force: true });
 });
 
@@ -74,7 +88,8 @@ function setup(overrides: { save?: boolean; stopping?: boolean } = {}) {
   writeFileSync(
     join(logs, 'main.log'),
     `1 ${JSON.stringify(`无法加载 ${home}\\AppData\\Roaming\\TTCats\\cats\\a.webm`)}\n` +
-      `2 ${JSON.stringify(`file:///C:/Users/Zhang%20San/x.png，用户 ZhangSan 和 ${username} 登录`)}\n`,
+      `2 ${JSON.stringify(`file:///C:/Users/Zhang%20San/x.png，用户 ZhangSan 和 ${username} 登录`)}\n` +
+      `3 ${JSON.stringify(`打开 "${home}" 失败，句末 ${home}`)}\n`,
   );
   writeFileSync(join(logs, 'main.log.1'), `0 "C:\\\\Users\\\\ZHANGS~1\\\\temp"\n`);
   const saveFile = join(directory, 'save.json');
@@ -94,6 +109,7 @@ function setup(overrides: { save?: boolean; stopping?: boolean } = {}) {
     stopping: () => overrides.stopping === true,
     overlayWindow: () => undefined,
     report,
+    system: () => system,
     now: () => new Date(2026, 9, 2, 15, 30, 45).getTime(),
   });
   const files = (): Record<string, string> =>
@@ -130,19 +146,23 @@ describe('诊断信息导出', () => {
     const version = JSON.parse(zip[DIAGNOSTICS_FILES.version] ?? '') as Record<string, unknown>;
     expect(version).toMatchObject({ app: '1.2.3', isPackaged: false });
     expect(version['electron']).toBe(process.versions.electron);
-    const system = JSON.parse(zip[DIAGNOSTICS_FILES.system] ?? '') as {
+    const info = JSON.parse(zip[DIAGNOSTICS_FILES.system] ?? '') as {
       displays: { id: number; scaleFactor: number; primary: boolean }[];
       gpu: unknown;
       locale: { system: string };
-      os: unknown;
     };
-    expect(system.displays).toEqual([expect.objectContaining({ id: 7, scaleFactor: 1.5 })]);
-    expect(system.gpu).toEqual({ gpuDevice: [{ vendorId: 4318 }] });
-    expect(system.locale.system).toBe('zh-CN');
-    expect(system.os).toMatchObject({ version: '10.0.26200' });
+    expect(info.displays).toEqual([expect.objectContaining({ id: 7, scaleFactor: 1.5 })]);
+    expect(info.gpu).toEqual({ gpuDevice: [{ vendorId: 4318 }] });
+    expect(info.locale.system).toBe('zh-CN');
+    expect(info).toMatchObject({
+      os: { release: '10.0.26200' },
+      cpu: { model: 'Test CPU', cores: 8 },
+    });
+    expect(info).not.toHaveProperty('home');
+    expect(info).not.toHaveProperty('username');
     expect(zip[DIAGNOSTICS_FILES.readme]).toContain(DIAGNOSTICS_FILES.system);
     expect(native.showItemInFolder).toHaveBeenCalledWith(target);
-    expect(existsSync(`${target}.tmp`)).toBe(false);
+    expect(readdirSync(join(directory, 'out'))).toEqual(['diag.zip']);
   });
 
   it('所有文件里的用户目录和用户名都被替换，包括日志里转义过的路径', async () => {
@@ -150,11 +170,12 @@ describe('诊断信息导出', () => {
     await run();
     const zip = files();
     for (const [name, body] of Object.entries(zip)) {
-      expect(body, name).not.toMatch(/zhang|ZHANGS~1/i);
+      expect(body, name).not.toMatch(/zhang|ZHANGS~1|San\b/i);
     }
     expect(zip['logs/main.log']).toContain('%USERPROFILE%\\\\AppData');
     expect(zip['logs/main.log']).toContain('file:///%USERPROFILE%/x.png');
-    expect(zip['logs/main.log.1']).toContain(zh.diagnostics.userPlaceholder);
+    expect(zip['logs/main.log']).toContain('打开 \\"%USERPROFILE%\\" 失败');
+    expect(zip['logs/main.log.1']).toContain(placeholder);
     expect(zip[DIAGNOSTICS_FILES.content]).toContain('%USERPROFILE%');
   });
 
@@ -224,17 +245,75 @@ describe('诊断信息导出', () => {
 
 describe('隐私替换', () => {
   const privacy = { home: 'C:\\Users\\a.b', username: 'a.b' };
-  it('不同写法的用户目录都替换，公共目录保留', () => {
+  it('不同写法的当前用户目录都替换', () => {
     expect(redact('C:\\Users\\A.B\\x c:/users/a.b/y C:\\\\Users\\\\a.b\\\\z', privacy)).toBe(
       '%USERPROFILE%\\x %USERPROFILE%/y %USERPROFILE%\\\\z',
     );
-    expect(redact('C:\\Users\\Public\\x D:\\Users\\other\\y', privacy)).toBe(
-      'C:\\Users\\Public\\x D:\\Users\\<用户名>\\y',
+    expect(redact('"C:\\Users\\a.b"', privacy)).toBe('"%USERPROFILE%"');
+    expect(redact('C:\\Users\\a.b', privacy)).toBe('%USERPROFILE%');
+    // 后面紧跟普通文字时分不清名字在哪结束，整段按兜底换掉。
+    expect(redact('打开 C:\\Users\\a.b。', { ...privacy, username: '' })).toBe(
+      `打开 C:\\Users\\${placeholder}`,
     );
-    expect(redact('D:/Users/Li Si/x', privacy)).toBe('D:/Users/<用户名>/x');
   });
-  it('用户名只替换完整的词，正则特殊字符按字面匹配', () => {
-    expect(redact('a.b 登录，axb 和 a.bc 不是', privacy)).toBe('<用户名> 登录，axb 和 a.bc 不是');
+  it('当前用户目录只按完整路径组件匹配，不抢先替换前缀相同的其他账户', () => {
+    const ann = { home: 'C:\\Users\\Ann', username: '' };
+    expect(redact('C:\\Users\\Anna\\x C:\\Users\\Ann\\y', ann)).toBe(
+      `C:\\Users\\${placeholder}\\x %USERPROFILE%\\y`,
+    );
+  });
+  it('其他账户：带空格、句末、引号包围、JSON 转义、中文名都整段换掉', () => {
+    const other = { home: 'C:\\Users\\me', username: 'me' };
+    const cases: [string, string][] = [
+      ['C:\\Users\\wang wu', `C:\\Users\\${placeholder}`],
+      ['日志：C:\\Users\\wang wu 登录失败', `日志：C:\\Users\\${placeholder}`],
+      ['"D:\\Users\\Li Si"', `"D:\\Users\\${placeholder}"`],
+      ['D:/Users/Li Si/x', `D:/Users/${placeholder}/x`],
+      [JSON.stringify('C:\\Users\\Li Si'), JSON.stringify(`C:\\Users\\${placeholder}`)],
+      [JSON.stringify('"C:\\Users\\Li Si"'), JSON.stringify(`"C:\\Users\\${placeholder}"`)],
+      [JSON.stringify('C:\\Users\\Li Si\\a'), JSON.stringify(`C:\\Users\\${placeholder}\\a`)],
+      ['C:\\Users\\张 三\\桌面', `C:\\Users\\${placeholder}\\桌面`],
+      ['C:\\Users\\ZHANGS~1\\temp', `C:\\Users\\${placeholder}\\temp`],
+      ['C:\\Users\\Public\\x', 'C:\\Users\\Public\\x'],
+    ];
+    for (const [source, expected] of cases) expect(redact(source, other), source).toBe(expected);
+  });
+  it('用户名按完整的词替换；中文用户名紧挨汉字也换掉', () => {
+    expect(redact('a.b 登录，axb 和 a.bc 不是', privacy)).toBe(
+      `${placeholder} 登录，axb 和 a.bc 不是`,
+    );
+    expect(redact('用户张三登录', { home: 'C:\\Users\\张三', username: '张三' })).toBe(
+      `用户${placeholder}登录`,
+    );
+  });
+});
+
+describe('写入压缩包', () => {
+  it('目录里原有的同名临时文件保持不变，成功后只多出目标文件', () => {
+    const target = join(directory, 'report.zip');
+    writeFileSync(`${target}.tmp`, 'user data');
+    writeFileReplacing(target, new Uint8Array([1, 2, 3]));
+    expect(readFileSync(`${target}.tmp`, 'utf8')).toBe('user data');
+    expect([...readFileSync(target)]).toEqual([1, 2, 3]);
+    expect(readdirSync(directory).sort()).toEqual(['report.zip', 'report.zip.tmp']);
+  });
+  it('改名失败时只删除本次创建的临时文件', () => {
+    const target = join(directory, 'report.zip');
+    // 目标是非空目录，改名一定失败。
+    mkdirSync(target);
+    writeFileSync(join(target, 'inside'), 'x');
+    writeFileSync(`${target}.tmp`, 'user data');
+    expect(() => {
+      writeFileReplacing(target, new Uint8Array([1]));
+    }).toThrow();
+    expect(readdirSync(directory).sort()).toEqual(['report.zip', 'report.zip.tmp']);
+    expect(readFileSync(`${target}.tmp`, 'utf8')).toBe('user data');
+  });
+  it('目录不存在时创建临时文件就失败，不留下任何文件', () => {
+    expect(() => {
+      writeFileReplacing(join(directory, 'missing', 'report.zip'), new Uint8Array([1]));
+    }).toThrow();
+    expect(readdirSync(directory)).toEqual([]);
   });
 });
 

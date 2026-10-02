@@ -31,6 +31,9 @@ export const DIAGNOSTICS_FILES = {
 } as const;
 
 const separator = String.raw`(?:\\+|/+)`;
+// Windows 文件名里不能出现的字符和换行。路径组件一定在这些字符（或文本结尾）处结束。
+const terminators = String.raw`\\/:*?"<>|\r\n\t`;
+const componentEnd = String.raw`(?![^${terminators}])`;
 const escape = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // Windows 自带的公共账户目录，不是某个人的名字。
 const sharedProfiles = new Set(['public', 'default', 'default user', 'all users']);
@@ -38,6 +41,7 @@ const sharedProfiles = new Set(['public', 'default', 'default user', 'all users'
 /**
  * 把文本里的用户目录和用户名换成占位符。
  * 路径可能是正斜杠、反斜杠，也可能在日志的 JSON 编码里变成 \\ 甚至 \\\\，统一按"任意个分隔符"匹配。
+ * 分不清名字在哪结束时宁可多换：账户目录名一直换到 Windows 文件名不允许的字符或行尾为止。
  */
 export function redact(source: string, privacy: Privacy): string {
   let result = source;
@@ -46,22 +50,20 @@ export function redact(source: string, privacy: Privacy): string {
     const home = segments
       .map((segment) => escape(segment).replace(/ /g, '(?: |%20)'))
       .join(separator);
-    result = result.replace(new RegExp(home, 'giu'), text.homePlaceholder);
+    // 只在完整的路径组件处替换：home 是 C:\Users\Ann 时，C:\Users\Anna 交给下面的兜底。
+    result = result.replace(new RegExp(home + componentEnd, 'giu'), text.homePlaceholder);
   }
-  // 兜底：短文件名（NAME~1）或其他账户的用户目录。名字可以带空格，只要后面跟着分隔符。
-  const word = String.raw`[^\\/:*?"<>|\s]+`;
+  // 兜底：短文件名（NAME~1）、其他账户的目录，以及后面紧跟普通文字、分不清边界的写法。
   result = result.replace(
-    new RegExp(
-      String.raw`([A-Za-z]:${separator}Users${separator})((?:${word} )*${word}(?=[\\/])|${word})`,
-      'giu',
-    ),
+    new RegExp(String.raw`([A-Za-z]:${separator}Users${separator})([^${terminators}]+)`, 'giu'),
     (match: string, prefix: string, name: string) =>
       sharedProfiles.has(name.toLowerCase()) ? match : prefix + text.userPlaceholder,
   );
   const username = privacy.username.trim();
   if (username !== '')
+    // 只用英文字母和数字判断词边界：中文句子里没有空格，中文用户名紧挨着其他汉字也要换掉。
     result = result.replace(
-      new RegExp(String.raw`(?<![\p{L}\p{N}_])${escape(username)}(?![\p{L}\p{N}_])`, 'giu'),
+      new RegExp(String.raw`(?<![A-Za-z0-9_])${escape(username)}(?![A-Za-z0-9_])`, 'giu'),
       text.userPlaceholder,
     );
   return result;
