@@ -1,18 +1,58 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+interface Rect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
 const api = vi.hoisted(() => ({
   keyState: vi.fn<(key: number) => number>(),
   metrics: vi.fn<(index: number) => number>(),
   notification: vi.fn<(state: number[]) => number>(),
+  /** 前台窗口：0 表示没有 */
+  foreground: 100,
+  windowClass: 'Chrome_WidgetWin_1',
+  windowRect: { left: 0, top: 0, right: 2880, bottom: 1800 },
+  monitorRect: { left: 0, top: 0, right: 2880, bottom: 1800 },
+  process: String.raw`C:\Games\game.exe`,
 }));
+
+const text = (buffer: Buffer, value: string, max: number): number => {
+  buffer.write(value.slice(0, max), 'utf16le');
+  return Math.min(value.length, max);
+};
 
 vi.mock('koffi', () => ({
   default: {
+    struct: () => ({}),
+    sizeof: () => 40,
     load: () => ({
       func: (signature: string) => {
         if (signature.includes('GetAsyncKeyState')) return api.keyState;
         if (signature.includes('GetSystemMetrics')) return api.metrics;
         if (signature.includes('SHQueryUserNotificationState')) return api.notification;
+        if (signature.includes('GetForegroundWindow')) return () => api.foreground;
+        if (signature.includes('GetClassNameW'))
+          return (_w: number, b: Buffer, max: number) => text(b, api.windowClass, max);
+        if (signature.includes('GetWindowRect'))
+          return (_w: number, r: Rect) => (Object.assign(r, api.windowRect), true);
+        if (signature.includes('MonitorFromWindow')) return () => 1;
+        if (signature.includes('GetMonitorInfoW'))
+          return (_m: number, info: { rcMonitor: Rect }) => {
+            info.rcMonitor = { ...api.monitorRect };
+            return true;
+          };
+        if (signature.includes('GetWindowThreadProcessId'))
+          return (_w: number, pid: number[]) => ((pid[0] = 42), 1);
+        if (signature.includes('OpenProcess')) return () => 7;
+        if (signature.includes('QueryFullProcessImageNameW'))
+          return (_h: number, _f: number, b: Buffer, size: number[]) => {
+            size[0] = text(b, api.process, 1024);
+            return true;
+          };
+        if (signature.includes('CloseHandle')) return () => true;
         throw new Error(signature);
       },
     }),
@@ -29,15 +69,63 @@ beforeEach(() => {
     state[0] = 5;
     return 0;
   });
+  api.foreground = 100;
+  api.windowClass = 'Chrome_WidgetWin_1';
+  api.windowRect = { left: 0, top: 0, right: 2880, bottom: 1800 };
+  api.monitorRect = { left: 0, top: 0, right: 2880, bottom: 1800 };
+  api.process = String.raw`C:\Games\game.exe`;
 });
 
+const busy = (): void => {
+  api.notification.mockImplementation((state) => {
+    state[0] = 2;
+    return 0;
+  });
+};
+
 describe('Windows 桌面层系统状态', () => {
-  it.each([2, 3, 4])('状态 %i 要隐藏桌面层，避免打扰全屏程序或演示', (value) => {
+  it.each([2, 3, 4])('状态 %i 且前台真的全屏时要隐藏桌面层，避免打扰全屏程序或演示', (value) => {
     api.notification.mockImplementation((state) => {
       state[0] = value;
       return 0;
     });
     expect(createWindowsPlatform().isFullscreen()).toBe(true);
+  });
+
+  it('系统报告忙碌，但前台窗口没盖满屏幕（比如 NVIDIA 悬浮层常驻）：不隐藏猫', () => {
+    busy();
+    api.windowRect = { left: 0, top: 0, right: 1920, bottom: 1728 };
+    expect(createWindowsPlatform().isFullscreen()).toBe(false);
+  });
+
+  it('前台是白名单里的程序时，即使盖满屏幕也不隐藏猫', () => {
+    busy();
+    api.process = String.raw`C:\Program Files\NVIDIA Corporation\NVIDIA App\CEF\NVIDIA Overlay.exe`;
+    expect(createWindowsPlatform().isFullscreen()).toBe(false);
+  });
+
+  it.each(['Progman', 'WorkerW', 'Shell_TrayWnd'])('前台是桌面或任务栏（%s）时不算全屏', (name) => {
+    busy();
+    api.windowClass = name;
+    expect(createWindowsPlatform().isFullscreen()).toBe(false);
+  });
+
+  it('副屏上的全屏窗口按它所在屏幕判断', () => {
+    busy();
+    api.monitorRect = { left: -1920, top: 0, right: 0, bottom: 1080 };
+    api.windowRect = { left: -1920, top: 0, right: 0, bottom: 1080 };
+    expect(createWindowsPlatform().isFullscreen()).toBe(true);
+  });
+
+  it('独占全屏和演示模式不再核对前台窗口，一律隐藏', () => {
+    api.windowRect = { left: 0, top: 0, right: 100, bottom: 100 };
+    for (const value of [3, 4]) {
+      api.notification.mockImplementation((state) => {
+        state[0] = value;
+        return 0;
+      });
+      expect(createWindowsPlatform().isFullscreen()).toBe(true);
+    }
   });
 
   it.each([1, 5, 6, 7])('状态 %i 不是全屏，不应因此隐藏猫', (value) => {

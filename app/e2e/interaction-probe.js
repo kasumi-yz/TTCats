@@ -10,36 +10,38 @@ app.setPath('userData', mkdtempSync(join(tmpdir(), 'ttcats-probe-')));
 app.on('window-all-closed', () => {
   app.quit();
 });
-await app.whenReady();
-// 性能测试的"全屏时自动隐藏"阶段用真正的全屏窗口，让系统报告前台有全屏程序。
-const fullscreen = process.env.TTCATS_PROBE_FULLSCREEN === '1';
-const window = new BrowserWindow({
-  ...(fullscreen ? screen.getPrimaryDisplay().bounds : screen.getPrimaryDisplay().workArea),
-  fullscreen,
-  title: 'TTCats interaction probe',
-  frame: false,
-  resizable: false,
-  backgroundColor: '#4d6f8f',
-  show: false,
-  webPreferences: { sandbox: true },
+// 不能在顶层 await whenReady：Playwright 的加载器要等主模块执行完才放行 ready。
+void app.whenReady().then(async () => {
+  // 性能测试的"全屏时自动隐藏"阶段用真正的全屏窗口，让系统报告前台有全屏程序。
+  const fullscreen = process.env.TTCATS_PROBE_FULLSCREEN === '1';
+  const window = new BrowserWindow({
+    ...(fullscreen ? screen.getPrimaryDisplay().bounds : screen.getPrimaryDisplay().workArea),
+    fullscreen,
+    title: 'TTCats interaction probe',
+    frame: false,
+    resizable: false,
+    backgroundColor: '#4d6f8f',
+    show: false,
+    webPreferences: { sandbox: true },
+  });
+  await window.loadURL(
+    'data:text/html;charset=utf-8,' +
+      encodeURIComponent(`<!doctype html><title>TTCats interaction probe</title>
+  <body style="margin:0;background:#4d6f8f;overflow:hidden;font:14px sans-serif;color:#fff">
+  <input id="input" style="position:absolute;left:40px;top:40px;width:320px;height:32px;font-size:18px">
+  <div style="position:absolute;left:40px;top:84px">TTCats 交互测试探针窗口：测试期间请不要动鼠标和键盘</div>
+  <script>
+  window.events = [];
+  document.addEventListener('mousedown', (e) => {
+    window.events.push({ t: Date.now(), type: 'mousedown', x: e.screenX, y: e.screenY, ctrl: e.ctrlKey, button: e.button });
+  }, true);
+  </script>
+  </body>`),
+  );
+  window.show();
+  window.focus();
+  globalThis.probe = {
+    hwnd: Number(window.getNativeWindowHandle().readBigUInt64LE(0)),
+    window,
+  };
 });
-await window.loadURL(
-  'data:text/html;charset=utf-8,' +
-    encodeURIComponent(`<!doctype html><title>TTCats interaction probe</title>
-<body style="margin:0;background:#4d6f8f;overflow:hidden;font:14px sans-serif;color:#fff">
-<input id="input" style="position:absolute;left:40px;top:40px;width:320px;height:32px;font-size:18px">
-<div style="position:absolute;left:40px;top:84px">TTCats 交互测试探针窗口：测试期间请不要动鼠标和键盘</div>
-<script>
-window.events = [];
-document.addEventListener('mousedown', (e) => {
-  window.events.push({ t: Date.now(), type: 'mousedown', x: e.screenX, y: e.screenY, ctrl: e.ctrlKey, button: e.button });
-}, true);
-</script>
-</body>`),
-);
-window.show();
-window.focus();
-globalThis.probe = {
-  hwnd: Number(window.getNativeWindowHandle().readBigUInt64LE(0)),
-  window,
-};
