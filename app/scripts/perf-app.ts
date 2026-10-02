@@ -4,7 +4,7 @@
 // （主进程拼装、存档、托盘、真实 core/stage），用 3 只测试猫，口径和 M0-A 相同：
 // 正常播放、全部隐藏、全屏时自动隐藏三种状态，各先过渡 15 秒、再测 300 秒，约每秒采样一次，
 // 统计应用所有进程的 CPU（整机百分比之和）和私有内存。全屏窗口是独立进程，不计入。
-// 每 15 秒检查一次独占：不能有别的会话在跑 Electron 或素材工厂。
+// 每 15 秒检查一次独占：除了本轮启动的程序，不能有任何 Electron 或素材工厂在跑（开测前一个都不能有）。
 // 目标：每种状态 CPU 平均 < 2%，私有内存峰值 < 700MB。
 // 参数：--seconds=N 每种状态测多少秒（探索用，正式测量用默认 300）
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -18,6 +18,7 @@ import {
   launchProbe,
   overlayPage,
   primaryDisplay,
+  processId,
   sleep,
   waitFor,
   waitOverlayVisible,
@@ -85,6 +86,11 @@ async function main(): Promise<void> {
   exclusivity();
   const { app } = await launchApp();
   let fullscreen: Awaited<ReturnType<typeof launchProbe>> | undefined;
+  // 只放过本轮启动的被测应用和全屏窗口（以及它们的子进程）
+  const ownProcesses = (): number[] => [
+    processId(app),
+    ...(fullscreen ? [processId(fullscreen.probe)] : []),
+  ];
   try {
     const overlay = await overlayPage(app);
     await waitOverlayVisible(app);
@@ -138,7 +144,7 @@ async function main(): Promise<void> {
       while (Date.now() < end) {
         await sleep(1000);
         if (Date.now() - lastExclusive >= 15_000) {
-          exclusivity();
+          exclusivity(ownProcesses());
           lastExclusive = Date.now();
         }
         const line = await sample(app, phase);
@@ -183,7 +189,7 @@ async function main(): Promise<void> {
         fullscreen = undefined;
       }
     }
-    exclusivity();
+    exclusivity(ownProcesses());
 
     const passed = summaries.every(
       (s) => s.cpuAverage < CPU_TARGET && s.privatePeakMB < MEMORY_TARGET_MB,

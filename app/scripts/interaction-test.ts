@@ -479,11 +479,11 @@ class Harness {
     record(name, '（整个场景）', false, '连续 3 次被打断，没有结果');
   }
 
-  /** 松开测试可能按着的键和鼠标，回到空白处。 */
+  /** 松开测试可能按着的键和鼠标，回到空白处。场景重做前和整个测试结束时都会调用。 */
   release(): void {
-    if (this.ctrlHeld || input.isKeyDown(VK.CONTROL)) input.key(VK.LCONTROL, false);
+    // 按物理状态松开左右键和 Ctrl（包括被打断时还按着的右键），不做干扰检查
+    input.releaseAll();
     this.ctrlHeld = false;
-    input.mouseButton(false);
     const q = this.phys(this.EMPTY);
     input.mouseMove(q.x, q.y);
     this.expected = q;
@@ -1316,8 +1316,7 @@ async function main(): Promise<void> {
     );
     process.exitCode = summary.failed ? 1 : 0;
   } finally {
-    if (input.isKeyDown(VK.CONTROL)) input.key(VK.LCONTROL, false);
-    input.mouseButton(false);
+    input.releaseAll();
     await app.close().catch(() => {});
     await probe?.close().catch(() => {});
     for (const file of notepadFiles) rmSync(file, { force: true });

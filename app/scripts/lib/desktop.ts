@@ -4,9 +4,9 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron, type ElectronApplication, type Page } from '@playwright/test';
+import { competitors } from './exclusivity';
 
 export const appRoot = resolve(import.meta.dirname, '../..');
-const repoRoot = join(appRoot, '..');
 
 export const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -27,31 +27,56 @@ export async function waitFor(
 
 /**
  * 独占检查：不能有别的会话在跑 Electron 或素材工厂（AGENTS.md"性能测试要独占机器"）。
- * 本仓库 node_modules 里的 Electron（被测程序和探针窗口）不算。查询失败也算不通过。
+ * 只放过 ownRoots（本轮自己启动的被测应用、探针窗口的主进程 PID）和它们的子进程；
+ * 开测前不传，任何已经在跑的 Electron 都算竞争。查询失败也算不通过。
  */
-export function exclusivity(): void {
+export function exclusivity(ownRoots: number[] = []): void {
   const report = execFileSync(
     'powershell',
     [
       '-NoProfile',
       '-Command',
-      "Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $_.Name -match '^(electron|python|pythonw|ComfyUI)\\.exe$' } | Select-Object Name,ExecutablePath | ConvertTo-Json -Compress",
+      'Get-CimInstance Win32_Process -ErrorAction Stop | Select-Object ProcessId,ParentProcessId,Name,ExecutablePath | ConvertTo-Json -Compress',
     ],
-    { encoding: 'utf8' },
+    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
   ).trim();
-  const processes = report
-    ? ([] as { Name: string; ExecutablePath: string | null }[]).concat(
-        JSON.parse(report) as { Name: string; ExecutablePath: string | null }[],
-      )
-    : [];
-  const ours = join(repoRoot, 'node_modules/electron').toLowerCase();
-  const others = processes.filter((p) => !p.ExecutablePath?.toLowerCase().startsWith(ours));
+  const rows = (
+    [] as {
+      ProcessId: number;
+      ParentProcessId: number;
+      Name: string;
+      ExecutablePath: string | null;
+    }[]
+  ).concat(
+    JSON.parse(report) as {
+      ProcessId: number;
+      ParentProcessId: number;
+      Name: string;
+      ExecutablePath: string | null;
+    }[],
+  );
+  const others = competitors(
+    rows.map((r) => ({
+      pid: r.ProcessId,
+      parentPid: r.ParentProcessId,
+      name: r.Name,
+      path: r.ExecutablePath,
+    })),
+    ownRoots,
+  );
   if (others.length > 0)
     throw new Error(
       `机器没有独占：还有别的 Electron 或素材工厂进程在运行（${others
-        .map((p) => `${p.Name} ${p.ExecutablePath ?? ''}`)
-        .join('；')}）。请关掉其他会话的程序后再测。`,
+        .map((p) => `${p.name}（PID ${p.pid}）${p.path ?? ''}`)
+        .join('；')}）。请关掉其他会话或之前没关掉的测试程序后再测。`,
     );
+}
+
+/** Playwright 启动的 Electron 主进程 PID，给独占检查放行用。 */
+export function processId(app: ElectronApplication): number {
+  const pid = app.process().pid;
+  if (pid === undefined) throw new Error('读不到被测程序的进程号');
+  return pid;
 }
 
 function environment(extra: Record<string, string>): Record<string, string> {

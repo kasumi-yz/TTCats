@@ -33,6 +33,11 @@ export interface TestInput {
   typeText(text: string): void;
   /** 按键当前是否按下（只读当前按下位）。 */
   isKeyDown(vk: number): boolean;
+  /**
+   * 收尾用：松开当前还按着的鼠标左右键和左右 Ctrl。不做任何干扰检查，
+   * 测试中途被打断（比如右键按下后还没松开）也能把系统输入恢复干净。
+   */
+  releaseAll(): void;
   foregroundWindow(): number;
   extendedStyle(window: number): number;
   windowText(window: number): string;
@@ -68,6 +73,9 @@ const SM = {
   CXVIRTUALSCREEN: 78,
   CYVIRTUALSCREEN: 79,
 } as const;
+const VK_LBUTTON = 0x01;
+const VK_RBUTTON = 0x02;
+const VK_RCONTROL = 0xa3;
 const GWL_EXSTYLE = -20;
 const GW_HWNDPREV = 3;
 const GA_ROOT = 2;
@@ -215,6 +223,14 @@ export function createTestInput(): TestInput {
       }
     },
     isKeyDown: (vk) => (getAsyncKeyState(vk) & 0x8000) !== 0,
+    releaseAll() {
+      // 按物理按键的当前状态释放，不管测试以为自己按了哪个；没按着的键不补发松开，
+      // 免得多出一次右键松开在别的窗口上弹出菜单。
+      const down = (vk: number): boolean => (getAsyncKeyState(vk) & 0x8000) !== 0;
+      if (down(VK_LBUTTON)) mouse(MOUSEEVENTF.LEFTUP);
+      if (down(VK_RBUTTON)) mouse(MOUSEEVENTF.RIGHTUP);
+      for (const vk of [VK.LCONTROL, VK_RCONTROL]) if (down(vk)) keyboard(vk, 0, KEYEVENTF.KEYUP);
+    },
     foregroundWindow: () => Number(getForegroundWindow()),
     extendedStyle: (window) => Number(getWindowLongPtr(window, GWL_EXSTYLE)),
     windowText: (window) => text((buffer, max) => getWindowText(window, buffer, max)),

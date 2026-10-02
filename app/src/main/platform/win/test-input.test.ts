@@ -11,6 +11,7 @@ interface SentInput {
 const api = vi.hoisted(() => ({
   sent: [] as SentInput[],
   metrics: vi.fn<(index: number) => number>(),
+  keyState: vi.fn<(key: number) => number>(),
   getWindow: vi.fn<(window: number, command: number) => number>(),
 }));
 
@@ -27,6 +28,7 @@ vi.mock('koffi', () => ({
             return 1;
           };
         if (signature.includes('GetSystemMetrics')) return api.metrics;
+        if (signature.includes('GetAsyncKeyState')) return api.keyState;
         if (signature.includes('GetWindow(')) return api.getWindow;
         return () => 0;
       },
@@ -39,6 +41,8 @@ import { createTestInput, toAbsolute } from './test-input';
 beforeEach(() => {
   api.sent = [];
   api.metrics.mockReset();
+  api.keyState.mockReset();
+  api.keyState.mockReturnValue(0);
   api.getWindow.mockReset();
 });
 
@@ -90,5 +94,21 @@ describe('交互测试的模拟输入', () => {
     const input = createTestInput();
     expect(input.isAbove(10, 30)).toBe(true);
     expect(input.isAbove(30, 10)).toBe(false);
+  });
+});
+
+describe('交互测试收尾', () => {
+  it('右键按下后被打断：收尾按物理状态松开右键，没按着的键不补发松开', () => {
+    api.keyState.mockImplementation((vk) => (vk === 0x02 ? -32768 : 0));
+    createTestInput().releaseAll();
+    expect(api.sent.map((s) => s.u.mi?.dwFlags ?? `key:${s.u.ki?.wVk}`)).toEqual([0x10]);
+  });
+
+  it('左键、右键和 Ctrl 都按着时全部松开', () => {
+    api.keyState.mockReturnValue(-32768);
+    createTestInput().releaseAll();
+    expect(api.sent.map((s) => s.u.mi?.dwFlags ?? `key:${s.u.ki?.wVk}:${s.u.ki?.dwFlags}`)).toEqual(
+      [0x4, 0x10, 'key:162:2', 'key:163:2'],
+    );
   });
 });
