@@ -2,10 +2,16 @@ import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import fs, { readFileSync } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
-import { extname, resolve, sep } from 'node:path';
+import { extname, join, resolve, sep } from 'node:path';
 import { app, Tray, Menu, dialog, globalShortcut, screen } from 'electron';
 import koffi from 'koffi';
 
+// 拍照测试写入临时图片目录，不污染用户相册。
+if (process.env.TTCATS_TEST_APP_DATA) {
+  const pictures = join(process.env.TTCATS_TEST_APP_DATA, 'pictures');
+  fs.mkdirSync(pictures, { recursive: true });
+  app.setPath('pictures', pictures);
+}
 // 只观察原生边界，业务仍执行正式构建入口。
 globalThis.smoke = {
   trays: [],
