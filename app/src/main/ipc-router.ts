@@ -1,13 +1,15 @@
 import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent, WebContents } from 'electron';
 import type { ContentCatalog } from '../shared/core-api';
 import type { Fact, GameCommand, MainCommand, StateSnapshot, ToMainCommand } from '../shared/ipc';
-import { IPC_CHANNELS } from '../shared/ipc';
+import { IPC_CHANNELS, isMainCommand } from '../shared/ipc';
 import { zh } from '../shared/strings.zh-CN';
 import { CommandSchema, FactSchema } from './messages';
 import { attachCrashCommand } from './recovery';
 
 export type MainCommandHandlers = {
-  [Type in MainCommand['type']]: (command: Extract<MainCommand, { type: Type }>) => void;
+  [Type in MainCommand['type']]: (
+    command: Extract<MainCommand, { type: Type }>,
+  ) => void | Promise<void>;
 };
 
 export function registerIpcRoutes(options: {
@@ -39,13 +41,21 @@ export function registerIpcRoutes(options: {
     );
   };
   const dispatch = (message: ToMainCommand): void => {
+    if (!isMainCommand(message)) {
+      options.command(message);
+      return;
+    }
     // 注册表的键与处理函数的消息类型成对；只在这一个分发边界擦除具体类型。
-    const handlers = options.mainCommands as Partial<
-      Record<ToMainCommand['type'], (command: ToMainCommand) => void>
+    const handlers = options.mainCommands as Record<
+      MainCommand['type'],
+      (command: MainCommand) => void | Promise<void>
     >;
-    const handler = handlers[message.type];
-    if (handler) handler(message);
-    else options.command(message as GameCommand);
+    try {
+      const result = handlers[message.type](message);
+      if (result) void result.catch(report);
+    } catch (error) {
+      report(error);
+    }
   };
   const onCommand = (event: IpcMainEvent, payload: unknown): void => {
     if (!allowed(event)) return;

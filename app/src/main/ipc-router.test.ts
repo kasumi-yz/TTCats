@@ -31,6 +31,11 @@ function setup() {
   let acceptFacts = true;
   const command = vi.fn();
   const crash = vi.fn();
+  const photo = vi.fn<() => void | Promise<void>>();
+  const diagnostics = vi.fn<() => void | Promise<void>>();
+  const checkUpdate = vi.fn();
+  const installUpdate = vi.fn();
+  const fullscreen = vi.fn();
   const fact = vi.fn();
   const getSnapshot = vi.fn(() => snapshot(['cat']));
   const content = catalog([{ cat: testCat('cat') }]);
@@ -41,7 +46,14 @@ function setup() {
     overlayContents: () => overlay,
     acceptFacts: () => acceptFacts,
     command,
-    mainCommands: { 'debug/crashOverlay': crash },
+    mainCommands: {
+      'debug/crashOverlay': crash,
+      'photo/take': photo,
+      'diagnostics/export': diagnostics,
+      'update/check': checkUpdate,
+      'update/install': installUpdate,
+      'debug/simulateFullscreen': fullscreen,
+    },
     fact,
     snapshot: getSnapshot,
     content,
@@ -55,6 +67,11 @@ function setup() {
     event,
     command,
     crash,
+    photo,
+    diagnostics,
+    checkUpdate,
+    installUpdate,
+    fullscreen,
     fact,
     getSnapshot,
     content,
@@ -67,6 +84,61 @@ function setup() {
 }
 
 describe('主进程 IPC 路由', () => {
+  it('M2 的 MainCommand 逐项分发，不能误交给游戏规则或其他功能', () => {
+    const {
+      ipc,
+      event,
+      command,
+      photo,
+      diagnostics,
+      checkUpdate,
+      installUpdate,
+      fullscreen,
+      crash,
+    } = setup();
+    const handlers = [photo, diagnostics, checkUpdate, installUpdate, fullscreen];
+    const messages = [
+      { type: 'photo/take' },
+      { type: 'diagnostics/export' },
+      { type: 'update/check' },
+      { type: 'update/install' },
+      { type: 'debug/simulateFullscreen', active: true },
+    ];
+    messages.forEach((message, index) => {
+      handlers.forEach((handler) => handler.mockClear());
+      ipc.emit(IPC_CHANNELS.command, event(), message);
+      handlers.forEach((handler, handlerIndex) => {
+        expect(handler).toHaveBeenCalledTimes(handlerIndex === index ? 1 : 0);
+      });
+      expect(handlers[index]).toHaveBeenCalledWith(message);
+    });
+    expect(command).not.toHaveBeenCalled();
+    expect(crash).not.toHaveBeenCalled();
+  });
+
+  it('MainCommand 同步抛错只记日志，不冒出 IPC 监听器，后续命令仍能处理', () => {
+    const { ipc, event, photo, diagnostics, report, command } = setup();
+    const error = new Error('拍照失败');
+    photo.mockImplementation(() => {
+      throw error;
+    });
+    expect(() => ipc.emit(IPC_CHANNELS.command, event(), { type: 'photo/take' })).not.toThrow();
+    expect(report).toHaveBeenCalledExactlyOnceWith(error);
+    ipc.emit(IPC_CHANNELS.command, event(), { type: 'diagnostics/export' });
+    expect(diagnostics).toHaveBeenCalledOnce();
+    expect(command).not.toHaveBeenCalled();
+  });
+
+  it('MainCommand 异步失败也由路由记日志，避免未处理的 Promise 拒绝', async () => {
+    const { ipc, event, diagnostics, report } = setup();
+    const error = new Error('诊断导出失败');
+    diagnostics.mockRejectedValue(error);
+    ipc.emit(IPC_CHANNELS.command, event(), { type: 'diagnostics/export' });
+    await vi.waitFor(() => {
+      expect(report).toHaveBeenCalledExactlyOnceWith(error);
+    });
+  });
+
   it('GameCommand 交给游戏规则，MainCommand 只调用对应注册函数且只调用一次', () => {
     const { ipc, event, panel, command, crash } = setup();
     const message = { type: 'cat/sleep', cat: 'cat' };

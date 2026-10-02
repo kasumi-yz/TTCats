@@ -3,7 +3,12 @@ import { join, resolve } from 'node:path';
 import { app, dialog, globalShortcut, ipcMain, net, protocol } from 'electron';
 import type { MainToOverlay, StageCommand, StateSnapshot } from '../shared/ipc';
 import { CONTENT_PROTOCOL } from '../shared/content-url';
-import { CURRENT_SAVE_VERSION, defaultSettings, GameStateSchema } from '../shared/schemas';
+import {
+  CURRENT_SAVE_VERSION,
+  defaultGameState,
+  GameStateSchema,
+  SAVE_MIGRATIONS,
+} from '../shared/schemas';
 import { zh } from '../shared/strings.zh-CN';
 import {
   contentDirectory,
@@ -57,7 +62,8 @@ if (!app.requestSingleInstanceLock()) {
         directory: join(app.getPath('appData'), 'TTCats'),
         currentVersion: CURRENT_SAVE_VERSION,
         schema: GameStateSchema,
-        defaultState: () => ({ settings: defaultSettings([]) }),
+        defaultState: () => defaultGameState([]),
+        migrations: SAVE_MIGRATIONS,
         now: Date.now,
         log: report,
       });
@@ -73,9 +79,7 @@ if (!app.requestSingleInstanceLock()) {
       const content = loadContent(directory, report);
       const names = new Map(Object.entries(content.cats).map(([id, pack]) => [id, pack.cat.name]));
       const initialState =
-        loaded.source === 'default'
-          ? { settings: defaultSettings(Object.keys(content.cats)) }
-          : loaded.state;
+        loaded.source === 'default' ? defaultGameState(Object.keys(content.cats)) : loaded.state;
       registerContentProtocol(protocol, net, directory, content);
       // eslint-disable-next-line prefer-const -- 窗口加载期间的回调需要读取尚未就绪的控制器。
       let overlay: Awaited<ReturnType<typeof createOverlay>> | undefined;
@@ -120,6 +124,21 @@ if (!app.requestSingleInstanceLock()) {
         acceptFacts: () => !session.safeMode && !stopping(),
         command,
         mainCommands: {
+          'photo/take': (message) => {
+            report(zh.interfaces.commandNotReady(message.type));
+          },
+          'diagnostics/export': (message) => {
+            report(zh.interfaces.commandNotReady(message.type));
+          },
+          'update/check': (message) => {
+            report(zh.interfaces.commandNotReady(message.type));
+          },
+          'update/install': (message) => {
+            report(zh.interfaces.commandNotReady(message.type));
+          },
+          'debug/simulateFullscreen': (message) => {
+            report(zh.interfaces.commandNotReady(message.type));
+          },
           'debug/crashOverlay': () => {
             if (!shutdown?.closing) recovery?.crash();
           },
@@ -142,7 +161,7 @@ if (!app.requestSingleInstanceLock()) {
             overlay: window,
             save,
             log,
-            defaultState: () => ({ settings: defaultSettings([...names.keys()]) }),
+            defaultState: () => defaultGameState([...names.keys()]),
             activeCats: () =>
               session
                 .snapshot()

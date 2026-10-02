@@ -87,7 +87,15 @@ export function snapshot(
   settings: Partial<Settings> = {},
   revision = 1,
 ): StateSnapshot {
-  return { revision, at: 0, settings: { ...defaultSettings(cats), ...settings } };
+  return {
+    revision,
+    at: 0,
+    settings: { ...defaultSettings(cats), ...settings },
+    doNotDisturb: { mode: 'off' },
+    hideAll: false,
+    silencedBy: [],
+    clockOffsetMs: 0,
+  };
 }
 
 /** 固定种子的伪随机数（mulberry32），每次运行得到同样的序列。 */
