@@ -414,40 +414,7 @@ describe('core/game 的 M1 存档状态规则', () => {
   });
 });
 
-// #52 只定接口；勿扰模式、一键隐藏、快进时钟、开机静默的规则在 #58 里实现。
-describe('core/game 在 #58 之前对 M2 接口的最小处理', () => {
-  it.each<GameCommand>([
-    { type: 'doNotDisturb/start', duration: '30m' },
-    { type: 'doNotDisturb/end' },
-    { type: 'hideAll/toggle' },
-    { type: 'debug/advanceClock', minutes: 30 },
-    { type: 'debug/startupQuiet' },
-  ])('还没实现的命令先拒绝，给出中文原因：$type', (command) => {
-    const game = core();
-    const before = game.exportState();
-    const result = game.handleCommand(command, now);
-    expect(result).toMatchObject({
-      stageCommands: [],
-      stateChanged: false,
-      snapshotChanged: false,
-    });
-    expect(result.problems).toEqual([`命令「${command.type}」对应的功能还没做好，已忽略。`]);
-    expect(game.exportState()).toEqual(before);
-  });
-
-  it('存档里的勿扰状态原样保留，导出和快照都不丢', () => {
-    const state = { ...defaultGameState(['test-a']), doNotDisturb: { mode: 'untilOff' } as const };
-    const game = createGameCore({ content: catalog(), state, now, utcOffsetMinutes });
-    expect(game.exportState()).toEqual(state);
-    expect(game.snapshot(now).doNotDisturb).toEqual({ mode: 'untilOff' });
-    expect(game.tick(now + 60_000)).toEqual({
-      stageCommands: [],
-      stateChanged: false,
-      snapshotChanged: false,
-      problems: [],
-    });
-  });
-
+describe('core/game 的显示器设置', () => {
   it('显示器设置按内容比较，导出的是副本', () => {
     const game = core();
     const display = { id: 3, label: 'TEST', width: 1920, height: 1080 };
@@ -467,5 +434,93 @@ describe('core/game 在 #58 之前对 M2 接口的最小处理', () => {
     expect(
       game.handleCommand({ type: 'settings/update', patch: { display: null } }, now).stateChanged,
     ).toBe(true);
+  });
+});
+
+describe('一键隐藏 HideAll 与召唤 Summon', () => {
+  it('切换只更新快照，恢复发送入场；不修改显示偏好，重启不隐藏', () => {
+    const game = core();
+    const state = game.exportState();
+    expect(game.handleCommand({ type: 'hideAll/toggle' }, now)).toEqual({
+      stageCommands: [],
+      stateChanged: false,
+      snapshotChanged: true,
+      problems: [],
+    });
+    expect(game.snapshot(now).hideAll).toBe(true);
+    expect(game.exportState()).toEqual(state);
+    const restarted = createGameCore({
+      content: catalog(),
+      state: game.exportState(),
+      now,
+      utcOffsetMinutes,
+    });
+    expect(restarted.snapshot(now).hideAll).toBe(false);
+    expect(game.handleCommand({ type: 'hideAll/toggle' }, now)).toEqual({
+      stageCommands: [{ type: 'cat/entrance' }],
+      stateChanged: false,
+      snapshotChanged: true,
+      problems: [],
+    });
+    expect(game.snapshot(now).hideAll).toBe(false);
+  });
+
+  it.each([undefined, 'test-b'])('隐藏时召唤 %s 先入场再召唤，勿扰保持有效', (cat) => {
+    const game = core();
+    game.handleCommand({ type: 'doNotDisturb/start', duration: 'untilOff' }, now);
+    game.handleCommand({ type: 'hideAll/toggle' }, now);
+    const before = game.exportState();
+    const command: GameCommand = {
+      type: 'cat/summon',
+      ...(cat === undefined ? {} : { cat }),
+      to: { x: 10, y: 20 },
+    };
+    expect(game.handleCommand(command, now)).toEqual({
+      stageCommands: [
+        { type: 'cat/entrance' },
+        {
+          type: 'cat/summon',
+          cats: cat === undefined ? ['test-a', 'test-b'] : [cat],
+          to: { x: 10, y: 20 },
+        },
+      ],
+      stateChanged: false,
+      snapshotChanged: true,
+      problems: [],
+    });
+    expect(game.snapshot(now)).toMatchObject({
+      hideAll: false,
+      doNotDisturb: { mode: 'untilOff' },
+      silencedBy: ['doNotDisturb'],
+    });
+    expect(game.exportState()).toEqual(before);
+  });
+
+  it('拒绝对未加载或单独隐藏猫的召唤，不能顺带取消一键隐藏', () => {
+    const game = core();
+    game.handleCommand({ type: 'cat/setVisible', cat: 'test-b', visible: false }, now);
+    game.handleCommand({ type: 'hideAll/toggle' }, now);
+    for (const cat of ['missing', 'test-b']) {
+      expect(game.handleCommand({ type: 'cat/summon', cat }, now)).toMatchObject({
+        stageCommands: [],
+        stateChanged: false,
+        snapshotChanged: false,
+      });
+      expect(game.snapshot(now).hideAll).toBe(true);
+    }
+  });
+
+  it('没有可召唤的猫时也能结束一键隐藏，不改变单独隐藏的偏好', () => {
+    const game = core();
+    game.handleCommand({ type: 'settings/update', patch: { visibleCats: [] } }, now);
+    game.handleCommand({ type: 'hideAll/toggle' }, now);
+    expect(game.handleCommand({ type: 'cat/summon' }, now)).toEqual({
+      stageCommands: [{ type: 'cat/entrance' }],
+      stateChanged: false,
+      snapshotChanged: true,
+      problems: [],
+    });
+    expect(game.snapshot(now).hideAll).toBe(false);
+    expect(game.exportState().settings.visibleCats).toEqual([]);
   });
 });

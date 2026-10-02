@@ -59,7 +59,7 @@ describe('validate:content', () => {
   });
 
   it('id 和文件夹名不一致时报错', () => {
-    writeJson('cats/doudou2/cat.json', exampleCat);
+    writeJson('cats/doudou2/cat.json', { ...exampleCat, sounds: { meow: [], purr: [] } });
     expect(validateContentDir(root).problems).toEqual([
       '猫咪包「doudou2」 content/cats/doudou2/cat.json：id 写的是「doudou」，但它所在的文件夹或文件名是「doudou2」，两者必须一样',
     ]);
