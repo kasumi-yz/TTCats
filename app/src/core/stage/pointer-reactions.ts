@@ -416,6 +416,7 @@ export class PointerReactions {
   private nearPointer(point: Point, now: number): void {
     for (const actor of this.actors()) {
       if (
+        actor.isDoNotDisturb() ||
         !['idle', 'rest', 'wander', 'action'].includes(actor.behavior.kind) ||
         actor.currentPose() === 'sleep' ||
         actor.isAirborne() ||
