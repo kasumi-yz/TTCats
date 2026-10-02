@@ -60,6 +60,8 @@ export async function createOverlay(options: OverlayOptions) {
     const cursor = screen.getCursorScreenPoint();
     return {
       now: Date.now(),
+      x: cursor.x - (bounds?.x ?? 0),
+      y: cursor.y - (bounds?.y ?? 0),
       inside:
         bounds !== undefined &&
         cursor.x >= bounds.x &&
@@ -91,7 +93,7 @@ export async function createOverlay(options: OverlayOptions) {
         }
       }
       state.paused = fullscreen || hidden;
-      const result = safety.poll(state);
+      const result = safety.poll(state, ignore);
       if (result.cancel) send({ type: 'dragCancel' });
       if (result.ghost !== ghost) {
         ghost = result.ghost;
@@ -101,6 +103,7 @@ export async function createOverlay(options: OverlayOptions) {
         ignore = result.ignore;
         window.setIgnoreMouseEvents(ignore, { forward: true });
       }
+      if (result.clickThrough) send({ type: 'clickThrough', x: state.x, y: state.y });
     } catch (error) {
       // 系统查询失败时优先释放鼠标，不能把失败当成安全的查询结果。
       ignore = true;

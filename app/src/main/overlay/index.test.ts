@@ -36,6 +36,7 @@ const mock = vi.hoisted(() => ({
   bounds: { x: 0, y: 0, width: 1920, height: 1000 },
   displayId: 1,
   scaleFactor: 1,
+  cursor: { x: 0, y: 0 },
   displayListeners: new Map<string, () => void>(),
 }));
 vi.mock('electron', () => ({
@@ -50,7 +51,7 @@ vi.mock('electron', () => ({
       scaleFactor: mock.scaleFactor,
       workArea: mock.bounds,
     }),
-    getCursorScreenPoint: () => ({ x: 0, y: 0 }),
+    getCursorScreenPoint: () => mock.cursor,
     on: (event: string, listener: () => void) => mock.displayListeners.set(event, listener),
     removeListener: (event: string) => mock.displayListeners.delete(event),
   },
@@ -105,10 +106,46 @@ describe('桌面层重建队列', () => {
     mock.bounds = { x: 0, y: 0, width: 1920, height: 1000 };
     mock.displayId = 1;
     mock.scaleFactor = 1;
+    mock.cursor = { x: 0, y: 0 };
     mock.displayListeners.clear();
   });
   afterEach(() => {
     vi.useRealTimers();
+  });
+  it('穿透点击转成桌面层坐标且只发一次，不切换穿透、不抢焦点', async () => {
+    vi.useFakeTimers();
+    mock.bounds = { x: -1200, y: 100, width: 1200, height: 800 };
+    mock.cursor = { x: -900, y: 650 };
+    let leftDown = false;
+    const overlay = await createOverlay({
+      system: { ...system, isLeftButtonDown: () => leftDown },
+      settings: defaultSettings(['test']),
+      load: () => Promise.resolve(),
+      onError: vi.fn(),
+    });
+    const w = mockWindow();
+    try {
+      w.webContents.send.mockClear();
+      w.setIgnoreMouseEvents.mockClear();
+      w.showInactive.mockClear();
+      leftDown = true;
+      await vi.advanceTimersByTimeAsync(100);
+      expect(w.webContents.send).toHaveBeenCalledExactlyOnceWith(IPC_CHANNELS.mainToOverlay, {
+        type: 'clickThrough',
+        x: 300,
+        y: 550,
+      });
+      expect(w.setIgnoreMouseEvents).not.toHaveBeenCalled();
+      expect(w.showInactive).not.toHaveBeenCalled();
+      leftDown = false;
+      await vi.advanceTimersByTimeAsync(20);
+      mock.cursor.x = 0; // 工作区右边界不属于桌面层。
+      leftDown = true;
+      await vi.advanceTimersByTimeAsync(20);
+      expect(w.webContents.send).toHaveBeenCalledOnce();
+    } finally {
+      await overlay.dispose();
+    }
   });
   it.each([false, true])(
     '合成拍照临时保护桌面层，成功或失败都恢复原偏好（失败=%s）',

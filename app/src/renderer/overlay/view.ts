@@ -7,6 +7,7 @@ import { ClipCache } from './cache';
 import { hitCat } from './coordinates';
 import { ClipMedia } from './media';
 import { createPhotoAnimation } from './photo';
+import { OverlayAudio } from './audio';
 
 interface CatView {
   cache: ClipCache<ClipMedia>;
@@ -25,9 +26,16 @@ export async function createOverlayView(
   stage: StageCore,
   bridge: OverlayBridge,
 ) {
+  const errors: string[] = [];
+  const failed = (error: unknown): void => {
+    errors.push(String(error));
+    console.error(error);
+  };
+  const audio = new OverlayAudio(failed);
   const unsubscribe: Unsubscribe[] = [
     bridge.onSnapshot((snapshot) => {
       stage.applySnapshot(snapshot, Date.now());
+      audio.applySnapshot(snapshot);
     }),
     bridge.onStageCommand((command) => {
       stage.handleCommand(command, Date.now());
@@ -35,6 +43,7 @@ export async function createOverlayView(
   ];
   const app = new Application();
   try {
+    audio.applySnapshot(await bridge.getSnapshot());
     await app.init({
       resizeTo: window,
       backgroundAlpha: 0,
@@ -45,6 +54,7 @@ export async function createOverlayView(
       powerPreference: 'low-power',
     });
   } catch (error) {
+    audio.dispose();
     unsubscribe.forEach((off) => {
       off();
     });
@@ -70,11 +80,6 @@ export async function createOverlayView(
   let pointer = { x: -1, y: -1 };
   let disposed = false;
   let drew = 0;
-  const errors: string[] = [];
-  const failed = (error: unknown): void => {
-    errors.push(String(error));
-    console.error(error);
-  };
   const makeCat = (cat: string): CatView => {
     const sprite = new Sprite();
     sprite.visible = false;
@@ -90,8 +95,8 @@ export async function createOverlayView(
       }),
     };
   };
-  const hit = (): string | null => {
-    if (ghost && dragging === undefined) return null;
+  const hit = (point = pointer, includeGhost = false): string | null => {
+    if (!includeGhost && ghost && dragging === undefined) return null;
     for (let i = drawnOrder.length - 1; i >= 0; i--) {
       const cat = drawnOrder[i];
       const view = cat === undefined ? undefined : cats.get(cat);
@@ -102,7 +107,7 @@ export async function createOverlayView(
         media &&
         p &&
         view.sprite.visible &&
-        hitCat(pointer, { ...p, mirrored: view.shownMirrored }, media.clip, media.mask, media.frame)
+        hitCat(point, { ...p, mirrored: view.shownMirrored }, media.clip, media.mask, media.frame)
       )
         return cat ?? null;
     }
@@ -110,6 +115,13 @@ export async function createOverlayView(
   };
   let lastHover: boolean | undefined;
   const renew = (force = true): void => {
+    if (paused && debug && Date.now() - lastDebug >= 500) {
+      lastDebug = Date.now();
+      bridge.sendOverlay({
+        type: 'stageDebug',
+        report: { ...stage.debugReport(lastDebug), audio: audio.inspect() },
+      });
+    }
     const onCat = !paused && hit() !== null;
     if (force || onCat !== lastHover) {
       bridge.sendOverlay({ type: 'hover', onCat });
@@ -195,6 +207,7 @@ export async function createOverlayView(
     if (disposed || paused) return;
     const now = Date.now();
     const frame = stage.update(now);
+    audio.update(frame);
     drawnOrder = frame.cats.map((p) => p.cat);
     const visible = new Set(frame.cats.map((p) => p.cat));
     for (const [cat, view] of cats) {
@@ -331,7 +344,10 @@ export async function createOverlayView(
     }
     for (const fact of stage.drainFacts()) bridge.sendFact(fact);
     if (debug && now - lastDebug >= 500) {
-      bridge.sendOverlay({ type: 'stageDebug', report: stage.debugReport(now) });
+      bridge.sendOverlay({
+        type: 'stageDebug',
+        report: { ...stage.debugReport(now), audio: audio.inspect() },
+      });
       lastDebug = now;
     }
     drew++;
@@ -340,6 +356,9 @@ export async function createOverlayView(
   unsubscribe.push(
     bridge.onOverlay((message) => {
       if (message.type === 'photo' && !paused) photo.play(message);
+      if (message.type === 'clickThrough' && !paused) {
+        stage.handlePointer({ ...message, cat: hit(message, true) }, Date.now());
+      }
       if (message.type === 'ghost') {
         ghost = message.active;
         stage.setGhostMode(ghost, Date.now());
@@ -348,7 +367,9 @@ export async function createOverlayView(
       if (message.type === 'dragCancel') cancel();
       if (message.type === 'stageDebug') debug = message.enabled;
       if (message.type === 'paused') {
+        if (paused && !message.paused) audio.update(stage.update(Date.now()));
         paused = message.paused;
+        audio.setPaused(paused);
         if (paused) {
           photo.clear();
           cancel();
@@ -370,6 +391,7 @@ export async function createOverlayView(
       ghost,
       dragging: dragging !== undefined,
       errors,
+      audio: audio.inspect(),
       cats: [...cats.entries()].map(([cat, view]) => ({
         cat,
         ...view.placement,
@@ -384,6 +406,7 @@ export async function createOverlayView(
     dispose(): void {
       disposed = true;
       photo.clear();
+      audio.dispose();
       abort.abort();
       clearInterval(timer);
       unsubscribe.forEach((off) => {
