@@ -4,7 +4,8 @@
 // 走不通时才硬切（ADR-0002）。计划播完，就按性格参数选下一个行为。
 //
 // 时间全部按真实经过的毫秒数推进，不按帧数累加（ADR-0004）。片段时间 = 真实时间 × 播放速度。
-import type { CatPlacement, StageEffect } from '../../shared/core-api';
+import type { CatPlacement, SoundCue, StageEffect } from '../../shared/core-api';
+import { CLIP_SOUNDS } from '../../shared/schemas';
 import type { ActivityLevel, BasePose, Cat, Clip, Pose } from '../../shared/schemas';
 import {
   chooseBehavior,
@@ -24,7 +25,7 @@ export type Step =
   /** 播一个片段。循环片段播 holdMs 左右（取整到整遍），不写就播一遍。 */
   | { kind: 'clip'; name: string; variant?: number; holdMs?: number }
   /** 用走路或奔跑片段，在地板上移动到 (x, d) 附近。 */
-  | { kind: 'move'; gait: 'walk' | 'run'; x: number; d: number }
+  | { kind: 'move'; gait: 'walk' | 'run'; x: number; d: number; outside?: boolean }
   /** 转身朝向某个 x。 */
   | { kind: 'face'; towardX: number };
 
@@ -51,7 +52,10 @@ export interface ActorEnv {
   /** 用户设置的缩放。 */
   scale: number;
   activityLevel: ActivityLevel;
+  /** 旁边连续点击让开以后，在新位置继续睡；聚到角落的行为由 #59 负责。 */
+  doNotDisturb?: boolean;
   addEffect(effect: StageEffect, x: number, y: number, at: number): void;
+  addSound?(cue: SoundCue, at: number): void;
   readonly observer?: StageObserver | undefined;
 }
 
@@ -69,6 +73,7 @@ const DEBUG_LOOP_MS = 6_000;
 const MAX_ADVANCE_STEPS = 10_000;
 
 interface Move {
+  outside: boolean;
   fromX: number;
   fromD: number;
   toX: number;
@@ -86,6 +91,7 @@ interface Move {
 }
 
 interface Segment {
+  soundStarted?: boolean;
   clip: Clip;
   rate: number;
   mirrored: boolean;
@@ -113,14 +119,22 @@ export class CatActor {
   private cutPending = false;
   private readonly lastVariant = new Map<string, number>();
   private held = false;
+  private restAfterNearbyClicks = false;
   private airY: number | undefined;
   private fall: { fromY: number; elapsedMs: number } | undefined;
+  private passage:
+    { kind: 'entrance'; x: number } | { kind: 'exit'; x: number; side: Facing } | undefined;
+  private entranceDelayMs = 0;
+  private cornerX: number | undefined;
+  private exited = false;
+  private returnAfterExit: { x: number; delayMs: number } | undefined;
+  private entranceFacing: Facing | undefined;
 
   constructor(
     readonly cat: Cat,
     clips: readonly Clip[],
     private readonly env: ActorEnv,
-    start: { x: number; d: number; facing: Facing; now: number },
+    start: { x: number; d: number; facing: Facing; now: number; entranceDelayMs?: number },
   ) {
     this.id = cat.id;
     this.library = new ClipLibrary(clips);
@@ -129,7 +143,8 @@ export class CatActor {
     this.d = start.d;
     this.facing = start.facing;
     this.seg = this.makeSegment(this.requireClip(REST_LOOPS.stand), {});
-    this.startNext(start.now);
+    if (start.entranceDelayMs === undefined) this.startNext(start.now);
+    else this.enter(start.x, start.entranceDelayMs, start.now);
   }
 
   // ---------- 推进 ----------
@@ -139,7 +154,16 @@ export class CatActor {
    * 当前的计划照真实时间推进完（不画出来），但不再接着选新行为补播，新行为从 to 开始。
    */
   advance(from: number, to: number, catchUp: boolean): void {
+    if (this.hasExited()) return;
+    if (this.entranceDelayMs > 0) {
+      const wait = Math.min(to - from, this.entranceDelayMs);
+      this.entranceDelayMs -= wait;
+      from += wait;
+      if (this.entranceDelayMs > 0) return;
+      this.startNext(from);
+    }
     if (this.held || this.fall !== undefined) {
+      this.advanceSound(this.seg, to - from, from);
       this.seg.elapsed =
         (this.seg.elapsed + (to - from) * this.seg.rate) % clipDurationMs(this.seg.clip);
       if (this.fall === undefined) return;
@@ -165,19 +189,30 @@ export class CatActor {
       const seg = this.seg;
       const realRemaining = (seg.end - seg.elapsed) / seg.rate;
       if (to - t < realRemaining) {
+        this.advanceSound(seg, to - t, t);
         this.progress(seg, to - t);
         return;
       }
+      this.advanceSound(seg, realRemaining, t);
       this.progress(seg, realRemaining);
       seg.elapsed = seg.end;
       t += realRemaining;
       if (seg.move !== undefined && this.continueMove(seg, seg.move)) continue;
+      if (seg.move?.outside && this.passage?.kind !== 'exit') {
+        this.x = this.env.floor.clampX(this.x, this.cat.relativeSize);
+      }
       this.pose = seg.clip.toPose;
-      if (catchUp && this.queue.length === 0) {
+      if (
+        catchUp &&
+        this.queue.length === 0 &&
+        this.passage === undefined &&
+        this.cornerX === undefined
+      ) {
         this.startNext(to);
         return;
       }
       this.startNext(t);
+      if (this.hasExited()) return;
     }
   }
 
@@ -187,10 +222,8 @@ export class CatActor {
     const move = seg.move;
     if (move === undefined) return;
     const cycleStart = seg.end - clipDurationMs(seg.clip);
-    this.x = this.env.floor.clampX(
-      move.cycleStartX + move.dir * move.cycleSpeed * (seg.elapsed - cycleStart),
-      this.cat.relativeSize,
-    );
+    const x = move.cycleStartX + move.dir * move.cycleSpeed * (seg.elapsed - cycleStart);
+    this.x = move.outside ? x : this.env.floor.clampX(x, this.cat.relativeSize);
     if (move.toX !== move.fromX) {
       const along = (this.x - move.fromX) / (move.toX - move.fromX);
       this.d = clamp01(move.fromD + (move.toD - move.fromD) * along);
@@ -216,6 +249,7 @@ export class CatActor {
     for (let guard = 0; guard < 32; guard++) {
       const step = this.queue.shift();
       if (step === undefined) {
+        if (this.planPassageOrCorner(t)) return;
         this.planAutonomous();
         continue;
       }
@@ -228,6 +262,12 @@ export class CatActor {
   }
 
   private planAutonomous(): void {
+    if (this.restAfterNearbyClicks && this.env.doNotDisturb) {
+      this.behavior = { kind: 'rest', pose: 'sleep' };
+      this.queue = [this.restStep('sleep')];
+      return;
+    }
+    this.restAfterNearbyClicks = false;
     const rest = this.restPose();
     const behavior = chooseBehavior(this.env.random, {
       personality: this.cat.personality,
@@ -315,7 +355,7 @@ export class CatActor {
   }
 
   private startMove(step: Extract<Step, { kind: 'move' }>, t: number): boolean {
-    const toX = this.env.floor.clampX(step.x, this.cat.relativeSize);
+    const toX = step.outside ? step.x : this.env.floor.clampX(step.x, this.cat.relativeSize);
     if (toX === this.x) return false;
     const dir = toX > this.x ? 1 : -1;
     const facing = dir > 0 ? 'right' : 'left';
@@ -329,13 +369,21 @@ export class CatActor {
     this.facing = facing;
     const clip = this.pickVariant(gait, undefined, true);
     if (clip === undefined) return false;
-    if (Math.abs(toX - this.x) < this.cycleDistance(clip) / 2) return false;
+    const range = this.env.floor.xRange(this.cat.relativeSize);
+    if (
+      Math.abs(toX - this.x) < this.cycleDistance(clip) / 2 &&
+      !step.outside &&
+      this.x >= range.min &&
+      this.x <= range.max
+    )
+      return false;
     // 坡度限制：纵向位移不超过横向位移的 MAX_WALK_SLOPE 倍
     const band = this.env.floor.band;
     const maxDd = band > 0 ? (MAX_WALK_SLOPE * Math.abs(toX - this.x)) / band : 1;
     const toD = Math.min(this.d + maxDd, Math.max(this.d - maxDd, clamp01(step.d)));
     this.beginSegment(clip, t, {
       move: {
+        outside: step.outside === true || this.x < 0 || this.x > this.env.floor.width,
         fromX: this.x,
         fromD: this.d,
         toX,
@@ -389,7 +437,10 @@ export class CatActor {
   }
 
   private beginSegment(clip: Clip, t: number, opts: { holdMs?: number; move?: Move }): void {
+    if (this.seg.clip.name === 'purr' && this.seg.soundStarted && this.cat.sounds.purr.length > 0)
+      this.env.addSound?.({ cat: this.id, sound: 'purr', action: 'stop' }, t);
     this.seg = this.makeSegment(clip, opts);
+    this.advanceSound(this.seg, 0, t);
     const cut = this.cutPending;
     this.cutPending = false;
     this.pose = clip.fromPose;
@@ -404,11 +455,29 @@ export class CatActor {
 
   // ---------- 打断 ----------
 
+  /** 只在第一次跨过起始帧时出声，循环和低帧率都不能重复发。 */
+  private advanceSound(seg: Segment, dt: number, at: number): void {
+    const sound =
+      seg.clip.name === 'meow' || seg.clip.name === 'purr' ? CLIP_SOUNDS[seg.clip.name] : undefined;
+    const start = ((seg.clip.soundStartFrame ?? 0) * 1000) / seg.clip.fps;
+    if (!sound || seg.soundStarted || seg.elapsed + dt * seg.rate < start) return;
+    seg.soundStarted = true;
+    this.startSound(sound, at + Math.max(0, start - seg.elapsed) / seg.rate);
+  }
+
+  startSound(sound: 'meow' | 'purr', at: number): void {
+    if (this.cat.sounds[sound].length === 0) return;
+    const file = pick(this.env.random, this.cat.sounds[sound]);
+    if (file !== undefined) this.env.addSound?.({ cat: this.id, sound, action: 'start', file }, at);
+  }
+
   /**
    * 换成新的计划。soft：等当前片段回到姿势（循环片段到这一遍结束）再换；
    * cut：立刻换。当前片段不在姿势上时，放一个小特效盖住切换处（ADR-0002）。
    */
   interrupt(steps: Step[], behavior: Behavior, mode: InterruptMode, t: number): void {
+    this.entranceDelayMs = 0;
+    this.restAfterNearbyClicks = false;
     this.held = false;
     this.behavior = behavior;
     this.queue = steps;
@@ -436,8 +505,23 @@ export class CatActor {
     this.startNext(t);
   }
 
+  /** 防打扰让开；勿扰期间后续休息留在新位置，主动命令仍可替换计划。 */
+  avoidNearbyClicks(x: number, t: number): void {
+    this.interrupt(
+      [
+        { kind: 'move', gait: 'walk', x, d: this.d },
+        { kind: 'clip', name: REST_LOOPS[this.env.doNotDisturb ? 'sleep' : 'stand'], holdMs: 5000 },
+      ],
+      { kind: 'avoid' },
+      'cut',
+      t,
+    );
+    this.restAfterNearbyClicks = true;
+  }
+
   /** 召唤：走（或跑）到 (x, d)，转向 towardX，再站着等一会儿。 */
   summon(x: number, d: number, towardX: number, t: number): void {
+    if (this.passage?.kind === 'entrance') this.passage = undefined;
     const far = Math.abs(x - this.x) > RUN_DISTANCE_RATIO * STANDARD_CAT_HEIGHT * this.env.scale;
     const holdMs = uniform(this.env.random, ...SUMMON_WAIT_MS);
     this.interrupt(
@@ -475,6 +559,7 @@ export class CatActor {
   react(name: string, behavior: Behavior, held: boolean, t: number): void {
     const first = this.library.first(name);
     if (first === undefined) return;
+    this.entranceDelayMs = 0;
     this.queue = [];
     this.behavior = behavior;
     this.hardCut(first.fromPose, t);
@@ -531,6 +616,183 @@ export class CatActor {
 
   // ---------- 地板和屏幕 ----------
 
+  /** 用所有片段的逐帧锚点保守计算整幅画面完全离屏所需的距离（也涵盖镜像）。 */
+  private outsideExtent(): number {
+    let extent = STANDARD_CAT_HEIGHT;
+    for (const name of this.library.names()) {
+      for (const clip of this.library.variants(name)) {
+        for (const anchor of clip.footAnchors)
+          extent = Math.max(extent, Math.abs(anchor.x), Math.abs(clip.width - anchor.x));
+      }
+    }
+    return extent * this.env.scale * this.cat.relativeSize;
+  }
+
+  private outsideMargin(): number {
+    return this.outsideExtent() + this.stopTolerance() + 1;
+  }
+
+  canWalkToward(facing: Facing): boolean {
+    return this.library
+      .variants('walk')
+      .some((clip) => clip.fromPose === 'stand' && canMoveToward(clip, facing));
+  }
+
+  private walkingFacing(preferred: Facing): Facing {
+    const other = preferred === 'left' ? 'right' : 'left';
+    return this.canWalkToward(preferred) || !this.canWalkToward(other) ? preferred : other;
+  }
+
+  private atFloorTarget(x: number): boolean {
+    const range = this.env.floor.xRange(this.cat.relativeSize);
+    return (
+      this.x >= range.min &&
+      this.x <= range.max &&
+      Math.abs(this.x - x) <= this.stopTolerance() + 1e-6
+    );
+  }
+
+  enter(x: number, delayMs: number, t: number, fromEdge = true): void {
+    const target = this.env.floor.clampX(x, this.cat.relativeSize);
+    if (
+      !fromEdge &&
+      this.passage?.kind === 'exit' &&
+      target !== this.x &&
+      !this.canWalkToward(target < this.x ? 'left' : 'right')
+    ) {
+      // 单向素材不能原地掉头：完整离屏后再从可行的一侧入场，不能在屏内瞬移。
+      this.returnAfterExit = { x: target, delayMs };
+      return;
+    }
+    this.returnAfterExit = undefined;
+    this.exited = false;
+    this.passage = { kind: 'entrance', x: target };
+    if (fromEdge) {
+      this.entranceFacing = this.walkingFacing(this.facing);
+      this.facing = this.entranceFacing;
+      this.airY = undefined;
+      this.fall = undefined;
+      this.held = false;
+      this.pose = 'stand';
+      this.x =
+        this.entranceFacing === 'right'
+          ? -this.outsideMargin()
+          : this.env.floor.width + this.outsideMargin();
+      this.beginSegment(this.requireClip(REST_LOOPS.stand), t, {});
+    }
+    if (this.isAirborne()) return;
+    this.interrupt(
+      [{ kind: 'move', gait: 'walk', x: this.passage.x, d: this.d }],
+      { kind: 'entrance' },
+      'soft',
+      t,
+    );
+    this.entranceDelayMs = delayMs;
+    if (delayMs === 0) this.startNext(t);
+  }
+
+  exit(t: number): void {
+    this.returnAfterExit = undefined;
+    if (this.passage?.kind === 'exit') return;
+    const side = this.walkingFacing(this.x < this.env.floor.width / 2 ? 'left' : 'right');
+    const x = side === 'left' ? -this.outsideMargin() : this.env.floor.width + this.outsideMargin();
+    this.passage = { kind: 'exit', x, side };
+    if (this.isAirborne() || this.behavior.kind === 'dropped') return;
+    this.interrupt(
+      [{ kind: 'move', gait: 'walk', x, d: this.d, outside: true }],
+      { kind: 'exit' },
+      'soft',
+      t,
+    );
+  }
+
+  isExiting(): boolean {
+    return this.passage?.kind === 'exit';
+  }
+
+  hasExited(): boolean {
+    return this.exited;
+  }
+
+  isDoNotDisturb(): boolean {
+    return this.cornerX !== undefined;
+  }
+
+  setCorner(x: number | undefined, t: number): void {
+    if (this.cornerX === x) return;
+    this.cornerX = x;
+    if (this.passage !== undefined || this.held || this.isAirborne()) return;
+    if (
+      [
+        'idle',
+        'rest',
+        'wander',
+        'action',
+        'sleepCommand',
+        'goToCorner',
+        'doNotDisturbSleep',
+      ].includes(this.behavior.kind)
+    )
+      this.interrupt(
+        x === undefined ? [{ kind: 'clip', name: REST_LOOPS.stand }] : [],
+        { kind: 'idle' },
+        'soft',
+        t,
+      );
+  }
+
+  /** 移动没能开始时保持当前姿势等待，不递归重排，也不把失败当作到达。 */
+  private moveOrWait(step: Extract<Step, { kind: 'move' }>, t: number): void {
+    if (this.startMove(step, t)) return;
+    if (this.queue.length > 0) {
+      this.startNext(t);
+      return;
+    }
+    const rest = this.restPose();
+    if (this.pose !== rest) this.hardCut(rest, t);
+    this.beginSegment(this.requireClip(REST_LOOPS[rest]), t, { holdMs: DEBUG_LOOP_MS });
+  }
+
+  /** 固定职责优先于自主行为；完成与否由位置决定，不能只看行为名称。 */
+  private planPassageOrCorner(t: number): boolean {
+    const passage = this.passage;
+    if (passage !== undefined) {
+      const outside =
+        passage.kind === 'exit' &&
+        (passage.side === 'left'
+          ? this.x + this.outsideExtent() < 0
+          : this.x - this.outsideExtent() > this.env.floor.width);
+      const arrived = passage.kind === 'entrance' && this.atFloorTarget(passage.x);
+      if (!outside && !arrived) {
+        this.behavior = { kind: passage.kind };
+        this.moveOrWait(
+          { kind: 'move', gait: 'walk', x: passage.x, d: this.d, outside: passage.kind === 'exit' },
+          t,
+        );
+        return true;
+      }
+      this.passage = undefined;
+      if (passage.kind === 'exit') {
+        const returning = this.returnAfterExit;
+        if (returning !== undefined) this.enter(returning.x, returning.delayMs, t);
+        else this.exited = true;
+        return true;
+      }
+      this.clampToFloor();
+    }
+    // 勿扰期间被点开的猫在新位置接着睡（#60），不走回角落。
+    if (this.cornerX === undefined || this.restAfterNearbyClicks) return false;
+    if (this.atFloorTarget(this.cornerX)) {
+      this.behavior = { kind: 'doNotDisturbSleep' };
+      this.queue = [{ kind: 'clip', name: REST_LOOPS.sleep, holdMs: Infinity }];
+      this.startNext(t);
+    } else {
+      this.behavior = { kind: 'goToCorner' };
+      this.moveOrWait({ kind: 'move', gait: 'walk', x: this.cornerX, d: this.d }, t);
+    }
+    return true;
+  }
+
   /** 屏幕宽度变了：位置按比例跟着变，再收回地板范围里。 */
   rescaleX(factor: number): void {
     this.x *= factor;
@@ -543,18 +805,39 @@ export class CatActor {
       if (step.kind === 'move') step.x *= factor;
       if (step.kind === 'face') step.towardX *= factor;
     }
+    if (this.passage !== undefined) this.passage.x *= factor;
+    if (this.returnAfterExit !== undefined) this.returnAfterExit.x *= factor;
     this.clampToFloor();
   }
 
   clampToFloor(): void {
-    this.x = this.env.floor.clampX(this.x, this.cat.relativeSize);
+    const passage = this.passage;
+    if (passage !== undefined) {
+      passage.x =
+        passage.kind === 'exit'
+          ? passage.side === 'left'
+            ? -this.outsideMargin()
+            : this.env.floor.width + this.outsideMargin()
+          : this.env.floor.clampX(passage.x, this.cat.relativeSize);
+      if (this.entranceDelayMs > 0)
+        this.x =
+          this.entranceFacing === 'right'
+            ? -this.outsideMargin()
+            : this.env.floor.width + this.outsideMargin();
+      if (this.behavior.kind === passage.kind) {
+        if (this.seg.move !== undefined) this.seg.move.toX = passage.x;
+        for (const step of this.queue) if (step.kind === 'move') step.x = passage.x;
+      }
+    }
+    if (this.passage === undefined && !this.seg.move?.outside)
+      this.x = this.env.floor.clampX(this.x, this.cat.relativeSize);
     this.d = clamp01(this.d);
     // 位置被挪过：重新定这一遍的起点，让下一帧从现在的位置接着走，步速不变
     const move = this.seg.move;
     if (move !== undefined) {
       move.fromX = this.x;
       move.fromD = this.d;
-      move.toX = this.env.floor.clampX(move.toX, this.cat.relativeSize);
+      if (!move.outside) move.toX = this.env.floor.clampX(move.toX, this.cat.relativeSize);
       const maxDd =
         this.env.floor.band > 0
           ? (MAX_WALK_SLOPE * Math.abs(move.toX - this.x)) / this.env.floor.band

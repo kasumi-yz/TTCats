@@ -24,6 +24,7 @@ import { attachMainLog, createApplicationLog } from './log';
 import { configureOverlayGpu, createOverlay } from './overlay';
 import { createPanelWindows, sendToWindow } from './panel-windows';
 import { createPlatform } from './platform';
+import { createPhoto } from './photo';
 import { attachRecovery } from './recovery';
 import { SaveStore } from './save';
 import { attachShutdown } from './shutdown';
@@ -117,6 +118,15 @@ if (!app.requestSingleInstanceLock()) {
         updateTray,
         report,
       });
+      const photo = createPhoto({
+        overlay: () => overlay,
+        allowed: () =>
+          !session.safeMode &&
+          !stopping() &&
+          session.snapshot().settings.visibleCats.some((id) => Object.hasOwn(content.cats, id)),
+        updateTray,
+        report,
+      });
       const detachIpc = registerIpcRoutes({
         ipc: ipcMain,
         allowedSender: panels.allowedSender,
@@ -124,9 +134,7 @@ if (!app.requestSingleInstanceLock()) {
         acceptFacts: () => !session.safeMode && !stopping(),
         command,
         mainCommands: {
-          'photo/take': (message) => {
-            report(zh.interfaces.commandNotReady(message.type));
-          },
+          'photo/take': photo.take,
           'diagnostics/export': (message) => {
             report(zh.interfaces.commandNotReady(message.type));
           },
@@ -157,6 +165,8 @@ if (!app.requestSingleInstanceLock()) {
         onError: report,
         onWindow: (window) => {
           panels.registerWindow(window);
+          window.on('show', updateTray);
+          window.on('hide', updateTray);
           recovery = attachRecovery({
             overlay: window,
             save,
@@ -216,7 +226,7 @@ if (!app.requestSingleInstanceLock()) {
             app.quit();
           },
         }),
-        sections: [catMenuSection, captureMenuSection, applicationMenuSection],
+        sections: [catMenuSection, captureMenuSection, photo.menuSection, applicationMenuSection],
         openSettings: () => {
           panels.openPanel('settings');
         },

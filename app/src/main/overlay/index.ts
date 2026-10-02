@@ -45,6 +45,7 @@ export async function createOverlay(options: OverlayOptions) {
   let displayKey: string | undefined;
   let lastFullscreenCheck = -Infinity;
   let rendererReady = false;
+  let photoCaptures = 0;
   const send = (message: MainToOverlay): void => {
     if (
       window &&
@@ -59,6 +60,8 @@ export async function createOverlay(options: OverlayOptions) {
     const cursor = screen.getCursorScreenPoint();
     return {
       now: Date.now(),
+      x: cursor.x - (bounds?.x ?? 0),
+      y: cursor.y - (bounds?.y ?? 0),
       inside:
         bounds !== undefined &&
         cursor.x >= bounds.x &&
@@ -90,7 +93,7 @@ export async function createOverlay(options: OverlayOptions) {
         }
       }
       state.paused = fullscreen || hidden;
-      const result = safety.poll(state);
+      const result = safety.poll(state, ignore);
       if (result.cancel) send({ type: 'dragCancel' });
       if (result.ghost !== ghost) {
         ghost = result.ghost;
@@ -100,6 +103,7 @@ export async function createOverlay(options: OverlayOptions) {
         ignore = result.ignore;
         window.setIgnoreMouseEvents(ignore, { forward: true });
       }
+      if (result.clickThrough) send({ type: 'clickThrough', x: state.x, y: state.y });
     } catch (error) {
       // 系统查询失败时优先释放鼠标，不能把失败当成安全的查询结果。
       ignore = true;
@@ -283,6 +287,19 @@ export async function createOverlay(options: OverlayOptions) {
     },
     rebuild,
     reload,
+    async withCaptureProtection<T>(capture: () => Promise<T>): Promise<T> {
+      const target = window;
+      if (!target || target.isDestroyed()) throw new Error(zh.photo.desktopChanged);
+      photoCaptures++;
+      try {
+        target.setContentProtection(true);
+        return await capture();
+      } finally {
+        photoCaptures--;
+        if (!target.isDestroyed())
+          target.setContentProtection(photoCaptures > 0 || !settings.showInScreenCapture);
+      }
+    },
     enterSafeMode(): void {
       safeMode = true;
       resetInput();
@@ -292,7 +309,8 @@ export async function createOverlay(options: OverlayOptions) {
       if (disposed) return;
       settings = next;
       hidden = next.visibleCats.length === 0;
-      if (window && !window.isDestroyed()) window.setContentProtection(!next.showInScreenCapture);
+      if (window && !window.isDestroyed())
+        window.setContentProtection(photoCaptures > 0 || !next.showInScreenCapture);
       applyVisibility();
       poll();
     },

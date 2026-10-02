@@ -15,6 +15,7 @@ export class OverlaySafety {
   private releasedAt: number | undefined;
   private ghostUntil = 0;
   private ctrlWasDown = false;
+  private leftWasDown: boolean | undefined;
 
   receive(message: OverlayToMain, input: SafetyInput): void {
     if (message.type === 'hover') {
@@ -35,7 +36,10 @@ export class OverlaySafety {
     return input.ctrlDown || input.now < this.ghostUntil;
   }
 
-  poll(input: SafetyInput): { ignore: boolean; ghost: boolean; cancel: boolean } {
+  poll(
+    input: SafetyInput,
+    wasIgnoring = true,
+  ): { ignore: boolean; ghost: boolean; cancel: boolean; clickThrough: boolean } {
     if (this.ctrlWasDown && !input.ctrlDown)
       this.ghostUntil = input.now + OVERLAY_TIMING.ghostHoldMs;
     this.ctrlWasDown = input.ctrlDown;
@@ -55,12 +59,24 @@ export class OverlaySafety {
       }
     }
     const ghost = this.ghost(input);
+    const ignore =
+      input.paused || (!this.dragging && (ghost || !input.inside || input.now >= this.leaseUntil));
+    // 只观察已经穿透的点击；恢复穿透的这一轮不能把刚才截获的按下算进去。
+    // 首次采样可能已经按住，必须先看到松开，避免把启动/恢复中的拖动误算为点击。
+    const clickThrough =
+      this.leftWasDown === false &&
+      input.leftDown &&
+      input.inside &&
+      !input.paused &&
+      !this.dragging &&
+      wasIgnoring &&
+      ignore;
+    this.leftWasDown = input.leftDown;
     return {
-      ignore:
-        input.paused ||
-        (!this.dragging && (ghost || !input.inside || input.now >= this.leaseUntil)),
+      ignore,
       ghost,
       cancel,
+      clickThrough,
     };
   }
 }

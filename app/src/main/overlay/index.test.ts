@@ -18,6 +18,7 @@ function mockWindow() {
     setBounds: ReturnType<typeof vi.fn>;
     getBounds: ReturnType<typeof vi.fn>;
     setIgnoreMouseEvents: ReturnType<typeof vi.fn>;
+    setContentProtection: ReturnType<typeof vi.fn>;
     hide: ReturnType<typeof vi.fn>;
     showInactive: ReturnType<typeof vi.fn>;
     webContents: EventEmitter & {
@@ -35,6 +36,7 @@ const mock = vi.hoisted(() => ({
   bounds: { x: 0, y: 0, width: 1920, height: 1000 },
   displayId: 1,
   scaleFactor: 1,
+  cursor: { x: 0, y: 0 },
   displayListeners: new Map<string, () => void>(),
 }));
 vi.mock('electron', () => ({
@@ -49,7 +51,7 @@ vi.mock('electron', () => ({
       scaleFactor: mock.scaleFactor,
       workArea: mock.bounds,
     }),
-    getCursorScreenPoint: () => ({ x: 0, y: 0 }),
+    getCursorScreenPoint: () => mock.cursor,
     on: (event: string, listener: () => void) => mock.displayListeners.set(event, listener),
     removeListener: (event: string) => mock.displayListeners.delete(event),
   },
@@ -104,10 +106,95 @@ describe('桌面层重建队列', () => {
     mock.bounds = { x: 0, y: 0, width: 1920, height: 1000 };
     mock.displayId = 1;
     mock.scaleFactor = 1;
+    mock.cursor = { x: 0, y: 0 };
     mock.displayListeners.clear();
   });
   afterEach(() => {
     vi.useRealTimers();
+  });
+  it('穿透点击转成桌面层坐标且只发一次，不切换穿透、不抢焦点', async () => {
+    vi.useFakeTimers();
+    mock.bounds = { x: -1200, y: 100, width: 1200, height: 800 };
+    mock.cursor = { x: -900, y: 650 };
+    let leftDown = false;
+    const overlay = await createOverlay({
+      system: { ...system, isLeftButtonDown: () => leftDown },
+      settings: defaultSettings(['test']),
+      load: () => Promise.resolve(),
+      onError: vi.fn(),
+    });
+    const w = mockWindow();
+    try {
+      w.webContents.send.mockClear();
+      w.setIgnoreMouseEvents.mockClear();
+      w.showInactive.mockClear();
+      leftDown = true;
+      await vi.advanceTimersByTimeAsync(100);
+      expect(w.webContents.send).toHaveBeenCalledExactlyOnceWith(IPC_CHANNELS.mainToOverlay, {
+        type: 'clickThrough',
+        x: 300,
+        y: 550,
+      });
+      expect(w.setIgnoreMouseEvents).not.toHaveBeenCalled();
+      expect(w.showInactive).not.toHaveBeenCalled();
+      leftDown = false;
+      await vi.advanceTimersByTimeAsync(20);
+      mock.cursor.x = 0; // 工作区右边界不属于桌面层。
+      leftDown = true;
+      await vi.advanceTimersByTimeAsync(20);
+      expect(w.webContents.send).toHaveBeenCalledOnce();
+    } finally {
+      await overlay.dispose();
+    }
+  });
+  it.each([false, true])(
+    '合成拍照临时保护桌面层，成功或失败都恢复原偏好（失败=%s）',
+    async (fails) => {
+      const settings = defaultSettings(['test']);
+      const overlay = await createOverlay({
+        system,
+        settings,
+        load: () => Promise.resolve(),
+        onError: vi.fn(),
+      });
+      try {
+        const protection = mockWindow().setContentProtection;
+        protection.mockClear();
+        const operation = overlay.withCaptureProtection(() => {
+          expect(protection).toHaveBeenLastCalledWith(true);
+          return fails ? Promise.reject(new Error('capture')) : Promise.resolve('photo');
+        });
+        if (fails) await expect(operation).rejects.toThrow('capture');
+        else await expect(operation).resolves.toBe('photo');
+        expect(protection.mock.calls).toEqual([[true], [true]]);
+        settings.showInScreenCapture = true;
+        overlay.updateSettings(settings);
+        await overlay.withCaptureProtection(() => Promise.resolve());
+        expect(protection).toHaveBeenLastCalledWith(false);
+      } finally {
+        await overlay.dispose();
+      }
+    },
+  );
+  it('合成拍照期间设置更新不会解除保护，结束时按最新偏好恢复', async () => {
+    const settings = { ...defaultSettings(['test']), showInScreenCapture: true };
+    const overlay = await createOverlay({
+      system,
+      settings,
+      load: () => Promise.resolve(),
+      onError: vi.fn(),
+    });
+    try {
+      const pending = latch();
+      const operation = overlay.withCaptureProtection(() => pending.promise);
+      overlay.updateSettings({ ...settings, showInScreenCapture: false });
+      expect(mockWindow().setContentProtection).toHaveBeenLastCalledWith(true);
+      pending.release();
+      await operation;
+      expect(mockWindow().setContentProtection).toHaveBeenLastCalledWith(true);
+    } finally {
+      await overlay.dispose();
+    }
   });
   it.each([false, true])(
     '显示器缩放造成尺寸偏差时重试，持续偏差才报告（%s）',

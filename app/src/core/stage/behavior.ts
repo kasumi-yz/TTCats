@@ -19,6 +19,7 @@ export type AutonomousBehavior =
 
 /** 用户或调试台让猫做的事。 */
 export type CommandedBehavior =
+  | { kind: 'entrance' | 'exit' | 'goToCorner' | 'doNotDisturbSleep' }
   | { kind: 'summon' }
   | { kind: 'sleepCommand' }
   | { kind: 'debugClip'; clip: string }

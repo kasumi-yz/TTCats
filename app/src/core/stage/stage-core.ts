@@ -1,5 +1,5 @@
 // core/stage 的入口：实现 shared/core-api.ts 里的 StageCore。
-// 管理可以随时丢掉的画面状态（ADR-0004）：每只猫在哪、正在播哪个片段、接下来要做什么。
+// 管理可以随时丢掉的画面状态（ADR-0004）：每只猫在哪、正在播哪个片段、接下来要播什么。
 import type {
   ContentCatalog,
   CreateStageCore,
@@ -8,6 +8,7 @@ import type {
   StageCore,
   StageEffect,
   StageFrame,
+  SoundCue,
 } from '../../shared/core-api';
 import type { Fact, StageCommand, StageDebugReport, StateSnapshot } from '../../shared/ipc';
 import { missingRequiredClips, type Point, type Settings } from '../../shared/schemas';
@@ -15,7 +16,7 @@ import { zh } from '../../shared/strings.zh-CN';
 import { CatActor, type ActorEnv, type StageObserver } from './actor';
 import type { Behavior } from './behavior';
 import { Floor, STANDARD_CAT_HEIGHT } from './floor';
-import { pick, uniform, type Random } from './random';
+import { uniform, type Random } from './random';
 import { HEARTS_MS, PointerReactions } from './pointer-reactions';
 
 /**
@@ -55,7 +56,11 @@ export class Stage implements StageCore {
   private pointer: Point | undefined;
   private effects: ActiveEffect[] = [];
   private nextEffectId = 1;
+  private sounds: { cue: SoundCue; at: number }[] = [];
+  private readonly debugPurrUntil = new Map<string, number>();
   private readonly pointerReactions: PointerReactions;
+  private doNotDisturb: boolean;
+  private cornerSide: 'left' | 'right' | undefined;
 
   constructor(options: StageOptions) {
     this.content = options.content;
@@ -64,18 +69,27 @@ export class Stage implements StageCore {
     this.revision = options.snapshot.revision;
     this.bounds = options.bounds;
     this.lastNow = options.now;
+    this.doNotDisturb = options.snapshot.doNotDisturb.mode !== 'off';
     this.env = {
       random: options.random,
       floor: this.makeFloor(),
       scale: this.settings.scale,
       activityLevel: this.settings.activityLevel,
+      doNotDisturb: options.snapshot.doNotDisturb.mode !== 'off',
       addEffect: (effect, x, y, at) => {
         this.effects.push({ id: this.nextEffectId++, effect, x, y, at });
       },
       observer: options.observer,
+      addSound: (cue, at) => {
+        this.sounds.push({ cue, at });
+      },
     };
-    this.pointerReactions = new PointerReactions(() => this.actors, this.env);
+    this.pointerReactions = new PointerReactions(
+      () => this.actors.filter((a) => !a.isExiting()),
+      this.env,
+    );
     this.syncActors(options.now);
+    this.syncCorner(options.now);
   }
 
   applySnapshot(snapshot: StateSnapshot, now: number): void {
@@ -83,17 +97,32 @@ export class Stage implements StageCore {
     if (snapshot.revision <= this.revision) return;
     this.revision = snapshot.revision;
     this.settings = snapshot.settings;
+    this.doNotDisturb = snapshot.doNotDisturb.mode !== 'off';
     this.env.scale = this.settings.scale;
     this.env.activityLevel = this.settings.activityLevel;
+    this.env.doNotDisturb = snapshot.doNotDisturb.mode !== 'off';
     this.env.floor = this.makeFloor();
     for (const actor of this.actors) actor.clampToFloor();
     this.syncActors(now);
+    this.syncCorner(now);
   }
 
   handleCommand(command: StageCommand, now: number): void {
     this.advanceTo(now);
-    // 重新入场在 #59、调试台的声音在 #61 里实现，在那之前先忽略。
-    if (command.type === 'cat/entrance' || command.type === 'debug/sound') return;
+    if (command.type === 'cat/entrance') {
+      this.startEntrances(
+        this.actors.filter((a) => !a.isExiting()),
+        now,
+      );
+      return;
+    }
+    if ('cat' in command && this.actor(command.cat)?.isExiting()) return;
+    if (command.type === 'debug/sound') {
+      const actor = this.actor(command.cat);
+      actor?.startSound(command.sound, now);
+      if (actor && command.sound === 'purr') this.debugPurrUntil.set(actor.id, now + 3000);
+      return;
+    }
     if (command.type !== 'debug/simulate' && command.type !== 'cat/summon') {
       const actor = this.actor(command.cat);
       if (actor?.isAirborne()) return;
@@ -136,6 +165,7 @@ export class Stage implements StageCore {
     this.bounds = bounds;
     this.env.floor = this.makeFloor();
     for (const actor of this.actors) actor.rescaleX(factor);
+    this.syncCorner(now);
   }
 
   update(now: number): StageFrame {
@@ -159,8 +189,7 @@ export class Stage implements StageCore {
         y: e.y,
         ageMs: Math.max(0, now - e.at),
       })),
-      // 声音提示在 #61 里实现。
-      sounds: [],
+      sounds: this.drainSounds(now),
     };
   }
 
@@ -192,6 +221,8 @@ export class Stage implements StageCore {
   private advanceTo(now: number): void {
     const dt = now - this.lastNow;
     if (dt < 0) {
+      for (const sound of this.sounds) sound.at += dt;
+      for (const [cat, until] of this.debugPurrUntil) this.debugPurrUntil.set(cat, until + dt);
       for (const effect of this.effects) effect.at += dt;
       this.pointerReactions.shiftTime(dt);
     } else if (dt > 0) {
@@ -207,6 +238,22 @@ export class Stage implements StageCore {
       for (const actor of this.actors) actor.advance(from, now, catchUp);
     }
     this.lastNow = now;
+    this.actors = this.actors.filter((actor) => !actor.hasExited());
+    for (const [cat, until] of this.debugPurrUntil) {
+      if (now >= until) {
+        this.sounds.push({ cue: { cat, sound: 'purr', action: 'stop' }, at: until });
+        this.debugPurrUntil.delete(cat);
+      }
+    }
+  }
+
+  private drainSounds(now: number): SoundCue[] {
+    const sounds = this.sounds;
+    this.sounds = [];
+    return sounds
+      .filter(({ cue, at }) => this.actor(cue.cat) && (cue.action === 'stop' || now - at <= 1000))
+      .sort((a, b) => a.at - b.at)
+      .map(({ cue }) => cue);
   }
 
   private makeFloor(): Floor {
@@ -230,21 +277,112 @@ export class Stage implements StageCore {
       );
     });
     for (const actor of this.actors) {
-      if (!visible.includes(actor.id)) this.pointerReactions.cancelFor(actor, now, true);
+      if (!visible.includes(actor.id)) {
+        if (!actor.isExiting()) this.pointerReactions.cancelFor(actor, now, true);
+        this.debugPurrUntil.delete(actor.id);
+        this.sounds = this.sounds.filter(({ cue }) => cue.cat !== actor.id);
+        actor.exit(now);
+      }
     }
-    this.actors = visible.map((id) => this.actor(id) ?? this.createActor(id, now));
+    const added = new Map<string, CatActor>();
+    const newIds = visible.filter((id) => this.actor(id) === undefined);
+    newIds.sort(
+      (a, b) =>
+        (this.content.cats[b]?.cat.personality.activity ?? 0) -
+        (this.content.cats[a]?.cat.personality.activity ?? 0),
+    );
+    let delay = 0;
+    for (const id of newIds) {
+      added.set(id, this.createActor(id, visible.indexOf(id), visible.length, delay, now));
+      delay += uniform(this.random, 1000, 2000);
+    }
+    const shown = visible.map((id) => {
+      const actor = this.actor(id) ?? added.get(id);
+      if (actor === undefined) throw new Error(`unknown cat ${id}`);
+      if (actor.isExiting())
+        actor.enter(
+          this.entranceTarget(actor.cat.relativeSize, visible.indexOf(id), visible.length),
+          0,
+          now,
+          false,
+        );
+      return actor;
+    });
+    this.actors = [...shown, ...this.actors.filter((actor) => !visible.includes(actor.id))];
   }
 
-  private createActor(id: string, now: number): CatActor {
+  private createActor(
+    id: string,
+    index: number,
+    count: number,
+    delayMs: number,
+    now: number,
+  ): CatActor {
     const entry = this.content.cats[id];
     if (entry === undefined) throw new Error(`unknown cat ${id}`);
-    const range = this.env.floor.xRange(entry.cat.relativeSize);
     return new CatActor(entry.cat, entry.clips, this.env, {
-      x: uniform(this.random, range.min, range.max),
+      x: this.entranceTarget(entry.cat.relativeSize, index, count),
       d: uniform(this.random, 0, 1),
-      facing: pick(this.random, ['left', 'right'] as const) ?? 'right',
+      facing: this.settings.visibleCats.indexOf(id) % 2 === 0 ? 'right' : 'left',
       now,
+      entranceDelayMs: delayMs,
     });
+  }
+
+  private entranceTarget(relativeSize: number, index: number, count: number): number {
+    const range = this.env.floor.xRange(relativeSize);
+    return (
+      range.min + (range.max - range.min) * ((index + uniform(this.random, 0.35, 0.65)) / count)
+    );
+  }
+
+  private startEntrances(actors: CatActor[], now: number): void {
+    const sorted = [...actors].sort(
+      (a, b) => b.cat.personality.activity - a.cat.personality.activity,
+    );
+    let delay = 0;
+    for (const actor of sorted) {
+      this.pointerReactions.cancelFor(actor, now, true);
+      actor.enter(
+        this.entranceTarget(actor.cat.relativeSize, actors.indexOf(actor), actors.length),
+        delay,
+        now,
+      );
+      delay += uniform(this.random, 1000, 2000);
+    }
+  }
+
+  /** 同一轮勿扰固定一侧；按显示顺序排开，互动结束后仍回到自己的位置。 */
+  private syncCorner(now: number): void {
+    const actors = this.actors.filter((actor) => !actor.isExiting());
+    if (!this.doNotDisturb) this.cornerSide = undefined;
+    else if (this.cornerSide === undefined) {
+      this.cornerSide =
+        actors.filter((a) => a.x <= this.env.floor.width / 2).length >= actors.length / 2
+          ? 'left'
+          : 'right';
+      const preferred = this.cornerSide;
+      const other = preferred === 'left' ? 'right' : 'left';
+      if (
+        !actors.every((actor) => actor.canWalkToward(preferred)) &&
+        actors.every((actor) => actor.canWalkToward(other))
+      )
+        this.cornerSide = other;
+    }
+    let offset = 0;
+    for (const actor of actors) {
+      if (this.cornerSide === undefined) {
+        actor.setCorner(undefined, now);
+        continue;
+      }
+      const range = this.env.floor.xRange(actor.cat.relativeSize);
+      const tolerance = actor.stopTolerance();
+      offset += tolerance;
+      const x = this.cornerSide === 'left' ? range.min + offset : range.max - offset;
+      actor.setCorner(this.env.floor.clampX(x, actor.cat.relativeSize), now);
+      offset +=
+        STANDARD_CAT_HEIGHT * this.settings.scale * actor.cat.relativeSize * 1.1 + tolerance;
+    }
   }
 
   /**
@@ -255,7 +393,9 @@ export class Stage implements StageCore {
     const floor = this.env.floor;
     const target = to ?? this.pointer ?? { x: floor.width / 2, y: floor.nearY };
     const unit = STANDARD_CAT_HEIGHT * this.settings.scale;
-    const actors = this.actors.filter((actor) => cats.includes(actor.id) && !actor.isAirborne());
+    const actors = this.actors.filter(
+      (actor) => cats.includes(actor.id) && !actor.isAirborne() && !actor.isExiting(),
+    );
     for (const actor of actors) this.pointerReactions.cancelFor(actor, now);
     const left = actors.filter((actor) => actor.x <= target.x).sort((a, b) => b.x - a.x);
     const right = actors.filter((actor) => actor.x > target.x).sort((a, b) => a.x - b.x);
@@ -297,6 +437,11 @@ function describeBehavior(behavior: Behavior): string {
       return b.sleepCommand;
     case 'debugClip':
       return b.debugClip(behavior.clip);
+    case 'entrance':
+    case 'exit':
+    case 'goToCorner':
+    case 'doNotDisturbSleep':
+      return zh.stageLifecycle[behavior.kind];
     case 'poked':
     case 'petted':
     case 'pickedUp':

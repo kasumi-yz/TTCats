@@ -374,6 +374,12 @@ export const zh = {
       debugClip: (clip: string) => `调试：播放「${clip}」`,
     },
   },
+  stageLifecycle: {
+    entrance: '正在入场',
+    exit: '正在出场',
+    goToCorner: '去角落睡觉',
+    doNotDisturbSleep: '勿扰睡觉',
+  },
   stagePointer: {
     friendly: '喵～',
     reserved: '喵？',
@@ -425,6 +431,10 @@ export const zh = {
     loadFailed: (cat: string, file: string) => `${cat}：无法加载片段文件 ${file}。`,
     badMask: (cat: string, file: string) => `${cat}：点击遮罩 ${file} 的长度不正确。`,
   },
+  overlayAudio: {
+    failed: (cat: string, file: string, detail: string) =>
+      `${cat}：无法播放声音文件 ${file}。原因：${detail}`,
+  },
   integration: {
     summon: '召唤',
     visibility: '显示或隐藏猫',
@@ -450,10 +460,21 @@ export const zh = {
     disabledPack: (name: string) =>
       `猫咪包「${name}」因桌面层连续故障在本次运行中停用，原文件和显示偏好保留。`,
   },
-  /** M2 共享接口（#52）：存档迁移，以及功能还没做好时先拒绝的命令。 */
+  /** M2 共享接口（#52）：存档迁移。 */
   interfaces: {
     migrationBadShape: (from: number) =>
       `版本 ${from} 的存档状态格式不对（应该是带 settings 的对象），无法迁移。`,
     commandNotReady: (type: string) => `命令「${type}」对应的功能还没做好，已忽略。`,
+  },
+  photo: {
+    title: '拍照',
+    captureFailed: '未能取得桌面层所在显示器的画面。',
+    desktopChanged: '拍照时桌面层已隐藏、关闭或移动，请等猫回到桌面后重试。',
+    sizeMismatch: (width: number, height: number, actualWidth: number, actualHeight: number) =>
+      `拍照尺寸不符：需要 ${width}×${height}，实际 ${actualWidth}×${actualHeight}。`,
+    failed: (reason: string) => `拍照未完成：${reason}`,
+    clipboardFailed: (file: string, reason: string) =>
+      `照片已保存到 ${file}，但复制到剪贴板失败：${reason}`,
+    noticeFailed: (reason: string) => `拍照失败通知无法显示：${reason}`,
   },
 };
