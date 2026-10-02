@@ -1,0 +1,213 @@
+{
+  "time": "2026-10-02T11:15:08.029Z",
+  "entry": "正式应用 out/main/index.js --test-content（3 只测试猫）",
+  "seconds": 300,
+  "warmupSeconds": 15,
+  "exclusive": true,
+  "cpuMethod": "所有应用进程 app.getAppMetrics() percentCPUUsage 之和（整机百分比，不再除以核心数）",
+  "memoryMethod": "所有应用进程 privateBytes 之和（KB / 1024）",
+  "targets": {
+    "cpuAverage": 2,
+    "privatePeakMB": 700
+  },
+  "passed": true,
+  "display": {
+    "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1200
+    },
+    "workArea": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1152
+    },
+    "scaleFactor": 1.5
+  },
+  "versions": {
+    "electron": "44.5.1",
+    "chrome": "152.0.7977.130"
+  },
+  "gpu": {
+    "auxAttributes": {
+      "amdSwitchable": false,
+      "canSupportThreadedTextureMailbox": false,
+      "directMLFeatureLevel": "Not supported",
+      "dx12FeatureLevel": "Not supported",
+      "glImplementationParts": "(gl=none,angle=none)",
+      "glResetNotificationStrategy": 0,
+      "inProcessGpu": true,
+      "initializationTime": 0,
+      "isAsan": false,
+      "isClangCoverage": false,
+      "jpegDecodeAcceleratorSupported": false,
+      "optimus": false,
+      "overlayInfo": {
+        "bgra8OverlaySupport": "NONE",
+        "directComposition": false,
+        "nv12OverlaySupport": "NONE",
+        "p010OverlaySupport": "NONE",
+        "rgb10a2OverlaySupport": "NONE",
+        "supportsOverlays": false,
+        "yuy2OverlaySupport": "NONE"
+      },
+      "passthroughCmdDecoder": false,
+      "sandboxed": false,
+      "skiaBackendType": "None",
+      "subpixelFontRendering": true,
+      "supportsD3dSharedImages": false,
+      "supportsDirectML": false,
+      "supportsDx12": false,
+      "supportsVulkan": false,
+      "targetCpuBits": 64,
+      "visibilityCallbackCallCount": 0,
+      "vulkanVersion": "Not supported"
+    },
+    "gpuDevice": [
+      {
+        "active": false,
+        "deviceId": 10464,
+        "deviceString": "NVIDIA GeForce RTX 4060 Laptop GPU",
+        "driverVersion": "32.0.15.6603",
+        "gpuPreference": 3,
+        "revision": 161,
+        "subSysId": 866652227,
+        "vendorId": 4318
+      },
+      {
+        "active": false,
+        "deviceId": 6400,
+        "deviceString": "AMD Radeon 780M Graphics",
+        "driverVersion": "32.0.12019.1028",
+        "gpuPreference": 2,
+        "revision": 203,
+        "subSysId": 866652227,
+        "vendorId": 4098
+      },
+      {
+        "active": false,
+        "deviceId": 6400,
+        "deviceString": "AMD Radeon 780M Graphics",
+        "driverVersion": "32.0.12019.1028",
+        "gpuPreference": 0,
+        "revision": 203,
+        "subSysId": 866652227,
+        "vendorId": 4098
+      },
+      {
+        "active": false,
+        "deviceId": 6400,
+        "deviceString": "AMD Radeon 780M Graphics",
+        "driverVersion": "32.0.12019.1028",
+        "gpuPreference": 0,
+        "revision": 203,
+        "subSysId": 866652227,
+        "vendorId": 4098
+      },
+      {
+        "active": false,
+        "deviceId": 140,
+        "deviceString": "Microsoft Basic Render Driver",
+        "driverVersion": "10.0.26100.9278",
+        "gpuPreference": 0,
+        "revision": 0,
+        "subSysId": 0,
+        "vendorId": 5140
+      },
+      {
+        "active": false,
+        "deviceId": 5378,
+        "driverVersion": "0.0.0.0",
+        "gpuPreference": 0,
+        "revision": 0,
+        "subSysId": 0,
+        "vendorId": 4130
+      }
+    ]
+  },
+  "summaries": [
+    {
+      "phase": "playing",
+      "samples": 276,
+      "cpuAverage": 1.5355639014590918,
+      "cpuPeak": 3.3214897410238757,
+      "privateAverageMB": 590.9810348731884,
+      "privatePeakMB": 687.375,
+      "workingSetAverageMB": 783.7071444746376,
+      "byType": {
+        "Browser": {
+          "cpuAverage": 0.13424933441233242,
+          "privateAverageMB": 119.75065104166667
+        },
+        "GPU": {
+          "cpuAverage": 0.5983755831604353,
+          "privateAverageMB": 391.1555564990942
+        },
+        "Utility": {
+          "cpuAverage": 0.00020010816475594888,
+          "privateAverageMB": 11.478048573369565
+        },
+        "Tab": {
+          "cpuAverage": 0.8027388757215677,
+          "privateAverageMB": 68.59677875905797
+        }
+      }
+    },
+    {
+      "phase": "hidden",
+      "samples": 278,
+      "cpuAverage": 0.5396786091485569,
+      "cpuPeak": 1.006058408358539,
+      "privateAverageMB": 600.8369491906475,
+      "privatePeakMB": 602.58984375,
+      "workingSetAverageMB": 807.5200792491007,
+      "byType": {
+        "Browser": {
+          "cpuAverage": 0.08066974945475694,
+          "privateAverageMB": 124.28498763489209
+        },
+        "GPU": {
+          "cpuAverage": 0.15430797462368875,
+          "privateAverageMB": 395.0789118705036
+        },
+        "Utility": {
+          "cpuAverage": 0.00014159869435159317,
+          "privateAverageMB": 11.448488084532373
+        },
+        "Tab": {
+          "cpuAverage": 0.3045592863757594,
+          "privateAverageMB": 70.02456160071942
+        }
+      }
+    },
+    {
+      "phase": "fullscreen",
+      "samples": 279,
+      "cpuAverage": 0.30391022609488494,
+      "cpuPeak": 0.34358642824325025,
+      "privateAverageMB": 600.76271281362,
+      "privatePeakMB": 603.34375,
+      "workingSetAverageMB": 803.574708781362,
+      "byType": {
+        "Browser": {
+          "cpuAverage": 0.07367961982624946,
+          "privateAverageMB": 124.21671987007169
+        },
+        "GPU": {
+          "cpuAverage": 0.0705039606792229,
+          "privateAverageMB": 395.2453237007168
+        },
+        "Utility": {
+          "cpuAverage": 0.00011133903995502426,
+          "privateAverageMB": 11.416722670250897
+        },
+        "Tab": {
+          "cpuAverage": 0.15961530654945771,
+          "privateAverageMB": 69.88394657258064
+        }
+      }
+    }
+  ]
+}
