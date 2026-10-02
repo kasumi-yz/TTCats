@@ -1,34 +1,57 @@
 import type { CreateGameCore, GameOutput } from '../../shared/core-api';
 import type { StageCommand } from '../../shared/ipc';
-import { defaultSettings, SettingsSchema, validateWith, type Settings } from '../../shared/schemas';
+import {
+  defaultSettings,
+  SettingsSchema,
+  validateWith,
+  type DoNotDisturb,
+  type Settings,
+} from '../../shared/schemas';
 import { zh } from '../../shared/strings.zh-CN';
 
 function copySettings(settings: Settings): Settings {
-  return { ...settings, visibleCats: [...settings.visibleCats] };
+  return {
+    ...settings,
+    visibleCats: [...settings.visibleCats],
+    display: settings.display && { ...settings.display },
+  };
+}
+
+/** 设置项的值只有 JSON 能表示的类型（数组、对象、基本类型），按内容比较。 */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const keys = Object.keys(a);
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every(
+      (key) =>
+        Object.hasOwn(b, key) &&
+        sameValue((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]),
+    )
+  );
 }
 
 function output(stageCommands: StageCommand[] = [], problems: string[] = []): GameOutput {
-  return { stageCommands, stateChanged: false, problems };
+  return { stageCommands, stateChanged: false, snapshotChanged: false, problems };
 }
 
 export const createGameCore: CreateGameCore = ({ content, state }) => {
   let settings = state ? copySettings(state.settings) : defaultSettings(Object.keys(content.cats));
+  // 勿扰模式的规则在 #58 里做；在那之前原样保留存档里的状态，不丢数据。
+  const doNotDisturb: DoNotDisturb = state ? { ...state.doNotDisturb } : { mode: 'off' };
   let revision = 0;
 
   function updateSettings(patch: Partial<Settings>): GameOutput {
     const result = validateWith(SettingsSchema, { ...settings, ...patch });
     if (!result.ok) return output([], result.problems);
     const next = result.value;
-    const stateChanged = Object.entries(next).some(([key, value]) => {
-      const previous = settings[key as keyof Settings];
-      return Array.isArray(value)
-        ? !Array.isArray(previous) ||
-            value.length !== previous.length ||
-            value.some((cat, i) => cat !== previous[i])
-        : value !== previous;
-    });
+    const stateChanged = Object.entries(next).some(
+      ([key, value]) => !sameValue(value, settings[key as keyof Settings]),
+    );
     settings = next;
-    return { stageCommands: [], stateChanged, problems: [] };
+    return { stageCommands: [], stateChanged, snapshotChanged: stateChanged, problems: [] };
   }
 
   function catProblem(cat: string, mustBeVisible: boolean): string[] {
@@ -69,6 +92,19 @@ export const createGameCore: CreateGameCore = ({ content, state }) => {
         ]);
       }
 
+      if (command.type === 'debug/entrance') return output([{ type: 'cat/entrance' }]);
+
+      // M2 的勿扰模式、一键隐藏、快进时钟、开机静默在 #58 里实现，在那之前先一律拒绝。
+      if (
+        command.type === 'doNotDisturb/start' ||
+        command.type === 'doNotDisturb/end' ||
+        command.type === 'hideAll/toggle' ||
+        command.type === 'debug/advanceClock' ||
+        command.type === 'debug/startupQuiet'
+      ) {
+        return output([], [zh.interfaces.commandNotReady(command.type)]);
+      }
+
       const problems = catProblem(command.cat, true);
       if (problems.length > 0) return output([], problems);
       if (command.type === 'debug/playClip') {
@@ -89,12 +125,25 @@ export const createGameCore: CreateGameCore = ({ content, state }) => {
       return output();
     },
 
+    // 随时间变化的规则（勿扰到点、安静时段、开机静默）在 #58 里实现。
+    tick() {
+      return output();
+    },
+
     snapshot(now) {
-      return { revision: ++revision, at: now, settings: copySettings(settings) };
+      return {
+        revision: ++revision,
+        at: now,
+        settings: copySettings(settings),
+        doNotDisturb: { ...doNotDisturb },
+        hideAll: false,
+        silencedBy: [],
+        clockOffsetMs: 0,
+      };
     },
 
     exportState() {
-      return { settings: copySettings(settings) };
+      return { settings: copySettings(settings), doNotDisturb: { ...doNotDisturb } };
     },
   };
 };

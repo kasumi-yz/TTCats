@@ -3,8 +3,7 @@ import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
-import { CURRENT_SAVE_VERSION, GameStateSchema } from '../../shared/schemas/save';
-import { defaultSettings } from '../../shared/schemas/settings';
+import { CURRENT_SAVE_VERSION, defaultGameState, GameStateSchema } from '../../shared/schemas/save';
 import { zh } from '../../shared/strings.zh-CN';
 import { FileLog, attachMainLog, attachRendererLog } from '../log';
 import { SaveStore } from '../save';
@@ -28,11 +27,11 @@ void app.whenReady().then(async () => {
     log: (message) => {
       log.write(message);
     },
-    defaultState: () => ({ settings: defaultSettings([]) }),
+    defaultState: () => defaultGameState([]),
   });
-  save.requestSave({ settings: defaultSettings(['backup-cat']) });
+  save.requestSave(defaultGameState(['backup-cat']));
   save.flush();
-  save.requestSave({ settings: defaultSettings(['test-cat']) });
+  save.requestSave(defaultGameState(['test-cat']));
   save.flush();
   const overlay = new BrowserWindow({ title: 'Recovery overlay', width: 300, height: 200 });
   const panels = new BrowserWindow({
@@ -90,7 +89,7 @@ void app.whenReady().then(async () => {
     overlay,
     log,
     save,
-    defaultState: () => ({ settings: defaultSettings([]) }),
+    defaultState: () => defaultGameState([]),
     activeCats: () => ['test-cat'],
     catName: () => '测试猫',
     reload: async () => {
