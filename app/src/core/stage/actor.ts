@@ -112,6 +112,9 @@ export class CatActor {
   /** 下一个开始的片段是硬切进来的。 */
   private cutPending = false;
   private readonly lastVariant = new Map<string, number>();
+  private held = false;
+  private airY: number | undefined;
+  private fall: { fromY: number; elapsedMs: number } | undefined;
 
   constructor(
     readonly cat: Cat,
@@ -136,6 +139,27 @@ export class CatActor {
    * 当前的计划照真实时间推进完（不画出来），但不再接着选新行为补播，新行为从 to 开始。
    */
   advance(from: number, to: number, catchUp: boolean): void {
+    if (this.held || this.fall !== undefined) {
+      this.seg.elapsed =
+        (this.seg.elapsed + (to - from) * this.seg.rate) % clipDurationMs(this.seg.clip);
+      if (this.fall === undefined) return;
+      const floorY = this.env.floor.yAt(this.d);
+      // 从静止下落，不继承鼠标速度（D5 不做甩飞）。
+      const gravity = STANDARD_CAT_HEIGHT * this.finalScale() * 12;
+      const landingMs = Math.sqrt((2 * Math.max(0, floorY - this.fall.fromY)) / gravity) * 1000;
+      this.fall.elapsedMs += to - from;
+      this.airY = Math.min(
+        floorY,
+        this.fall.fromY + (gravity * (this.fall.elapsedMs / 1000) ** 2) / 2,
+      );
+      if (this.fall.elapsedMs < landingMs) return;
+      const landedAt = to - (this.fall.elapsedMs - landingMs);
+      this.fall = undefined;
+      this.airY = undefined;
+      this.react('land', { kind: 'dropped' }, false, landedAt);
+      this.advance(landedAt, to, catchUp);
+      return;
+    }
     let t = from;
     for (let guard = 0; t < to && guard < MAX_ADVANCE_STEPS; guard++) {
       const seg = this.seg;
@@ -385,6 +409,7 @@ export class CatActor {
    * cut：立刻换。当前片段不在姿势上时，放一个小特效盖住切换处（ADR-0002）。
    */
   interrupt(steps: Step[], behavior: Behavior, mode: InterruptMode, t: number): void {
+    this.held = false;
     this.behavior = behavior;
     this.queue = steps;
     const seg = this.seg;
@@ -446,6 +471,51 @@ export class CatActor {
     return true;
   }
 
+  /** 鼠标反应直接切到目标片段，不先排姿势过渡；held 时只循环，不选自主行为。 */
+  react(name: string, behavior: Behavior, held: boolean, t: number): void {
+    const first = this.library.first(name);
+    if (first === undefined) return;
+    this.queue = [];
+    this.behavior = behavior;
+    this.hardCut(first.fromPose, t);
+    const clip = this.pickVariant(name) ?? first;
+    this.beginSegment(clip, t, {});
+    this.held = held;
+  }
+
+  releaseReaction(t: number): void {
+    this.held = false;
+    this.interrupt([this.restStep(this.restPose())], { kind: 'petted' }, 'soft', t);
+  }
+
+  pickUp(t: number): boolean {
+    if (!this.library.has('dangle') || !this.library.has('land')) return false;
+    this.airY = this.placement().y;
+    this.fall = undefined;
+    this.react('dangle', { kind: 'pickedUp' }, true, t);
+    return true;
+  }
+
+  dragTo(x: number, y: number): void {
+    this.x = this.env.floor.clampX(x, this.cat.relativeSize);
+    // 顶边留一个当前猫身高，避免向上拖出屏幕时只剩落脚点可见。
+    const topY = STANDARD_CAT_HEIGHT * this.finalScale();
+    this.airY = Math.min(this.env.floor.yAt(this.d), Math.max(topY, y));
+  }
+
+  drop(t: number): void {
+    if (this.airY === undefined || !this.held) return;
+    this.held = false;
+    this.fall = { fromY: this.airY, elapsedMs: 0 };
+    this.react(this.library.has('fall') ? 'fall' : 'dangle', { kind: 'dropped' }, false, t);
+    // 在地板上放下也要播放落地片段。
+    this.advance(t, t, false);
+  }
+
+  isAirborne(): boolean {
+    return this.airY !== undefined;
+  }
+
   private hardCut(pose: Pose, t: number): void {
     if (!this.cutPending) this.addCutEffect(t);
     this.cutPending = true;
@@ -454,7 +524,8 @@ export class CatActor {
   }
 
   private addCutEffect(t: number): void {
-    const bodyY = this.env.floor.yAt(this.d) - 0.4 * STANDARD_CAT_HEIGHT * this.finalScale();
+    const bodyY =
+      (this.airY ?? this.env.floor.yAt(this.d)) - 0.4 * STANDARD_CAT_HEIGHT * this.finalScale();
     this.env.addEffect('cut', this.x, bodyY, t);
   }
 
@@ -481,6 +552,14 @@ export class CatActor {
     // 位置被挪过：重新定这一遍的起点，让下一帧从现在的位置接着走，步速不变
     const move = this.seg.move;
     if (move !== undefined) {
+      move.fromX = this.x;
+      move.fromD = this.d;
+      move.toX = this.env.floor.clampX(move.toX, this.cat.relativeSize);
+      const maxDd =
+        this.env.floor.band > 0
+          ? (MAX_WALK_SLOPE * Math.abs(move.toX - this.x)) / this.env.floor.band
+          : 1;
+      move.toD = Math.min(this.d + maxDd, Math.max(this.d - maxDd, move.toD));
       const cycleStart = this.seg.end - clipDurationMs(this.seg.clip);
       move.cycleStartX = this.x - move.dir * move.cycleSpeed * (this.seg.elapsed - cycleStart);
     }
@@ -529,7 +608,7 @@ export class CatActor {
         seg.clip.kind === 'loop' ? seg.elapsed % duration : Math.min(seg.elapsed, duration),
       playbackRate: seg.rate,
       x: this.x,
-      y: this.env.floor.yAt(this.d),
+      y: this.airY ?? this.env.floor.yAt(this.d),
       scale: this.finalScale(),
       mirrored: seg.mirrored,
       depth: this.d,
