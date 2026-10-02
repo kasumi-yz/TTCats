@@ -1,0 +1,42 @@
+{
+  "author": "Codex",
+  "userAuthorization": "拎起动作衔接允许你自行处理，不再经过Claude",
+  "scope": "仅站姿/坐姿被拎起的过渡提示词；其他Claude原文不改",
+  "parameters": {
+    "width": 1344,
+    "height": 768,
+    "fps": 24,
+    "steps": 20,
+    "seconds": 4
+  },
+  "prompts": [
+    {
+      "clip": "stand-to-dangle",
+      "first": "D:\\TTCats-素材库\\work\\issue-7\\poses\\pose-stand.png",
+      "last": "D:\\TTCats-素材库\\work\\issue-7\\poses\\pose-dangle.png",
+      "prompt": "A static, locked-off camera films a real cat from the side against a plain studio backdrop of one flat teal color. The framing never changes: no zoom, no pan, no camera shake, no cuts. The cat is a golden shaded British cat with a plush coat, a narrow ivory collar and a dark-tipped tail, facing right. The cat begins standing quietly on all four paws. It is gently lifted upward by the loose skin at the back of its neck, by an invisible support outside the picture. The scruff and shoulders rise first in one continuous smooth motion. Its weight makes the chest and rump unfold into a vertical hanging posture: the front paws leave the floor, then the hind paws leave the floor, all four legs relax and hang downward naturally. The heavy plush body rotates gradually into the upright hanging pose shown in the final frame. Its head stays upright in right-facing profile, eyes calm, ears relaxed, the collar keeps its shape. The long thick tail uncurls smoothly and hangs behind the legs, with one continuous tail and the same dark tip. The lift takes about one second, then the cat hangs quietly in the exact final pose for the rest of the shot. The motion is gentle and physically continuous, not a jump or a teleport. The lifting support stays completely outside the frame; the cat is the only visible subject. Photorealistic, real-time natural speed, the same soft even lighting throughout, and the backdrop stays perfectly flat and empty. Only this one cat is in the frame. Quiet room tone.",
+      "promptSha256": "8ab9f236fba81e6e4bc2aad26a86420f06ade3ef1c957f226d9669a7f21b14dd",
+      "seconds": 4,
+      "seed": 6,
+      "author": "Codex",
+      "userAuthorization": "拎起动作衔接允许你自行处理，不再经过Claude"
+    },
+    {
+      "clip": "sit-to-dangle",
+      "first": "D:\\TTCats-素材库\\work\\issue-7\\poses\\pose-sit.png",
+      "last": "D:\\TTCats-素材库\\work\\issue-7\\poses\\pose-dangle.png",
+      "prompt": "A static, locked-off camera films a real cat from the side against a plain studio backdrop of one flat teal color. The framing never changes: no zoom, no pan, no camera shake, no cuts. The cat is a golden shaded British cat with a plush coat, a narrow ivory collar and a dark-tipped tail, facing right. The cat begins sitting upright calmly with its tail curved in front of its paws. It is gently lifted upward by the loose skin at the back of its neck, by an invisible support outside the picture. The scruff and shoulders rise first in one continuous smooth motion. Its weight makes the chest and rump unfold into a vertical hanging posture: the front paws leave the floor, then the hind paws leave the floor, all four legs relax and hang downward naturally. The heavy plush body rotates gradually into the upright hanging pose shown in the final frame. Its head stays upright in right-facing profile, eyes calm, ears relaxed, the collar keeps its shape. The long thick tail uncurls smoothly and hangs behind the legs, with one continuous tail and the same dark tip. The lift takes about one second, then the cat hangs quietly in the exact final pose for the rest of the shot. The motion is gentle and physically continuous, not a jump or a teleport. The lifting support stays completely outside the frame; the cat is the only visible subject. Photorealistic, real-time natural speed, the same soft even lighting throughout, and the backdrop stays perfectly flat and empty. Only this one cat is in the frame. Quiet room tone.",
+      "promptSha256": "8e829022e783f1afe300c0eb49cd503bf77df1fe20fb3b1c329cbb47c94c01dc",
+      "seconds": 4,
+      "seed": 6,
+      "author": "Codex",
+      "userAuthorization": "拎起动作衔接允许你自行处理，不再经过Claude"
+    }
+  ],
+  "preview": {
+    "playbackRate": 2,
+    "rawFrameCount": 107,
+    "rawDurationSeconds": 4.458333333333333,
+    "note": "仅外部验证副本按2倍速播放拎起过渡，悬空及其他片段保持原速；原始24fps素材完整保留，无插帧。"
+  }
+}
