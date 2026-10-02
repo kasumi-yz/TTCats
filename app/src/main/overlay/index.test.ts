@@ -9,7 +9,7 @@ import { IPC_CHANNELS } from '../../shared/ipc';
 import { attachRecovery } from '../recovery';
 import { FileLog } from '../log';
 import { SaveStore } from '../save';
-import { CURRENT_SAVE_VERSION, GameStateSchema } from '../../shared/schemas/save';
+import { CURRENT_SAVE_VERSION, defaultGameState, GameStateSchema } from '../../shared/schemas/save';
 import type { BrowserWindow } from 'electron';
 
 function mockWindow() {
@@ -437,7 +437,7 @@ describe('桌面层重建队列', () => {
   });
   it('首次加载先 reject 后 gone 仍能恢复；显示器重建不重置三次恢复额度', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'ttcats-overlay-test-'));
-    const state = () => ({ settings: defaultSettings(['test']) });
+    const state = () => defaultGameState(['test']);
     const save = new SaveStore({
       directory,
       currentVersion: CURRENT_SAVE_VERSION,

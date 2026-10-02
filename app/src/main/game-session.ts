@@ -16,7 +16,9 @@ export function createGameSession(options: {
   log: (message: string) => void;
 }) {
   const { content, save, now, publish, log } = options;
-  let game = createGameCore({ content, state: options.state, now: now() });
+  // 安静时段按本地时间算；core/game 不读时区（硬性规则 1）。
+  const utcOffsetMinutes = (at: number): number => -new Date(at).getTimezoneOffset();
+  let game = createGameCore({ content, state: options.state, now: now(), utcOffsetMinutes });
   let revision = 0;
   let safeMode = false;
   const snapshot = (): StateSnapshot => ({ ...game.snapshot(now()), revision: ++revision });
@@ -25,10 +27,8 @@ export function createGameSession(options: {
   };
   const accept = (result: GameOutput): GameOutput => {
     result.problems.forEach(log);
-    if (result.stateChanged) {
-      persist();
-      publish(snapshot());
-    }
+    if (result.stateChanged) persist();
+    if (result.snapshotChanged) publish(snapshot());
     return result;
   };
   return {
@@ -62,7 +62,7 @@ export function createGameSession(options: {
         content.disabled.push({ cat: id, problems: [problem] });
         log(problem);
       }
-      game = createGameCore({ content, state: result.state, now: now() });
+      game = createGameCore({ content, state: result.state, now: now(), utcOffsetMinutes });
       publish(snapshot());
     },
     flush(): void {
