@@ -20,6 +20,8 @@ interface Smoke {
   popups: Electron.Menu[];
   popupWindows: { id: number; focusable: boolean }[];
   dialogs: Electron.MessageBoxOptions[];
+  saveBlocked: boolean;
+  saveDialogResolvers: ((response: number) => void)[];
   shortcuts: Map<string, () => void>;
   fullscreen: boolean;
   crashes: number;
@@ -359,6 +361,9 @@ test('四次真实渲染崩溃：安全模式回退、设置不唤醒猫且不�
     const debug = await openDebug(app);
     const content = await catalog(debug);
     const before = (await snapshot(debug)).revision;
+    const oldMenu = await app.evaluate(
+      () => (globalThis as unknown as { smoke: Smoke }).smoke.menus.length - 1,
+    );
     for (let count = 1; count <= 4; count++) {
       await debug.getByRole('button', { name: zh.panels.crash, exact: true }).click();
       await expect
@@ -408,6 +413,33 @@ test('四次真实渲染崩溃：安全模式回退、设置不唤醒猫且不�
       'test-calm',
     ]);
     expect(await overlayVisible(app)).toBe(false);
+    const unchanged = (await snapshot(settings)).settings;
+    const menuCount = await app.evaluate(
+      () => (globalThis as unknown as { smoke: Smoke }).smoke.menus.length,
+    );
+    await app.evaluate(({ BrowserWindow }, index) => {
+      const item = (globalThis as unknown as { smoke: Smoke }).smoke.menus[index]?.getMenuItemById(
+        'visible:test-active',
+      );
+      if (!item) throw new Error('找不到旧托盘复选框');
+      // 已停用的猫使 core 拒绝旧菜单的命令；不能依赖 publish 刷新菜单。
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- Electron 的菜单回调声明为 Function。
+      item.click({}, BrowserWindow.getFocusedWindow() ?? undefined, undefined);
+    }, oldMenu);
+    expect((await snapshot(settings)).settings).toEqual(unchanged);
+    expect(
+      await app.evaluate(() => (globalThis as unknown as { smoke: Smoke }).smoke.menus.length),
+    ).toBe(menuCount + 1);
+    expect(
+      await app.evaluate(() =>
+        (globalThis as unknown as { smoke: Smoke }).smoke.menus
+          .at(-1)
+          ?.getMenuItemById('visible:test-active'),
+      ),
+    ).toBeNull();
+    expect(readFileSync(join(data, 'logs/main.log'), 'utf8')).toContain(
+      zh.game.catUnavailable('test-active'),
+    );
     expect(
       await app.evaluate(
         () =>
@@ -435,3 +467,107 @@ test('四次真实渲染崩溃：安全模式回退、设置不唤醒猫且不�
     await app.close();
   }
 });
+
+test('无效 IPC 的日志同时说明消息类型和字段路径', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-invalid-'));
+  const app = await launch(directory);
+  try {
+    const settings = await pageFor(app, 'panel=settings');
+    const overlay = await pageFor(app, '/overlay/');
+    await settings.evaluate('window.ttcats.sendCommand({type:"settings/update",patch:{scale:10}})');
+    await overlay.evaluate(
+      'window.ttcats.sendFact({type:"cat/petted",cat:"test-active",at:1,durationMs:-1})',
+    );
+    await expect
+      .poll(() => readFileSync(join(directory, 'TTCats/logs/main.log'), 'utf8'))
+      .toContain('patch.scale');
+    const log = readFileSync(join(directory, 'TTCats/logs/main.log'), 'utf8');
+    expect(log).toContain('settings/update');
+    expect(log).toContain('cat/petted');
+    expect(log).toContain('durationMs');
+  } finally {
+    await app.close();
+  }
+});
+
+for (const discard of [false, true]) {
+  test(`存档目录拒绝写入：${discard ? '放弃保存仍能正常退出' : '重试会再次保存，恢复权限后保存成功'}`, async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-save-failed-'));
+    const app = await launch(directory);
+    let exited = false;
+    try {
+      const settings = await pageFor(app, 'panel=settings');
+      await app.evaluate(() => {
+        (globalThis as unknown as { smoke: Smoke }).smoke.saveBlocked = true;
+      });
+      await settings.evaluate(
+        'window.ttcats.sendCommand({type:"settings/update",patch:{scale:1.5}})',
+      );
+      await expect.poll(async () => (await snapshot(settings)).settings.scale).toBe(1.5);
+      await app.evaluate(({ app }) => {
+        app.quit();
+      });
+      await expect
+        .poll(() =>
+          app.evaluate(
+            () => (globalThis as unknown as { smoke: Smoke }).smoke.saveDialogResolvers.length,
+          ),
+        )
+        .toBe(1);
+      const options = await app.evaluate(() =>
+        (globalThis as unknown as { smoke: Smoke }).smoke.dialogs.at(-1),
+      );
+      expect(options?.buttons).toEqual([
+        zh.integration.retrySave,
+        zh.integration.quitWithoutSaving,
+      ]);
+      expect(options?.defaultId).toBe(0);
+      expect(options?.cancelId).toBe(0);
+      if (!discard) {
+        await app.evaluate(() => {
+          (globalThis as unknown as { smoke: Smoke }).smoke.saveDialogResolvers.shift()?.(0);
+        });
+        await expect
+          .poll(() =>
+            app.evaluate(() => (globalThis as unknown as { smoke: Smoke }).smoke.dialogs.length),
+          )
+          .toBe(2);
+        await expect
+          .poll(() =>
+            app.evaluate(
+              () => (globalThis as unknown as { smoke: Smoke }).smoke.saveDialogResolvers.length,
+            ),
+          )
+          .toBe(1);
+      }
+      const closed = app.waitForEvent('close');
+      await app.evaluate((_, discard) => {
+        const smoke = (globalThis as unknown as { smoke: Smoke }).smoke;
+        if (!discard) smoke.saveBlocked = false;
+        smoke.saveDialogResolvers.shift()?.(discard ? 1 : 0);
+      }, discard);
+      await closed;
+      exited = true;
+      const log = readFileSync(join(directory, 'TTCats/logs/main.log'), 'utf8');
+      if (discard) expect(log).toContain(zh.integration.saveAbandoned);
+      else {
+        const saved = JSON.parse(readFileSync(join(directory, 'TTCats/save.json'), 'utf8')) as {
+          state: { settings: { scale: number } };
+        };
+        expect(saved.state.settings.scale).toBe(1.5);
+        expect(log).not.toContain(zh.integration.saveAbandoned);
+      }
+    } finally {
+      if (!exited) {
+        await app
+          .evaluate(() => {
+            const smoke = (globalThis as unknown as { smoke: Smoke }).smoke;
+            smoke.saveBlocked = false;
+            smoke.saveDialogResolvers.shift()?.(1);
+          })
+          .catch(() => {});
+        await app.close();
+      }
+    }
+  });
+}

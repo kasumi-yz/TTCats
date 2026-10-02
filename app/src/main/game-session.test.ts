@@ -1,5 +1,5 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdtempSync, readFileSync, readdirSync, statSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadContent } from './content';
 import { createGameSession } from './game-session';
@@ -46,6 +46,36 @@ function setup() {
 }
 
 describe('主进程游戏会话', () => {
+  it('无变化退出不轮换备份，保留上一份正常存档供安全模式回退', () => {
+    const { session, save, disk } = setup();
+    session.command({ type: 'settings/update', patch: { scale: 1.2 } });
+    session.flush();
+    session.command({ type: 'settings/update', patch: { scale: 1.5 } });
+    vi.advanceTimersByTime(1500);
+    const original = readFileSync(save.file, 'utf8');
+    const modified = statSync(save.file).mtimeMs;
+    const files = readdirSync(dirname(save.file));
+    for (let count = 0; count < 5; count++) {
+      session.command({ type: 'cat/summon' });
+      session.command({ type: 'settings/update', patch: { scale: 1.5 } });
+      session.flush();
+    }
+    expect(readFileSync(save.file, 'utf8')).toBe(original);
+    expect(statSync(save.file).mtimeMs).toBe(modified);
+    expect(readdirSync(dirname(save.file))).toEqual(files);
+    expect(save.loadLatestBackup()?.state.settings.scale).toBe(1.2);
+    expect(disk().settings.scale).toBe(1.5);
+  });
+
+  it('窗口通知抛错也不能丢掉已经发生的设置变化', () => {
+    const { session, publish, disk } = setup();
+    publish.mockImplementation(() => {
+      throw new Error('窗口已关闭');
+    });
+    expect(() => session.command({ type: 'settings/update', patch: { scale: 1.5 } })).toThrow();
+    session.flush();
+    expect(disk().settings.scale).toBe(1.5);
+  });
   it('只在设置变化后推送与合并写盘，退出立即保存最后一次修改', () => {
     const { session, publish, disk } = setup();
     session.command({ type: 'cat/summon' });
@@ -59,6 +89,7 @@ describe('主进程游戏会话', () => {
 
   it('安全模式回退只替换内存，先前排队的正常写入与退出不覆盖回退或用户偏好', () => {
     const { session, content, state, save, disk, publish } = setup();
+    save.requestSave(state);
     session.flush();
     session.command({ type: 'settings/update', patch: { scale: 1.5 } });
     session.flush();

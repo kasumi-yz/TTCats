@@ -16,6 +16,7 @@ function mockWindow() {
   return mock.windows[0] as {
     isDestroyed: () => boolean;
     setBounds: ReturnType<typeof vi.fn>;
+    getBounds: ReturnType<typeof vi.fn>;
     setIgnoreMouseEvents: ReturnType<typeof vi.fn>;
     hide: ReturnType<typeof vi.fn>;
     showInactive: ReturnType<typeof vi.fn>;
@@ -73,9 +74,7 @@ vi.mock('electron', () => ({
     isDestroyed() {
       return this.dead;
     }
-    getBounds() {
-      return mock.bounds;
-    }
+    getBounds = vi.fn(() => mock.bounds);
     setIgnoreMouseEvents = vi.fn();
     setBounds = vi.fn();
     setContentProtection = vi.fn();
@@ -110,6 +109,32 @@ describe('桌面层重建队列', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
+  it.each([false, true])(
+    '显示器缩放造成尺寸偏差时重试，持续偏差才报告（%s）',
+    async (persistent) => {
+      const onError = vi.fn();
+      const overlay = await createOverlay({
+        system,
+        settings: defaultSettings(['test']),
+        load: () => Promise.resolve(),
+        onError,
+      });
+      try {
+        const w = mockWindow();
+        const wrong = { ...mock.bounds, width: 100 };
+        if (persistent) w.getBounds.mockReturnValue(wrong);
+        else w.getBounds.mockReturnValueOnce(wrong);
+        await overlay.rebuild();
+        expect(w.setBounds).toHaveBeenCalledTimes(2);
+        expect(w.setBounds).toHaveBeenNthCalledWith(1, mock.bounds);
+        expect(w.setBounds).toHaveBeenNthCalledWith(2, mock.bounds);
+        expect(onError).toHaveBeenCalledTimes(persistent ? 1 : 0);
+        if (persistent) expect(String(onError.mock.calls[0]?.[0])).toContain('尺寸重试后仍不一致');
+      } finally {
+        await overlay.dispose();
+      }
+    },
+  );
   it('重建必须等前一个加载完成，复用同一窗口和恢复挂钩且没有抢焦点', async () => {
     const loads: ReturnType<typeof latch>[] = [];
     const load = vi.fn(() => {

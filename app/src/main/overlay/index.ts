@@ -190,6 +190,28 @@ export async function createOverlay(options: OverlayOptions) {
       if (window) {
         if (window.isDestroyed()) return;
         window.setBounds(area);
+        const matches = (): boolean => {
+          const bounds = window?.getBounds();
+          return (
+            bounds !== undefined &&
+            bounds.x === area.x &&
+            bounds.y === area.y &&
+            bounds.width === area.width &&
+            bounds.height === area.height
+          );
+        };
+        if (!matches()) {
+          window.setBounds(area);
+          if (!matches())
+            options.onError(
+              new Error(
+                zh.integration.overlayBoundsMismatch(
+                  JSON.stringify(area),
+                  JSON.stringify(window.getBounds()),
+                ),
+              ),
+            );
+        }
         displayKey = key;
         await load();
         return;

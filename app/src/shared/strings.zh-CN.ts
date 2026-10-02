@@ -293,11 +293,18 @@ export const zh = {
     sleep: '让它睡觉',
     hide: '暂时隐藏它',
     profile: '查看资料卡',
-    invalidMessage: '收到无效的窗口消息，已拒绝。',
+    invalidMessage: (type: string, paths: string[]) =>
+      `收到无效的窗口消息「${type}」，已拒绝。字段：${paths.join('、')}。`,
+    unknownMessageType: '未知类型',
     unknownSender: '消息不是来自已登记窗口的主框架，已拒绝。',
     shortcutFailed: '调试台快捷键 Ctrl+Shift+F10 注册失败，可能已被其他程序占用。',
     startupFailed: 'TTCats 启动失败，请查看日志。',
-    saveFailed: '退出前保存失败，程序保持运行。请检查磁盘空间和目录权限后重试退出。',
+    saveFailed: '退出前保存失败。请检查磁盘空间和目录权限后重试，或不保存直接退出。',
+    retrySave: '重试',
+    quitWithoutSaving: '不保存，直接退出',
+    saveAbandoned: '用户选择不保存，放弃本次存档写入并退出。',
+    overlayBoundsMismatch: (expected: string, actual: string) =>
+      `桌面层窗口尺寸重试后仍不一致：期望 ${expected}，实际 ${actual}。`,
     disabledPack: (name: string) =>
       `猫咪包「${name}」因桌面层连续故障在本次运行中停用，原文件和显示偏好保留。`,
   },

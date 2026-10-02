@@ -26,8 +26,8 @@ export function createGameSession(options: {
   const accept = (result: GameOutput): GameOutput => {
     result.problems.forEach(log);
     if (result.stateChanged) {
-      publish(snapshot());
       persist();
+      publish(snapshot());
     }
     return result;
   };
@@ -66,7 +66,6 @@ export function createGameSession(options: {
       publish(snapshot());
     },
     flush(): void {
-      persist();
       save.flush();
     },
   };
