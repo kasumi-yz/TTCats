@@ -39,9 +39,19 @@ export const FactSchema = z.discriminatedUnion('type', [
   ),
 ]);
 
-// 双向检查，任意一边遗漏消息或字段都会让类型检查失败。
+// 双向可赋值检查字段类型与必填性；逐消息比较字段名，补上可选字段遗漏。
+type KeysOf<U, K> = U extends { type: infer T } ? (K extends T ? keyof U : never) : never;
+type SameKeys<A extends { type: string }, B extends { type: string }> = {
+  [K in A['type'] | B['type']]: [KeysOf<A, K>] extends [KeysOf<B, K>]
+    ? [KeysOf<B, K>] extends [KeysOf<A, K>]
+      ? true
+      : false
+    : false;
+}[A['type'] | B['type']];
 type Assert<T extends true> = T;
 export type MessageTypeAssertions = [
+  Assert<[SameKeys<z.infer<typeof CommandSchema>, ToMainCommand>] extends [true] ? true : false>,
+  Assert<[SameKeys<z.infer<typeof FactSchema>, Fact>] extends [true] ? true : false>,
   Assert<[z.infer<typeof CommandSchema>] extends [ToMainCommand] ? true : false>,
   Assert<[ToMainCommand] extends [z.infer<typeof CommandSchema>] ? true : false>,
   Assert<[z.infer<typeof FactSchema>] extends [Fact] ? true : false>,

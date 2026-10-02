@@ -73,7 +73,7 @@ describe('主进程游戏会话', () => {
       throw new Error('窗口已关闭');
     });
     expect(() => session.command({ type: 'settings/update', patch: { scale: 1.5 } })).toThrow();
-    session.flush();
+    vi.advanceTimersByTime(1500);
     expect(disk().settings.scale).toBe(1.5);
   });
   it('只在设置变化后推送与合并写盘，退出立即保存最后一次修改', () => {
