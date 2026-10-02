@@ -331,5 +331,6 @@ export const zh = {
   interfaces: {
     migrationBadShape: (from: number) =>
       `版本 ${from} 的存档状态格式不对（应该是带 settings 的对象），无法迁移。`,
+    commandNotReady: (type: string) => `命令「${type}」对应的功能还没做好，已忽略。`,
   },
 };
