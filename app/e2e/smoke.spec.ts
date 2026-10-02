@@ -735,6 +735,21 @@ test('拍照：真实桌面含猫和窗口、原始分辨率、剪贴板、隐�
     const debug = await openDebug(app);
     await expect.poll(() => overlayVisible(app)).toBe(true);
     await expect.poll(async () => (await report(debug))?.cats.length).toBe(3);
+    // 猫从屏幕外慢慢走进来（#59），至少等一只完全进入屏幕再拍。
+    const width = await app.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows().find((w) =>
+        w.webContents.getURL().includes('/overlay/'),
+      );
+      if (!window) throw new Error('找不到桌面层');
+      return window.getBounds().width;
+    });
+    await expect
+      .poll(
+        async () =>
+          (await report(debug))?.cats.some((cat) => cat.x > width * 0.15 && cat.x < width * 0.85),
+        { timeout: 60_000 },
+      )
+      .toBe(true);
     await app.evaluate(({ BrowserWindow }) => {
       for (const window of BrowserWindow.getAllWindows())
         if (!window.webContents.getURL().includes('/overlay/')) window.hide();
