@@ -344,6 +344,8 @@ test('正式调试台：命令抵达桌面层、三猫画面报告、双窗口�
 });
 
 test('旁边连续点击：正式输入采样链路保持穿透，调试命令能让开并在勿扰时原地接着睡', async () => {
+  // 等出场、入场，以及靠边的猫让开时横穿屏幕，都按真实时间走。
+  test.setTimeout(240_000);
   const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-nearby-'));
   const app = await launch(directory);
   try {
@@ -473,8 +475,9 @@ test('旁边连续点击：正式输入采样链路保持穿透，调试命令�
       'window.ttcats.sendCommand({type:"debug/simulate",cat:"test-calm",interaction:"nearbyClicks"})',
     );
     await expect.poll(async () => (await report(debug))?.cats[0]?.behavior).toBe('走开');
+    // 角落靠边时只能往另一头走，慢猫横穿屏幕要几十秒。
     await expect
-      .poll(async () => (await report(debug))?.cats[0]?.clip, { timeout: 20000 })
+      .poll(async () => (await report(debug))?.cats[0]?.clip, { timeout: 90_000 })
       .toBe('sleep');
     const sleepingX = (await report(debug))?.cats[0]?.x;
     await new Promise((resolve) => setTimeout(resolve, 7000));
