@@ -29,7 +29,12 @@ export default defineConfig({
     root: resolve(import.meta.dirname, 'src/renderer'),
     build: {
       rollupOptions: {
-        input: { panels: resolve(import.meta.dirname, 'src/renderer/panels/index.html') },
+        input: {
+          panels: resolve(import.meta.dirname, 'src/renderer/panels/index.html'),
+          overlay: resolve(import.meta.dirname, 'src/renderer/overlay/index.html'),
+        },
+        // 桌面入口有顶层 await；Pixi 动态导入不能反过来等待尚未完成的入口。
+        output: { manualChunks: { pixi: ['pixi.js'] } },
       },
     },
     plugins: [react()],

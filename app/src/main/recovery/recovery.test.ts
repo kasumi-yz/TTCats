@@ -113,13 +113,18 @@ function setup(extra: Partial<RecoveryOptions> = {}) {
 
 describe('故障恢复保留存档并停止不安全的重试', () => {
   it('前三次重载，第四次回退真实备份并保守停用活动猫咪包，绝不改原存档', async () => {
-    const target = setup();
+    const onSafeMode = vi.fn();
+    const target = setup({ onSafeMode });
     const original = fs.readFileSync(target.save.file, 'utf8');
     for (let index = 0; index < 4; index++) {
       target.recovery.crash();
       await settle();
     }
     expect(target.reload).toHaveBeenCalledTimes(3);
+    expect(onSafeMode).toHaveBeenCalledOnce();
+    expect(onSafeMode.mock.invocationCallOrder[0]).toBeLessThan(
+      target.applySafeMode.mock.invocationCallOrder[0] ?? Infinity,
+    );
     expect(target.applySafeMode).toHaveBeenCalledWith({
       state: { settings: defaultSettings(['backup-cat']) },
       disabledCats: ['active-cat', 'other-cat'],
@@ -192,7 +197,8 @@ describe('故障恢复保留存档并停止不安全的重试', () => {
 
   it('重载失败时停止自动尝试并提示，不静默卡住桌面', async () => {
     vi.useFakeTimers();
-    const target = setup({ reload: () => Promise.reject(new Error('load failed')) });
+    const onSafeMode = vi.fn();
+    const target = setup({ reload: () => Promise.reject(new Error('load failed')), onSafeMode });
     target.recovery.crash();
     await settle();
     expect(target.notify).not.toHaveBeenCalled();
@@ -200,6 +206,7 @@ describe('故障恢复保留存档并停止不安全的重试', () => {
     expect(target.notify).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(target.recovery.getState().safeMode).toBe(true);
+    expect(onSafeMode).toHaveBeenCalledOnce();
     expect(target.overlay.setIgnoreMouseEvents).toHaveBeenCalledWith(true);
     expect(target.notify).toHaveBeenCalledWith(zh.recovery.failed);
   });

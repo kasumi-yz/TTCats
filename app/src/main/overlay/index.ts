@@ -23,6 +23,7 @@ export interface OverlayOptions {
   load?: (window: BrowserWindow) => Promise<void>;
   onWindow?: (window: BrowserWindow) => void;
   onMessage?: (message: OverlayToMain) => void;
+  onReady?: () => void;
   onError: (error: unknown) => void;
 }
 
@@ -36,13 +37,21 @@ export async function createOverlay(options: OverlayOptions) {
   let fullscreen = false;
   let hidden = settings.visibleCats.length === 0;
   let disposed = false;
+  let safeMode = false;
+  let loading = false;
+  let windowHookCompleted = false;
   let queue: Promise<void> = Promise.resolve();
   let pendingDisplayRebuild: Promise<void> | undefined;
   let displayKey: string | undefined;
   let lastFullscreenCheck = -Infinity;
   let rendererReady = false;
   const send = (message: MainToOverlay): void => {
-    if (window && !window.isDestroyed() && !window.webContents.isDestroyed())
+    if (
+      window &&
+      !window.isDestroyed() &&
+      !window.webContents.isDestroyed() &&
+      !window.webContents.isCrashed()
+    )
       window.webContents.send(IPC_CHANNELS.mainToOverlay, message);
   };
   const input = () => {
@@ -58,17 +67,18 @@ export async function createOverlay(options: OverlayOptions) {
         cursor.y < bounds.y + bounds.height,
       leftDown: options.system.isLeftButtonDown(),
       ctrlDown: options.system.isCtrlDown(),
-      paused: fullscreen || hidden,
+      paused: safeMode || loading || fullscreen || hidden,
     };
   };
   const applyVisibility = (): void => {
-    if (!window || window.isDestroyed()) return;
-    send({ type: 'paused', paused: fullscreen || hidden });
-    if (fullscreen || hidden) window.hide();
+    if (disposed || !window || window.isDestroyed()) return;
+    const paused = safeMode || loading || fullscreen || hidden;
+    send({ type: 'paused', paused });
+    if (paused) window.hide();
     else window.showInactive();
   };
   const poll = (sample?: ReturnType<typeof input>): void => {
-    if (!window || window.isDestroyed()) return;
+    if (disposed || safeMode || loading || !window || window.isDestroyed()) return;
     try {
       const state = sample ?? input();
       if (state.now - lastFullscreenCheck >= 500) {
@@ -100,7 +110,16 @@ export async function createOverlay(options: OverlayOptions) {
     }
   };
   const listener = (event: Electron.IpcMainEvent, payload: unknown): void => {
-    if (!window || event.sender !== window.webContents) return;
+    if (
+      disposed ||
+      safeMode ||
+      loading ||
+      !window ||
+      window.isDestroyed() ||
+      event.sender !== window.webContents ||
+      event.senderFrame !== event.sender.mainFrame
+    )
+      return;
     if (!payload || typeof payload !== 'object') return;
     const message = payload as OverlayToMain;
     try {
@@ -110,6 +129,7 @@ export async function createOverlay(options: OverlayOptions) {
       poll(state);
       if (!rendererReady) {
         rendererReady = true;
+        options.onReady?.();
         send({ type: 'ghost', active: ghost });
         send({ type: 'paused', paused: fullscreen || hidden });
       }
@@ -119,11 +139,43 @@ export async function createOverlay(options: OverlayOptions) {
   };
   ipcMain.on(IPC_CHANNELS.overlayToMain, listener);
 
+  const resetInput = (): void => {
+    safety = new OverlaySafety();
+    rendererReady = false;
+    ignore = true;
+    ghost = false;
+    if (!window || window.isDestroyed()) return;
+    window.setIgnoreMouseEvents(true, { forward: true });
+    send({ type: 'dragCancel' });
+    send({ type: 'ghost', active: false });
+  };
+  const load = async (): Promise<void> => {
+    if (disposed || safeMode || !window || window.isDestroyed()) return;
+    const target = window;
+    loading = true;
+    resetInput();
+    applyVisibility();
+    // 加载失败时保持隐藏、穿透；保留窗口供随后到达的 gone 事件恢复。
+    if (options.load) await options.load(target);
+    else {
+      const url = process.env['ELECTRON_RENDERER_URL'];
+      if (url) await target.loadURL(url + '/overlay/index.html');
+      else await target.loadFile(join(import.meta.dirname, '../renderer/overlay/index.html'));
+    }
+    loading = false;
+    poll();
+    applyVisibility();
+  };
+  const reload = (): Promise<void> => {
+    const job = queue.then(load);
+    queue = job.catch(options.onError);
+    return job;
+  };
   const rebuild = (force = true): Promise<void> => {
     if (!force && pendingDisplayRebuild) return pendingDisplayRebuild;
     const job = queue.then(async () => {
       if (!force) pendingDisplayRebuild = undefined;
-      if (disposed) return;
+      if (disposed || safeMode) return;
       const display = screen.getPrimaryDisplay();
       const area = display.workArea;
       const key = JSON.stringify([
@@ -135,7 +187,13 @@ export async function createOverlay(options: OverlayOptions) {
         display.scaleFactor,
       ]);
       if (!force && key === displayKey && window && !window.isDestroyed()) return;
-      const previous = window;
+      if (window) {
+        if (window.isDestroyed()) return;
+        window.setBounds(area);
+        displayKey = key;
+        await load();
+        return;
+      }
       const next = new BrowserWindow({
         ...area,
         title: zh.overlay.title,
@@ -156,40 +214,19 @@ export async function createOverlay(options: OverlayOptions) {
       });
       window = next;
       displayKey = key;
-      rendererReady = false;
-      // Keep at least one BrowserWindow alive throughout reconstruction.
-      if (previous && !previous.isDestroyed()) previous.destroy();
-      safety = new OverlaySafety();
-      ignore = true;
-      ghost = false;
       next.setIgnoreMouseEvents(true, { forward: true });
       next.setContentProtection(!settings.showInScreenCapture);
       options.onWindow?.(next);
-      try {
-        if (options.load) await options.load(next);
-        else {
-          const url = process.env['ELECTRON_RENDERER_URL'];
-          if (url) await next.loadURL(url + '/overlay/index.html');
-          else await next.loadFile(join(import.meta.dirname, '../renderer/overlay/index.html'));
-        }
-        // disposed can change during the awaited load.
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (!disposed && !next.isDestroyed()) {
-          poll();
-          send({ type: 'ghost', active: ghost });
-          applyVisibility();
-        }
-      } catch (error) {
-        if (!next.isDestroyed()) next.destroy();
-        throw error;
-      }
+      windowHookCompleted = options.onWindow !== undefined;
+      await load();
     });
     queue = job.catch(options.onError);
     if (!force) pendingDisplayRebuild = job;
     return job;
   };
   const changed = (): void => {
-    void rebuild(false).catch(options.onError);
+    // queue 已报告失败；事件入口只消费 rejection。
+    void rebuild(false).catch(() => {});
   };
   screen.on('display-added', changed);
   screen.on('display-removed', changed);
@@ -200,22 +237,40 @@ export async function createOverlay(options: OverlayOptions) {
   try {
     await rebuild();
   } catch (error) {
-    clearInterval(timer);
-    ipcMain.removeListener(IPC_CHANNELS.overlayToMain, listener);
-    screen.removeListener('display-added', changed);
-    screen.removeListener('display-removed', changed);
-    screen.removeListener('display-metrics-changed', changed);
-    throw error;
+    // 只容忍真实崩溃，保留窗口等待 gone；文件缺失等普通加载错误必须抛给主入口。
+    if (
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- rebuild 的异步回调会设置恢复挂钩状态。
+      !windowHookCompleted ||
+      !window ||
+      window.isDestroyed() ||
+      window.webContents.isDestroyed() ||
+      !window.webContents.isCrashed()
+    ) {
+      clearInterval(timer);
+      ipcMain.removeListener(IPC_CHANNELS.overlayToMain, listener);
+      screen.removeListener('display-added', changed);
+      screen.removeListener('display-removed', changed);
+      screen.removeListener('display-metrics-changed', changed);
+      if (window && !window.isDestroyed()) window.destroy();
+      throw error;
+    }
   }
   return {
     get window() {
       return window;
     },
     rebuild,
+    reload,
+    enterSafeMode(): void {
+      safeMode = true;
+      resetInput();
+      applyVisibility();
+    },
     updateSettings(next: Settings): void {
+      if (disposed) return;
       settings = next;
       hidden = next.visibleCats.length === 0;
-      window?.setContentProtection(!next.showInScreenCapture);
+      if (window && !window.isDestroyed()) window.setContentProtection(!next.showInScreenCapture);
       applyVisibility();
       poll();
     },

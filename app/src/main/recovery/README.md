@@ -13,6 +13,8 @@
 
 ## 安全模式接入
 
+`onSafeMode()` 在读取回退备份前调用；恢复失败的路径也会调用。#28 用它永久锁定桌面层隐藏并停止提交正常状态，避免读备份失败时托盘或全屏恢复重新显示故障窗口。它不写存档；既有队列的完成由 `applySafeMode` 或退出时协调。
+
 `applySafeMode({ state, disabledCats, source })` **由主进程执行**，在显示提示之前完成：
 
 1. 用 `state` 替换 core/game 的状态并广播新快照；状态来自 `SaveStore.loadLatestBackup()`，会跳过坏备份。没有备份时校验并使用 `defaultState()`，不读故障主存档。

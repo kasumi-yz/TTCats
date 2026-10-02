@@ -283,4 +283,22 @@ export const zh = {
     loadFailed: (cat: string, file: string) => `${cat}：无法加载片段文件 ${file}。`,
     badMask: (cat: string, file: string) => `${cat}：点击遮罩 ${file} 的长度不正确。`,
   },
+  integration: {
+    summon: '召唤',
+    visibility: '显示或隐藏猫',
+    capture: '截图里显示猫',
+    settings: '设置',
+    quit: '退出',
+    come: '叫它过来',
+    sleep: '让它睡觉',
+    hide: '暂时隐藏它',
+    profile: '查看资料卡',
+    invalidMessage: '收到无效的窗口消息，已拒绝。',
+    unknownSender: '消息不是来自已登记窗口的主框架，已拒绝。',
+    shortcutFailed: '调试台快捷键 Ctrl+Shift+F10 注册失败，可能已被其他程序占用。',
+    startupFailed: 'TTCats 启动失败，请查看日志。',
+    saveFailed: '退出前保存失败，程序保持运行。请检查磁盘空间和目录权限后重试退出。',
+    disabledPack: (name: string) =>
+      `猫咪包「${name}」因桌面层连续故障在本次运行中停用，原文件和显示偏好保留。`,
+  },
 };
