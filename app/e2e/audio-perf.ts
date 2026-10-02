@@ -38,23 +38,44 @@ try {
   });
   const report = async () => {
     const latest = await app.evaluate<StageDebugReport | undefined>('globalThis.audioPerfReport');
+    if (latest && Date.now() - latest.at > 2000)
+      throw new Error(`音频报告已过期：${JSON.stringify(latest)}`);
     return latest?.audio;
+  };
+  const enableReport = async () => {
+    const since = Date.now();
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()
+        .find((w) => w.webContents.getURL().includes('/overlay/'))
+        ?.webContents.send('ttcats:main-to-overlay', { type: 'stageDebug', enabled: true });
+    });
+    if (
+      (await waitFor(
+        async () =>
+          ((await app.evaluate<StageDebugReport | undefined>('globalThis.audioPerfReport'))?.at ??
+            0) >= since,
+        5000,
+      )) === null
+    )
+      throw new Error('没有收到新的音频报告');
   };
   if ((await waitFor(async () => (await report())?.suspended === true, 5000)) === null)
     throw new Error('没有收到音频状态');
   const summaries = [];
   for (const phase of ['before', 'after'] as const) {
     if (phase === 'after') {
+      await enableReport();
       await overlay.evaluate(
         'window.ttcats.sendCommand({type:"debug/sound",cat:"test-calm",sound:"purr"})',
       );
       if ((await waitFor(async () => ((await report())?.playing.length ?? 0) > 0, 5000)) === null)
-        throw new Error('呼噜没有开始播放');
+        throw new Error(`呼噜没有开始播放：${JSON.stringify(await report())}`);
       if ((await waitFor(async () => (await report())?.suspended === true, 5000)) === null)
         throw new Error('播放完没有挂起音频');
     }
     console.log(`${phase}：预热 15 秒，采样 ${seconds} 秒`);
     await sleep(15000);
+    await enableReport();
     await app.evaluate(({ app }) => app.getAppMetrics());
     const samples: number[] = [];
     for (let i = 0; i < seconds; i++) {
