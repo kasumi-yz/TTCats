@@ -17,7 +17,12 @@
     { "cat": "majiang", "closeness": 0.2, "dominance": -0.3 }
   ],
   "sounds": {
-    "meow": [],
-    "purr": []
+    "meow": [
+      "sounds/meow-01.wav",
+      "sounds/meow-02.wav",
+      "sounds/meow-03.wav",
+      "sounds/meow-04.wav"
+    ],
+    "purr": ["sounds/purr-01.wav"]
   }
 }
