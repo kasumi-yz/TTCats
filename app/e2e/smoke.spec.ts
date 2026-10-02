@@ -77,8 +77,18 @@ async function report(page: Page): Promise<StageDebugReport | undefined> {
 }
 async function setRange(locator: Locator, value: number): Promise<void> {
   const current = Number(await locator.inputValue());
-  const key = value > current ? 'ArrowRight' : 'ArrowLeft';
-  for (let i = 0; i < Math.abs(value - current); i++) await locator.press(key);
+  const step = value > current ? 1 : -1;
+  for (let next = current + step; step > 0 ? next <= value : next >= value; next += step) {
+    await locator.press(step > 0 ? 'ArrowRight' : 'ArrowLeft');
+    // 等主进程确认并让 React 呈现快照，避免下一次按键读取尚未确认的滑块草稿。
+    await expect.poll(async () => (await snapshot(locator.page())).settings.scale).toBe(next / 100);
+    await locator
+      .page()
+      .evaluate(
+        'new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))',
+      );
+    await expect(locator).toHaveValue(String(next));
+  }
 }
 async function overlayVisible(app: ElectronApplication): Promise<boolean> {
   return app.evaluate(({ BrowserWindow }) =>
