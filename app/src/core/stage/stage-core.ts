@@ -1,5 +1,5 @@
 // core/stage 的入口：实现 shared/core-api.ts 里的 StageCore。
-// 管理可以随时丢掉的画面状态（ADR-0004）：每只猫在哪、正在播哪个片段、接下来要做什么。
+// 管理可以随时丢掉的画面状态（ADR-0004）：每只猫在哪、正在播哪个片段、接下来要播什么。
 import type {
   ContentCatalog,
   CreateStageCore,
@@ -249,8 +249,8 @@ export class Stage implements StageCore {
       );
     });
     for (const actor of this.actors) {
-      if (!visible.includes(actor.id) && !actor.isExiting()) {
-        this.pointerReactions.cancelFor(actor, now, true);
+      if (!visible.includes(actor.id)) {
+        if (!actor.isExiting()) this.pointerReactions.cancelFor(actor, now, true);
         actor.exit(now);
       }
     }
@@ -331,6 +331,13 @@ export class Stage implements StageCore {
         actors.filter((a) => a.x <= this.env.floor.width / 2).length >= actors.length / 2
           ? 'left'
           : 'right';
+      const preferred = this.cornerSide;
+      const other = preferred === 'left' ? 'right' : 'left';
+      if (
+        !actors.every((actor) => actor.canWalkToward(preferred)) &&
+        actors.every((actor) => actor.canWalkToward(other))
+      )
+        this.cornerSide = other;
     }
     let offset = 0;
     for (const actor of actors) {

@@ -121,6 +121,8 @@ export class CatActor {
   private entranceDelayMs = 0;
   private cornerX: number | undefined;
   private exited = false;
+  private returnAfterExit: { x: number; delayMs: number } | undefined;
+  private entranceFacing: Facing | undefined;
 
   constructor(
     readonly cat: Cat,
@@ -352,7 +354,14 @@ export class CatActor {
     this.facing = facing;
     const clip = this.pickVariant(gait, undefined, true);
     if (clip === undefined) return false;
-    if (Math.abs(toX - this.x) < this.cycleDistance(clip) / 2) return false;
+    const range = this.env.floor.xRange(this.cat.relativeSize);
+    if (
+      Math.abs(toX - this.x) < this.cycleDistance(clip) / 2 &&
+      !step.outside &&
+      this.x >= range.min &&
+      this.x <= range.max
+    )
+      return false;
     // 坡度限制：纵向位移不超过横向位移的 MAX_WALK_SLOPE 倍
     const band = this.env.floor.band;
     const maxDd = band > 0 ? (MAX_WALK_SLOPE * Math.abs(toX - this.x)) / band : 1;
@@ -559,7 +568,7 @@ export class CatActor {
   // ---------- 地板和屏幕 ----------
 
   /** 用所有片段的逐帧锚点保守计算整幅画面完全离屏所需的距离（也涵盖镜像）。 */
-  private outsideMargin(): number {
+  private outsideExtent(): number {
     let extent = STANDARD_CAT_HEIGHT;
     for (const name of this.library.names()) {
       for (const clip of this.library.variants(name)) {
@@ -567,22 +576,60 @@ export class CatActor {
           extent = Math.max(extent, Math.abs(anchor.x), Math.abs(clip.width - anchor.x));
       }
     }
-    return extent * this.env.scale * this.cat.relativeSize + this.stopTolerance() + 1;
+    return extent * this.env.scale * this.cat.relativeSize;
+  }
+
+  private outsideMargin(): number {
+    return this.outsideExtent() + this.stopTolerance() + 1;
+  }
+
+  canWalkToward(facing: Facing): boolean {
+    return this.library
+      .variants('walk')
+      .some((clip) => clip.fromPose === 'stand' && canMoveToward(clip, facing));
+  }
+
+  private walkingFacing(preferred: Facing): Facing {
+    const other = preferred === 'left' ? 'right' : 'left';
+    return this.canWalkToward(preferred) || !this.canWalkToward(other) ? preferred : other;
+  }
+
+  private atFloorTarget(x: number): boolean {
+    const range = this.env.floor.xRange(this.cat.relativeSize);
+    return (
+      this.x >= range.min &&
+      this.x <= range.max &&
+      Math.abs(this.x - x) <= this.stopTolerance() + 1e-6
+    );
   }
 
   enter(x: number, delayMs: number, t: number, fromEdge = true): void {
+    const target = this.env.floor.clampX(x, this.cat.relativeSize);
+    if (
+      !fromEdge &&
+      this.passage?.kind === 'exit' &&
+      target !== this.x &&
+      !this.canWalkToward(target < this.x ? 'left' : 'right')
+    ) {
+      // 单向素材不能原地掉头：完整离屏后再从可行的一侧入场，不能在屏内瞬移。
+      this.returnAfterExit = { x: target, delayMs };
+      return;
+    }
+    this.returnAfterExit = undefined;
     this.exited = false;
-    this.passage = { kind: 'entrance', x: this.env.floor.clampX(x, this.cat.relativeSize) };
+    this.passage = { kind: 'entrance', x: target };
     if (fromEdge) {
+      this.entranceFacing = this.walkingFacing(this.facing);
+      this.facing = this.entranceFacing;
       this.airY = undefined;
       this.fall = undefined;
       this.held = false;
       this.pose = 'stand';
       this.x =
-        this.facing === 'right'
+        this.entranceFacing === 'right'
           ? -this.outsideMargin()
           : this.env.floor.width + this.outsideMargin();
-      this.seg = this.makeSegment(this.requireClip(REST_LOOPS.stand), {});
+      this.beginSegment(this.requireClip(REST_LOOPS.stand), t, {});
     }
     if (this.isAirborne()) return;
     this.interrupt(
@@ -596,8 +643,9 @@ export class CatActor {
   }
 
   exit(t: number): void {
+    this.returnAfterExit = undefined;
     if (this.passage?.kind === 'exit') return;
-    const side = this.x < this.env.floor.width / 2 ? 'left' : 'right';
+    const side = this.walkingFacing(this.x < this.env.floor.width / 2 ? 'left' : 'right');
     const x = side === 'left' ? -this.outsideMargin() : this.env.floor.width + this.outsideMargin();
     this.passage = { kind: 'exit', x, side };
     if (this.isAirborne() || this.behavior.kind === 'dropped') return;
@@ -644,34 +692,54 @@ export class CatActor {
       );
   }
 
-  /** 固定职责优先于自主行为；互动只临时借用计划，结束后在这里恢复。 */
+  /** 移动没能开始时保持当前姿势等待，不递归重排，也不把失败当作到达。 */
+  private moveOrWait(step: Extract<Step, { kind: 'move' }>, t: number): void {
+    if (this.startMove(step, t)) return;
+    if (this.queue.length > 0) {
+      this.startNext(t);
+      return;
+    }
+    const rest = this.restPose();
+    if (this.pose !== rest) this.hardCut(rest, t);
+    this.beginSegment(this.requireClip(REST_LOOPS[rest]), t, { holdMs: DEBUG_LOOP_MS });
+  }
+
+  /** 固定职责优先于自主行为；完成与否由位置决定，不能只看行为名称。 */
   private planPassageOrCorner(t: number): boolean {
     const passage = this.passage;
     if (passage !== undefined) {
-      if (this.behavior.kind !== passage.kind) {
+      const outside =
+        passage.kind === 'exit' &&
+        (passage.side === 'left'
+          ? this.x + this.outsideExtent() < 0
+          : this.x - this.outsideExtent() > this.env.floor.width);
+      const arrived = passage.kind === 'entrance' && this.atFloorTarget(passage.x);
+      if (!outside && !arrived) {
         this.behavior = { kind: passage.kind };
-        this.queue = [
+        this.moveOrWait(
           { kind: 'move', gait: 'walk', x: passage.x, d: this.d, outside: passage.kind === 'exit' },
-        ];
-        this.startNext(t);
+          t,
+        );
         return true;
       }
       this.passage = undefined;
       if (passage.kind === 'exit') {
-        this.exited = true;
+        const returning = this.returnAfterExit;
+        if (returning !== undefined) this.enter(returning.x, returning.delayMs, t);
+        else this.exited = true;
         return true;
       }
       this.clampToFloor();
     }
     if (this.cornerX === undefined) return false;
-    if (this.behavior.kind === 'goToCorner' || this.behavior.kind === 'doNotDisturbSleep') {
+    if (this.atFloorTarget(this.cornerX)) {
       this.behavior = { kind: 'doNotDisturbSleep' };
       this.queue = [{ kind: 'clip', name: REST_LOOPS.sleep, holdMs: Infinity }];
+      this.startNext(t);
     } else {
       this.behavior = { kind: 'goToCorner' };
-      this.queue = [{ kind: 'move', gait: 'walk', x: this.cornerX, d: this.d }];
+      this.moveOrWait({ kind: 'move', gait: 'walk', x: this.cornerX, d: this.d }, t);
     }
-    this.startNext(t);
     return true;
   }
 
@@ -688,6 +756,7 @@ export class CatActor {
       if (step.kind === 'face') step.towardX *= factor;
     }
     if (this.passage !== undefined) this.passage.x *= factor;
+    if (this.returnAfterExit !== undefined) this.returnAfterExit.x *= factor;
     this.clampToFloor();
   }
 
@@ -702,7 +771,7 @@ export class CatActor {
           : this.env.floor.clampX(passage.x, this.cat.relativeSize);
       if (this.entranceDelayMs > 0)
         this.x =
-          this.facing === 'right'
+          this.entranceFacing === 'right'
             ? -this.outsideMargin()
             : this.env.floor.width + this.outsideMargin();
       if (this.behavior.kind === passage.kind) {
