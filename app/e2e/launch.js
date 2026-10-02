@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
-import { readFileSync } from 'node:fs';
+import fs, { readFileSync } from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { extname, resolve, sep } from 'node:path';
 import { app, Tray, Menu, dialog, globalShortcut } from 'electron';
 import koffi from 'koffi';
@@ -12,11 +13,24 @@ globalThis.smoke = {
   popups: [],
   popupWindows: [],
   dialogs: [],
+  saveBlocked: false,
+  saveDialogResolvers: [],
   shortcuts: new Map(),
   fullscreen: false,
   crashes: 0,
   slowRequests: 0,
 };
+// 在文件系统边界模拟存档目录拒绝写入，保留正式 SaveStore、退出流程和日志。
+const openSync = fs.openSync;
+fs.openSync = function (path, ...args) {
+  if (globalThis.smoke.saveBlocked && String(path).endsWith('save.json.tmp')) {
+    throw Object.assign(new Error('EACCES: permission denied, open ' + String(path)), {
+      code: 'EACCES',
+    });
+  }
+  return openSync.call(this, path, ...args);
+};
+syncBuiltinESMExports();
 app.on('browser-window-created', (_event, window) => {
   window.webContents.on('render-process-gone', () => {
     globalThis.smoke.crashes++;
@@ -60,6 +74,13 @@ globalShortcut.register = (accelerator, callback) => {
 };
 dialog.showMessageBox = async (options) => {
   globalThis.smoke.dialogs.push(options);
+  if (options.buttons?.includes('不保存，直接退出')) {
+    return new Promise((resolve) => {
+      globalThis.smoke.saveDialogResolvers.push((response) =>
+        resolve({ response, checkboxChecked: false }),
+      );
+    });
+  }
   return { response: 1, checkboxChecked: false };
 };
 dialog.showErrorBox = (title, message) => {

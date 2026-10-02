@@ -94,6 +94,7 @@ if (!app.requestSingleInstanceLock()) {
       // eslint-disable-next-line prefer-const -- 启动期间状态更新可能早于托盘创建。
       let tray: Tray | undefined;
       let closing = false;
+      let quitting = false;
       const send = (window: BrowserWindow, channel: string, payload: unknown): void => {
         if (
           !window.isDestroyed() &&
@@ -184,12 +185,17 @@ if (!app.requestSingleInstanceLock()) {
         updateDebug();
       };
       const command = (message: GameCommand): void => {
-        if (closing) return;
+        if (closing || quitting) {
+          updateTray();
+          return;
+        }
         try {
           const result = session.command(message);
           for (const stage of result.stageCommands) overlaySend(IPC_CHANNELS.stageCommand, stage);
         } catch (error) {
           report(error);
+        } finally {
+          updateTray();
         }
       };
       const summon = (cat: string): void => {
@@ -262,11 +268,23 @@ if (!app.requestSingleInstanceLock()) {
         [...windows].some((window) => !window.isDestroyed() && window.webContents.id === id);
       const allowed = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): boolean =>
         event.senderFrame === event.sender.mainFrame && allowedSender(event.sender.id);
+      const invalidMessage = (payload: unknown, issues: { path: PropertyKey[] }[]): void => {
+        const type =
+          payload !== null && typeof payload === 'object' && 'type' in payload
+            ? String(payload.type)
+            : text.unknownMessageType;
+        report(
+          text.invalidMessage(
+            type,
+            issues.map((issue) => issue.path.join('.') || '(root)'),
+          ),
+        );
+      };
       const onCommand = (event: Electron.IpcMainEvent, payload: unknown): void => {
         if (!allowed(event)) return;
         const parsed = CommandSchema.safeParse(payload);
         if (!parsed.success) {
-          report(text.invalidMessage);
+          invalidMessage(payload, parsed.error.issues);
           return;
         }
         if (parsed.data.type !== 'debug/crashOverlay') command(parsed.data);
@@ -276,12 +294,13 @@ if (!app.requestSingleInstanceLock()) {
           !allowed(event) ||
           event.sender !== overlay?.window?.webContents ||
           session.safeMode ||
-          closing
+          closing ||
+          quitting
         )
           return;
         const parsed = FactSchema.safeParse(payload);
         if (!parsed.success) {
-          report(text.invalidMessage);
+          invalidMessage(payload, parsed.error.issues);
           return;
         }
         try {
@@ -339,7 +358,7 @@ if (!app.requestSingleInstanceLock()) {
           window.webContents.on('did-finish-load', updateDebug);
         },
         onMessage: (message) => {
-          if (session.safeMode || closing) return;
+          if (session.safeMode || closing || quitting) return;
           if (message.type === 'stageDebug') {
             const debug = panels.get('debug');
             if (debug) send(debug, IPC_CHANNELS.stageDebug, message.report);
@@ -409,12 +428,33 @@ if (!app.requestSingleInstanceLock()) {
       app.on('before-quit', (event) => {
         if (closing) return;
         event.preventDefault();
-        try {
-          session.flush();
-        } catch (error) {
+        if (quitting) return;
+        quitting = true;
+        void finishQuit().catch((error: unknown) => {
+          quitting = false;
           report(error);
-          void dialog.showMessageBox({ type: 'error', message: text.saveFailed });
-          return;
+        });
+      });
+      const finishQuit = async (): Promise<void> => {
+        for (;;) {
+          try {
+            session.flush();
+            break;
+          } catch (error) {
+            report(error);
+            const { response } = await dialog.showMessageBox({
+              type: 'error',
+              message: text.saveFailed,
+              buttons: [text.retrySave, text.quitWithoutSaving],
+              defaultId: 0,
+              cancelId: 0,
+              noLink: true,
+            });
+            if (response === 1) {
+              report(text.saveAbandoned);
+              break;
+            }
+          }
         }
         closing = true;
         detachCrash();
@@ -429,11 +469,11 @@ if (!app.requestSingleInstanceLock()) {
         app.removeListener('second-instance', onSecondInstance);
         app.removeListener('window-all-closed', onAllClosed);
         for (const panel of panels.values()) panel.destroy();
-        void overlay.dispose().finally(() => {
+        await overlay.dispose().finally(() => {
           detachMainLog();
           app.quit();
         });
-      });
+      };
       if (process.argv.includes('--settings')) openPanel('settings');
     })
     .catch((error: unknown) => {

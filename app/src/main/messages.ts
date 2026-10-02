@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Fact, ToMainCommand } from '../shared/ipc';
 import { IdSchema, PointSchema } from '../shared/schemas/common';
 import { SettingsSchema } from '../shared/schemas/settings';
 
@@ -37,3 +38,22 @@ export const FactSchema = z.discriminatedUnion('type', [
     z.strictObject({ type: z.literal(type), cat: IdSchema, at: z.number() }),
   ),
 ]);
+
+// 双向可赋值检查字段类型与必填性；逐消息比较字段名，补上可选字段遗漏。
+type KeysOf<U, K> = U extends { type: infer T } ? (K extends T ? keyof U : never) : never;
+type SameKeys<A extends { type: string }, B extends { type: string }> = {
+  [K in A['type'] | B['type']]: [KeysOf<A, K>] extends [KeysOf<B, K>]
+    ? [KeysOf<B, K>] extends [KeysOf<A, K>]
+      ? true
+      : false
+    : false;
+}[A['type'] | B['type']];
+type Assert<T extends true> = T;
+export type MessageTypeAssertions = [
+  Assert<[SameKeys<z.infer<typeof CommandSchema>, ToMainCommand>] extends [true] ? true : false>,
+  Assert<[SameKeys<z.infer<typeof FactSchema>, Fact>] extends [true] ? true : false>,
+  Assert<[z.infer<typeof CommandSchema>] extends [ToMainCommand] ? true : false>,
+  Assert<[ToMainCommand] extends [z.infer<typeof CommandSchema>] ? true : false>,
+  Assert<[z.infer<typeof FactSchema>] extends [Fact] ? true : false>,
+  Assert<[Fact] extends [z.infer<typeof FactSchema>] ? true : false>,
+];
