@@ -80,6 +80,20 @@ export const zh = {
     savedAt: '保存时间',
     state: '存档状态',
     settings: '设置',
+    purrEnabled: '呼噜开关',
+    purrVolume: '呼噜音量',
+    meowEnabled: '喵叫开关',
+    meowVolume: '喵叫音量',
+    quietHoursStart: '安静时段开始',
+    quietHoursEnd: '安静时段结束',
+    hideAllShortcut: '一键隐藏快捷键',
+    launchAtLogin: '开机启动',
+    autoUpdate: '自动更新',
+    display: '显示器',
+    label: '显示器名字',
+    doNotDisturb: '勿扰模式',
+    mode: '模式',
+    until: '结束时间',
   } as Readonly<Record<string, string>>,
 
   validation: {
@@ -121,6 +135,11 @@ export const zh = {
     frameOutOfRange: (frame: number, frameCount: number) =>
       `第 ${frame} 帧超出了范围（片段只有 ${frameCount} 帧，从 0 算起）`,
     maxBelowMin: '最多几只猫不能小于最少几只猫',
+    acceleratorFormat:
+      '快捷键写法不对：应写成"修饰键+按键"，比如 Ctrl+Alt+Shift+H。修饰键可以用 Ctrl、Alt、Shift、Super（Win 键），不能重复；按键只能有一个，可以是字母、数字、F1～F24、方向键等',
+    acceleratorNeedsModifier:
+      '快捷键至少要有一个 Ctrl、Alt 或 Super（Win 键）。只用 Shift 的话，打字时也会触发',
+    acceleratorReserved: '这个快捷键已经给调试台用了（Ctrl+Shift+F10），请换一个',
     summaryOk: (count: number) => `内容校验通过，共检查 ${count} 个文件。`,
     summaryFailed: (count: number) => `内容校验失败，共 ${count} 处问题：`,
   },
@@ -307,5 +326,11 @@ export const zh = {
       `桌面层窗口尺寸重试后仍不一致：期望 ${expected}，实际 ${actual}。`,
     disabledPack: (name: string) =>
       `猫咪包「${name}」因桌面层连续故障在本次运行中停用，原文件和显示偏好保留。`,
+  },
+  /** M2 共享接口（#52）：存档迁移，以及功能还没做好时先拒绝的命令。 */
+  interfaces: {
+    migrationBadShape: (from: number) =>
+      `版本 ${from} 的存档状态格式不对（应该是带 settings 的对象），无法迁移。`,
+    commandNotReady: (type: string) => `命令「${type}」对应的功能还没做好，已忽略。`,
   },
 };

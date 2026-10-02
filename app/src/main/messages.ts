@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type { Fact, ToMainCommand } from '../shared/ipc';
+import { CatSoundSchema } from '../shared/schemas/cat';
 import { IdSchema, PointSchema } from '../shared/schemas/common';
+import { DoNotDisturbDurationSchema } from '../shared/schemas/do-not-disturb';
 import { SettingsSchema } from '../shared/schemas/settings';
 
 // 只校验已有 IPC 消息，不增加共享命令或存档字段。
@@ -13,6 +15,9 @@ export const CommandSchema = z.discriminatedUnion('type', [
   }),
   z.strictObject({ type: z.literal('cat/setVisible'), cat: IdSchema, visible: z.boolean() }),
   z.strictObject({ type: z.literal('cat/sleep'), cat: IdSchema }),
+  z.strictObject({ type: z.literal('doNotDisturb/start'), duration: DoNotDisturbDurationSchema }),
+  z.strictObject({ type: z.literal('doNotDisturb/end') }),
+  z.strictObject({ type: z.literal('hideAll/toggle') }),
   z.strictObject({
     type: z.literal('debug/playClip'),
     cat: IdSchema,
@@ -22,9 +27,24 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.strictObject({
     type: z.literal('debug/simulate'),
     cat: IdSchema,
-    interaction: z.enum(['poke', 'pet', 'pickUp', 'drop']),
+    interaction: z.enum(['poke', 'pet', 'pickUp', 'drop', 'nearbyClicks']),
   }),
+  z.strictObject({
+    type: z.literal('debug/advanceClock'),
+    minutes: z
+      .int()
+      .min(1)
+      .max(7 * 24 * 60),
+  }),
+  z.strictObject({ type: z.literal('debug/startupQuiet') }),
+  z.strictObject({ type: z.literal('debug/entrance') }),
+  z.strictObject({ type: z.literal('debug/sound'), cat: IdSchema, sound: CatSoundSchema }),
+  z.strictObject({ type: z.literal('photo/take') }),
+  z.strictObject({ type: z.literal('diagnostics/export') }),
+  z.strictObject({ type: z.literal('update/check') }),
+  z.strictObject({ type: z.literal('update/install') }),
   z.strictObject({ type: z.literal('debug/crashOverlay') }),
+  z.strictObject({ type: z.literal('debug/simulateFullscreen'), active: z.boolean() }),
 ]);
 
 export const FactSchema = z.discriminatedUnion('type', [

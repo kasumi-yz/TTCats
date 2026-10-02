@@ -20,6 +20,10 @@ void app.whenReady().then(async () => {
     revision: 1,
     at: Date.now(),
     settings: defaultSettings(Object.keys(content.cats)),
+    doNotDisturb: { mode: 'off' },
+    hideAll: false,
+    silencedBy: [],
+    clockOffsetMs: 0,
   };
   const facts: Fact[] = [];
   const messages: unknown[] = [];

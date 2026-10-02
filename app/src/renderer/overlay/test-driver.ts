@@ -91,7 +91,7 @@ export function createTestDriver(content: ContentCatalog, initial: StateSnapshot
           pose: state.clip.fromPose,
         });
       }
-      return { cats, bubbles: [], effects: [] };
+      return { cats, bubbles: [], effects: [], sounds: [] };
     },
     drainFacts() {
       return facts.splice(0);
