@@ -1,0 +1,38 @@
+
+> ttcats@0.0.0 interaction-test
+> tsx scripts/interaction-test.ts
+
+即将开始真实桌面交互测试（约 10 分钟）：请不要碰鼠标和键盘。5 秒后开始……
+显示配置 2560x1440-100pct，工作区 2560x1392（DIP），桌面层 2560x1392
+通过  [准备] 探针窗口成为前台：前台窗口：TTCats interaction probe
+猫：A=test-active，B（后）=test-close，C（前）=test-calm
+通过  [基础] 窗口样式：不抢焦点 WS_EX_NOACTIVATE=true，置顶 TOPMOST=true，默认穿透 TRANSPARENT=true
+通过  [基础] 点空白处：点击落到：probe
+通过  [基础] 鼠标移到猫身上后关闭穿透：用时 15ms
+通过  [基础] 点猫的包围框内的透明处（两腿之间）：点击落到：probe
+通过  [悬停后点猫] 悬停后点猫 20 次：20/20 次由猫接住；{"test-active":20}；每次点击前后都核对了光标、Ctrl、幽灵模式、窗口顺序
+通过  [快速移到猫身上马上点] 移动后隔多久点击才一定能点中猫：隔 5ms 及以上 5/5 点中；全部 40 次里有 4 次点击丢失或被吃掉
+通过  [快速移到猫身上马上点] 鼠标刚离开猫就点旁边的空白处：隔 5ms 及以上 5/5 落到下面的窗口；共 3/25 次被桌面层吃掉或丢失
+通过  [拖动时鼠标移出猫的范围] 整个拖动过程由桌面层接收：拖动中=true，拎起=true，松手时放下=true，猫落在松手位置=true（x=1166.4，应为 1166.6），下面的窗口收到 0 个鼠标事件
+通过  [拖动时鼠标移出猫的范围] 松手后离开猫，恢复穿透：用时 13ms
+通过  [拖动时鼠标移出猫的范围] 之后点空白处：点击落到：probe
+通过  [按住 Ctrl 拖动] 先按 Ctrl 再拖：穿过猫，拖到下面的窗口：幽灵模式=true，猫身上仍穿透=true，猫收到点击=false，下面的窗口收到 Ctrl+按下=true，猫没动=true
+通过  [按住 Ctrl 拖动] 松开 Ctrl 后保持 2 秒：松开约 1 秒时点猫 → probe；约 2.6 秒时点猫 → test-active
+通过  [按住 Ctrl 拖动] 拖到一半按 Ctrl：继续拖完，松手后穿透：按 Ctrl 后仍在拖=true，猫到了松手位置=true，下面的窗口收到 0 个鼠标事件，松手后 15ms 恢复穿透
+通过  [两只猫重叠] 两只猫都不透明的地方 → 前面的猫：点击落到：test-calm（应为 test-calm）
+通过  [两只猫重叠] 只有后面的猫的地方 → 后面的猫：点击落到：test-close（应为 test-close）
+通过  [两只猫重叠] 只有前面的猫的地方 → 前面的猫：点击落到：test-calm（应为 test-calm）
+通过  [两只猫重叠] 猫的透明处（腿缝），也没被另一只猫盖住 → 下面的窗口：点击落到：probe（应为 probe）
+通过  [焦点] 在探针窗口打字时点猫、拖猫：点到猫=true，拖了猫=true，输入框内容="abcdef"，前台窗口=TTCats interaction probe
+通过  [焦点] 在记事本里打字时点猫：点到猫=true，点猫后测试文档仍在前台=true，测试文档里的内容="abcdef"
+通过  [M1 互动] 单击猫：点击落到：test-active，猫的反应片段：poked
+通过  [M1 互动] 撸猫（在猫身上来回划）：撸猫结束=true（时长 1291ms），播过呼噜片段=true，误触发其他互动 0 次
+通过  [M1 互动] 拎起放下：拎起=true，拎着时播悬空片段=true，放下=true，落在松手的位置=true
+通过  [M1 互动] 右键菜单不抢焦点：请求菜单=true，菜单弹出=true，菜单开着时前台=TTCats interaction probe，关菜单的方式=点回输入框，之后前台=TTCats interaction probe，输入框内容="abcdef"，误触发互动 0 次
+通过  [防卡死] 从猫身上移到空白处：15ms 恢复穿透
+通过  [防卡死] 从猫身上移到桌面层外面（任务栏）：30ms 恢复穿透
+通过  [防卡死] 渲染进程卡住 1 秒时从猫身上移开：48ms 恢复穿透；200ms 时点空白处落到了下面的窗口
+
+显示配置 2560x1440-100pct：通过 27 项，失败 0 项（被打断重做 0 次）。结果：D:\TTCats-issue29-desktop\app\out\interaction\interaction-2560x1440-100pct-1790942515141.json
+[TTCats] Debugger ending on ws://127.0.0.1:62983/cfd1fe93-aaa3-4d42-8d9f-bf027aba3509
+For help, see: https://nodejs.org/learn/getting-started/debugging

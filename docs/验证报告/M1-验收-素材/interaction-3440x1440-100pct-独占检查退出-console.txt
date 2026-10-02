@@ -1,0 +1,18 @@
+
+> ttcats@0.0.0 interaction-test
+> tsx scripts/interaction-test.ts
+
+Error: 机器没有独占：还有别的 Electron 或素材工厂进程在运行（python.exe ；python.exe ；python.exe ；python.exe ；python.exe C:\Users\Salmon\Documents\Codex\2026-09-19\sarg338-steam-mcp-x20\steam-mcp\.venv\Scripts\python.exe；python.exe C:\Users\Salmon\AppData\Local\Programs\Python\Python312\python.exe；python.exe C:\Users\Salmon\Documents\Codex\2026-09-19\sarg338-steam-mcp-x20\steam-mcp\.venv\Scripts\python.exe；python.exe C:\Users\Salmon\AppData\Local\Programs\Python\Python312\python.exe；python.exe C:\Users\Salmon\Documents\Codex\2026-09-19\sarg338-steam-mcp-x20\steam-mcp\.venv\Scripts\python.exe；python.exe C:\Users\Salmon\AppData\Local\Programs\Python\Python312\python.exe）。请关掉其他会话的程序后再测。
+    at exclusivity (D:\TTCats-issue29-desktop\app\scripts\lib\desktop.ts:50:11)
+    at main (D:\TTCats-issue29-desktop\app\scripts\interaction-test.ts:517:3)
+    at <anonymous> (D:\TTCats-issue29-desktop\app\scripts\interaction-test.ts:1423:7)
+    at ModuleJob.run (node:internal/modules/esm/module_job:437:25)
+    at async node:internal/modules/esm/loader:639:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+npm error Lifecycle script `interaction-test` failed with error:
+npm error code 1
+npm error path D:\TTCats-issue29-desktop\app
+npm error workspace ttcats@0.0.0
+npm error location D:\TTCats-issue29-desktop\app
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c tsx scripts/interaction-test.ts

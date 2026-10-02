@@ -1,0 +1,25 @@
+
+> ttcats@0.0.0 interaction-test
+> tsx scripts/interaction-test.ts
+
+即将开始真实桌面交互测试（约 10 分钟）：请不要碰鼠标和键盘。5 秒后开始……
+Downloading Electron binary...
+显示配置 3440x1440-100pct，工作区 3440x1392（DIP），桌面层 3440x1392
+通过  [准备] 探针窗口成为前台：前台窗口：TTCats interaction probe
+[TTCats] Debugger ending on ws://127.0.0.1:54624/aec00821-5814-46f0-abc0-5a6c9ae3966a
+For help, see: https://nodejs.org/learn/getting-started/debugging
+Interference [Error]: 光标在 1941,0，应该在 1720,418（有人动了鼠标）
+    at Harness.fail (D:\TTCats-issue29-desktop\app\scripts\interaction-test.ts:210:11)
+    at Harness.check (D:\TTCats-issue29-desktop\app\scripts\interaction-test.ts:217:14)
+    at Harness.moveTo (D:\TTCats-issue29-desktop\app\scripts\interaction-test.ts:241:10)
+    at Harness.dragCat (D:\TTCats-issue29-desktop\app\scripts\interaction-test.ts:391:10)
+    at Harness.arrange (D:\TTCats-issue29-desktop\app\scripts\interaction-test.ts:444:22)
+    at async main (D:\TTCats-issue29-desktop\app\scripts\interaction-test.ts:654:16)
+    at async <anonymous> (D:\TTCats-issue29-desktop\app\scripts\interaction-test.ts:1423:1)
+npm error Lifecycle script `interaction-test` failed with error:
+npm error code 1
+npm error path D:\TTCats-issue29-desktop\app
+npm error workspace ttcats@0.0.0
+npm error location D:\TTCats-issue29-desktop\app
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c tsx scripts/interaction-test.ts
