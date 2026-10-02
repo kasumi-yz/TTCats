@@ -13,7 +13,9 @@
 
 每 20ms 在主进程检查租约、光标、左键和 Ctrl，每 500ms 查询全屏。按 shared 的 OVERLAY_TIMING 执行。拖动中按 Ctrl 不释放猫；松手事件丢失时发送 dragCancel。系统查询失败会释放鼠标、取消拖动并交给 onError，不能把错误当成正常状态。
 
-主屏事件逐项排队重建。先建立新窗口再销毁旧窗口，避免过程中零窗口导致 Electron 默认退出。关闭时取消队列中尚未开始的工作。
+显示器事件串行处理，同一时间最多保留一个尚未开始的事件重建。开始前读取最新主屏 id、工作区和缩放；参数未变时跳过，所以副屏通知或重复通知不会重建。显式调用 rebuild() 仍可强制重建。先建立新窗口再销毁旧窗口，避免过程中零窗口导致 Electron 默认退出。关闭时取消队列中尚未开始的工作。
+
+收到 hover 时，租约接收和即时安全检查共用一次系统输入采样；20ms 看门狗继续独立运行。
 
 ## 验证
 
@@ -27,6 +29,7 @@ npm run build
 npm run test:smoke
 npm run perf -w app -- --verify
 npm run perf -w app
+npm run perf -w app -- --moving-pointer
 ```
 
 也可进入 app 后直接执行 `npm run perf`。根 package.json 不在 #25 允许范围内，因此没有添加根目录 perf 转发命令。
@@ -34,6 +37,10 @@ npm run perf -w app
 `--verify` 会操作真实鼠标和 Ctrl、打开专用探针窗口与全屏窗口。测试时暂停人工输入，并让测试窗口在前台。不会向用户自己的文档输入文字。点击与焦点证据来自系统 SendInput 和实际窗口，不由截图代替。
 
 正式性能默认三种状态各测 300 秒，各自先预热 15 秒，约每秒采样一次，统计所有应用进程 CPU 和私有内存的平均与峰值。CPU 使用 [Electron CPUUsage](https://www.electronjs.org/docs/latest/api/structures/cpu-usage) 的整机百分比之和，不再除以核心数；私有内存按 KB / 1024 转成 MB。全屏探针在同一个测试应用中，因此它的进程也计入全屏状态统计。每 15 秒检查其他 electron / python / pythonw / ComfyUI；查询失败或发现竞争进程会失败，不输出通过结论。`--seconds=10` 可用于探索，不替代默认正式测量。
+
+`--moving-pointer` 单独测正常播放 300 秒，预热 15 秒。每16ms发送一次真实系统鼠标移动，在三只猫和空白之间往返；不点击。专用普通探针覆盖工作区，它的进程也计入统计。记录发送次数和桌面层实际收到的 mousemove 次数；若输入未到达桌面层则失败。该测试同样需要保持桌面解锁、停止人工输入及独占机器。汇总写入 `verification/perf-moving-summary.json`，逐进程原始采样保留在 `app/out/overlay-check/results/perf-moving-raw.json`，不覆盖静止鼠标的三状态汇总。
+
+本轮移动鼠标复测：300秒、282次采样，CPU平均1.54%、峰值2.98%，私有内存平均600.63MB、峰值613.79MB。平均CPU及内存峰值达标。发送11820次系统移动，桌面层记录11871个mousemove事件；独占检查通过。此次原始采样同时复制到 `verification/perf-moving-raw.json` 并提交，方便复核各进程数据。旧三状态汇总仍是首次实现的历史证据，本轮没有重测全部隐藏和全屏状态的性能。
 
 脚本将原始采样写入 `app/out/overlay-check/results/perf-raw.json`，汇总和桌面交互证据在本目录 `verification/`。本次逐进程原始采样被后续桌面复测的旧版构建清理；保留了完整三阶段汇总和终端阶段结果。构建已改为保留 results，后续复测不会再清理测量文件。汇总含屏幕、GPU 信息与测量口径。未采集 GPU Engine 利用率；GPU 信息只用于确认设备和渲染器，不能当成 GPU 占用数据。
 

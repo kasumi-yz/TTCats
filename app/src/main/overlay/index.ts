@@ -37,6 +37,8 @@ export async function createOverlay(options: OverlayOptions) {
   let hidden = settings.visibleCats.length === 0;
   let disposed = false;
   let queue: Promise<void> = Promise.resolve();
+  let pendingDisplayRebuild: Promise<void> | undefined;
+  let displayKey: string | undefined;
   let lastFullscreenCheck = -Infinity;
   let rendererReady = false;
   const send = (message: MainToOverlay): void => {
@@ -65,10 +67,10 @@ export async function createOverlay(options: OverlayOptions) {
     if (fullscreen || hidden) window.hide();
     else window.showInactive();
   };
-  const poll = (): void => {
+  const poll = (sample?: ReturnType<typeof input>): void => {
     if (!window || window.isDestroyed()) return;
     try {
-      const state = input();
+      const state = sample ?? input();
       if (state.now - lastFullscreenCheck >= 500) {
         const next = options.system.isFullscreen();
         lastFullscreenCheck = state.now;
@@ -102,9 +104,10 @@ export async function createOverlay(options: OverlayOptions) {
     if (!payload || typeof payload !== 'object') return;
     const message = payload as OverlayToMain;
     try {
-      safety.receive(message, input());
+      const state = input();
+      safety.receive(message, state);
       if (message.type === 'catMenu' || message.type === 'stageDebug') options.onMessage?.(message);
-      poll();
+      poll(state);
       if (!rendererReady) {
         rendererReady = true;
         send({ type: 'ghost', active: ghost });
@@ -116,12 +119,25 @@ export async function createOverlay(options: OverlayOptions) {
   };
   ipcMain.on(IPC_CHANNELS.overlayToMain, listener);
 
-  const rebuild = (): Promise<void> => {
+  const rebuild = (force = true): Promise<void> => {
+    if (!force && pendingDisplayRebuild) return pendingDisplayRebuild;
     const job = queue.then(async () => {
+      if (!force) pendingDisplayRebuild = undefined;
       if (disposed) return;
+      const display = screen.getPrimaryDisplay();
+      const area = display.workArea;
+      const key = JSON.stringify([
+        display.id,
+        area.x,
+        area.y,
+        area.width,
+        area.height,
+        display.scaleFactor,
+      ]);
+      if (!force && key === displayKey && window && !window.isDestroyed()) return;
       const previous = window;
       const next = new BrowserWindow({
-        ...screen.getPrimaryDisplay().workArea,
+        ...area,
         title: zh.overlay.title,
         transparent: true,
         frame: false,
@@ -139,6 +155,7 @@ export async function createOverlay(options: OverlayOptions) {
         },
       });
       window = next;
+      displayKey = key;
       rendererReady = false;
       // Keep at least one BrowserWindow alive throughout reconstruction.
       if (previous && !previous.isDestroyed()) previous.destroy();
@@ -168,15 +185,18 @@ export async function createOverlay(options: OverlayOptions) {
       }
     });
     queue = job.catch(options.onError);
+    if (!force) pendingDisplayRebuild = job;
     return job;
   };
   const changed = (): void => {
-    void rebuild().catch(options.onError);
+    void rebuild(false).catch(options.onError);
   };
   screen.on('display-added', changed);
   screen.on('display-removed', changed);
   screen.on('display-metrics-changed', changed);
-  const timer = setInterval(poll, OVERLAY_TIMING.watchdogMs);
+  const timer = setInterval(() => {
+    poll();
+  }, OVERLAY_TIMING.watchdogMs);
   try {
     await rebuild();
   } catch (error) {

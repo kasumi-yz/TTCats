@@ -16,6 +16,8 @@ import {
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 const root = join(appRoot, '..');
 const verification = process.argv.includes('--verify');
+const movingPointer = process.argv.includes('--moving-pointer');
+assert.ok(!verification || !movingPointer, '--verify and --moving-pointer are separate runs');
 const seconds = Number(process.argv.find((a) => a.startsWith('--seconds='))?.slice(10) ?? 300);
 assert.ok(Number.isFinite(seconds) && seconds >= 10);
 const results = join(output, 'results');
@@ -227,6 +229,34 @@ async function verify(page: Page): Promise<void> {
   }
   await expect.poll(async () => (await inspect(page)).cats[0]?.cache.length).toBe(3);
   record('per-cat cache bounded to current plus recent two');
+  await page.evaluate(
+    'window.overlayTestDecorations(' +
+      JSON.stringify({
+        bubbles: [{ cat: id, text: '喵', ageMs: 150 }],
+        effects: [{ id: 1, effect: 'hearts', x: cat.x, y: cat.y - 100, ageMs: 150 }],
+      }) +
+      ')',
+  );
+  await sleep(150);
+  const decorationSize = await page.evaluate<{
+    width: number;
+    height: number;
+    text: string;
+  }>(`(() => {
+    const layer = window.overlayTest.app.stage.children.at(-1);
+    const bubble = layer.children[0];
+    window.overlayDecorationIdentity = [...layer.children];
+    return { width: bubble.children[0].width, height: bubble.children[0].height, text: bubble.children[1].text };
+  })()`);
+  assert.equal(decorationSize.text, '喵');
+  assert.ok(decorationSize.width > 16 && decorationSize.height > 12);
+  await sleep(200);
+  assert.ok(
+    await page.evaluate(
+      'window.overlayTest.app.stage.children.at(-1).children.every((child, index) => child === window.overlayDecorationIdentity[index])',
+    ),
+  );
+  record('real Pixi bubble has sized backdrop; bubble and effect reuse objects');
   await page.screenshot({ path: join(evidence, 'overlay.png') });
   await main('globalThis.overlayFixture.captureProtection(false)');
   await sleep(250);
@@ -261,6 +291,7 @@ async function verify(page: Page): Promise<void> {
     { timeout: 15000 },
   );
   await main('globalThis.overlayFixture.captureProtection(true)');
+  await page.evaluate('window.overlayTestDecorations({ bubbles: [], effects: [] })');
   await main('globalThis.overlayFixture.probe(true)');
   await expect.poll(async () => (await inspect(page)).paused, { timeout: 10000 }).toBe(true);
   const stopped = (await inspect(page)).drew;
@@ -318,11 +349,44 @@ async function metric(electronApp: ElectronApplication, phase: string): Promise<
     }),
   };
 }
+let pointerTimer: ReturnType<typeof setInterval> | undefined;
+let pointerError: unknown;
+let pointerMoves = 0;
+let pointerEvents = 0;
 try {
   const page = await overlayPage();
   await waitReady(page);
   if (verification) await verify(page);
   else {
+    if (movingPointer) {
+      setDpiAware();
+      await main('globalThis.overlayFixture.probe(false)');
+      const points = await electron.evaluate(({ screen }) => {
+        const area = screen.getPrimaryDisplay().workArea;
+        return [0.2, 0.8].map((x) =>
+          screen.dipToScreenPoint({
+            x: Math.round(area.x + area.width * x),
+            y: area.y + area.height - 80,
+          }),
+        );
+      });
+      const from = points[0];
+      const to = points[1];
+      assert.ok(from && to);
+      await page.evaluate(
+        "window.overlayPerfPointerEvents = 0; window.addEventListener('mousemove', () => window.overlayPerfPointerEvents++);",
+      );
+      pointerTimer = setInterval(() => {
+        if (pointerError) return;
+        try {
+          const step = pointerMoves++ % 240;
+          const along = step <= 120 ? step / 120 : (240 - step) / 120;
+          mouseMove(from.x + (to.x - from.x) * along, from.y);
+        } catch (error) {
+          pointerError = error;
+        }
+      }, 16);
+    }
     const samples: Sample[] = [];
     const summaries: {
       phase: string;
@@ -333,22 +397,26 @@ try {
       samples: number;
     }[] = [];
     const gpu = await electron.evaluate(({ app }) => app.getGPUInfo('complete'));
-    for (const phase of ['playing', 'hidden', 'fullscreen']) {
+    for (const phase of movingPointer
+      ? ['playing-moving-pointer']
+      : ['playing', 'hidden', 'fullscreen']) {
       console.log('PHASE ' + phase + ': 15s warmup, ' + String(seconds) + 's measurement');
       if (phase === 'hidden') await main('globalThis.overlayFixture.hide(true)');
       if (phase === 'fullscreen') {
         await main('globalThis.overlayFixture.hide(false)');
         await main('globalThis.overlayFixture.probe(true)');
       }
-      if (phase !== 'playing')
+      if (phase === 'hidden' || phase === 'fullscreen')
         await expect.poll(async () => (await inspect(page)).paused).toBe(true);
       await sleep(15000);
+      assert.equal(pointerError, undefined);
       await metric(electron, phase); // prime interval after warmup
       const end = Date.now() + seconds * 1000;
       const phaseSamples: Sample[] = [];
       let lastExclusive = 0;
       while (Date.now() < end) {
         await sleep(1000);
+        assert.equal(pointerError, undefined);
         if (Date.now() - lastExclusive >= 15000) {
           exclusivity();
           lastExclusive = Date.now();
@@ -372,12 +440,19 @@ try {
       console.log(JSON.stringify(summaries.at(-1)));
     }
     exclusivity();
+    if (movingPointer) {
+      pointerEvents = await page.evaluate<number>('window.overlayPerfPointerEvents');
+      assert.ok(pointerEvents > seconds * 10, 'Real pointer movement did not reach overlay');
+    }
     const summary = {
       seconds,
       warmupSeconds: 15,
       exclusive: true,
       fps: 30,
       cats: 3,
+      movingPointer,
+      pointerMoves,
+      pointerEvents,
       cpuMethod: 'Sum app.getAppMetrics percentCPUUsage for all processes; no extra division',
       memoryMethod: 'Sum privateBytes (KB) / 1024; all processes',
       gpu,
@@ -387,14 +462,21 @@ try {
       }),
       summaries,
     };
-    writeFileSync(join(results, 'perf-raw.json'), JSON.stringify(samples));
-    writeFileSync(join(evidence, 'perf-summary.json'), JSON.stringify(summary, null, 2) + '\n');
+    writeFileSync(
+      join(results, movingPointer ? 'perf-moving-raw.json' : 'perf-raw.json'),
+      JSON.stringify(samples),
+    );
+    writeFileSync(
+      join(evidence, movingPointer ? 'perf-moving-summary.json' : 'perf-summary.json'),
+      JSON.stringify(summary, null, 2) + '\n',
+    );
     for (const s of summaries) {
       assert.ok(s.cpuAverage < 2, 'CPU average >= 2%');
       assert.ok(s.privatePeakMB < 700, 'private memory >= 700MB');
     }
   }
 } finally {
+  if (pointerTimer) clearInterval(pointerTimer);
   if (verification) {
     ctrl(false);
     mouseButton(false);

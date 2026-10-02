@@ -52,7 +52,13 @@ export async function createOverlayView(
   document.body.append(app.canvas);
   app.ticker.maxFPS = 30;
   const cats = new Map<string, CatView>();
+  let drawnOrder: string[] = [];
   const decorations = new Container();
+  const bubbles = new Map<
+    string,
+    { container: Container; text: Text; background: Graphics; value: string }
+  >();
+  const effects = new Map<number, { graphics: Graphics; effect: string }>();
   app.stage.addChild(decorations);
   let paused = false;
   let ghost = false;
@@ -84,10 +90,10 @@ export async function createOverlayView(
   };
   const hit = (): string | null => {
     if (ghost && dragging === undefined) return null;
-    const sorted = [...cats.entries()]
-      .reverse()
-      .sort((a, b) => (b[1].placement?.depth ?? 0) - (a[1].placement?.depth ?? 0));
-    for (const [cat, view] of sorted) {
+    for (let i = drawnOrder.length - 1; i >= 0; i--) {
+      const cat = drawnOrder[i];
+      const view = cat === undefined ? undefined : cats.get(cat);
+      if (!view) continue;
       const media = view.current;
       const p = view.placement;
       if (
@@ -96,12 +102,17 @@ export async function createOverlayView(
         view.sprite.visible &&
         hitCat(pointer, { ...p, mirrored: view.shownMirrored }, media.clip, media.mask, media.frame)
       )
-        return cat;
+        return cat ?? null;
     }
     return null;
   };
-  const renew = (): void => {
-    bridge.sendOverlay({ type: 'hover', onCat: !paused && hit() !== null });
+  let lastHover: boolean | undefined;
+  const renew = (force = true): void => {
+    const onCat = !paused && hit() !== null;
+    if (force || onCat !== lastHover) {
+      bridge.sendOverlay({ type: 'hover', onCat });
+      lastHover = onCat;
+    }
   };
   const cancel = (): void => {
     stage.handlePointer({ type: 'cancel' }, Date.now());
@@ -111,6 +122,7 @@ export async function createOverlayView(
       app.canvas.releasePointerCapture(capture);
     bridge.sendOverlay({ type: 'drag', active: false });
     bridge.sendOverlay({ type: 'hover', onCat: false });
+    lastHover = false;
   };
   const abort = new AbortController();
   const eventOptions = { signal: abort.signal };
@@ -119,7 +131,7 @@ export async function createOverlayView(
     (event) => {
       pointer = { x: event.clientX, y: event.clientY };
       if (!paused) stage.handlePointer({ type: 'move', ...pointer, cat: hit() }, Date.now());
-      renew();
+      renew(false);
     },
     eventOptions,
   );
@@ -147,6 +159,7 @@ export async function createOverlayView(
       if (app.canvas.hasPointerCapture(capture)) app.canvas.releasePointerCapture(capture);
       bridge.sendOverlay({ type: 'drag', active: false });
       bridge.sendOverlay({ type: 'hover', onCat: false });
+      lastHover = false;
     },
     eventOptions,
   );
@@ -180,6 +193,7 @@ export async function createOverlayView(
     if (disposed || paused) return;
     const now = Date.now();
     const frame = stage.update(now);
+    drawnOrder = frame.cats.map((p) => p.cat);
     const visible = new Set(frame.cats.map((p) => p.cat));
     for (const [cat, view] of cats) {
       if (!visible.has(cat)) {
@@ -200,7 +214,7 @@ export async function createOverlayView(
       if (key !== view.wanted) {
         view.wanted = key;
         const generation = ++view.generation;
-        view.current?.freezeLastFrame();
+        view.current?.freezeForPose(p.pose);
         const target = view;
         void view.cache
           .request(key)
@@ -238,31 +252,76 @@ export async function createOverlayView(
       app.stage.setChildIndex(view.sprite, app.stage.children.length - 1);
     }
     app.stage.setChildIndex(decorations, app.stage.children.length - 1);
-    for (const child of decorations.removeChildren()) child.destroy();
+    const bubbleCats = new Set(frame.bubbles.map((bubble) => bubble.cat));
+    for (const [cat, bubble] of bubbles) {
+      if (!bubbleCats.has(cat) || !cats.has(cat)) {
+        bubble.container.destroy({ children: true });
+        bubbles.delete(cat);
+      }
+    }
     for (const bubble of frame.bubbles) {
-      const p = cats.get(bubble.cat)?.placement;
-      if (!p) continue;
-      const text = new Text({
-        text: bubble.text,
-        style: { fontFamily: 'sans-serif', fontSize: 16, fill: 0x333333 },
-      });
-      text.anchor.set(0.5, 1);
-      text.position.set(p.x, p.y - 170 * p.scale);
-      text.alpha = Math.min(1, bubble.ageMs / 150);
-      decorations.addChild(text);
+      const view = cats.get(bubble.cat);
+      const p = view?.placement;
+      const anchor = view?.current?.clip.footAnchors[view.current.frame];
+      if (!p || !anchor) continue;
+      let shown = bubbles.get(bubble.cat);
+      if (!shown) {
+        const container = new Container();
+        const background = new Graphics();
+        const text = new Text({
+          text: bubble.text,
+          style: { fontFamily: 'sans-serif', fontSize: 16, fill: 0x333333 },
+        });
+        text.anchor.set(0.5, 1);
+        text.position.set(0, -6);
+        container.addChild(background, text);
+        decorations.addChild(container);
+        shown = { container, background, text, value: '' };
+        bubbles.set(bubble.cat, shown);
+      }
+      if (shown.value !== bubble.text) {
+        shown.text.text = bubble.text;
+        shown.value = bubble.text;
+        const width = shown.text.width + 16;
+        const height = shown.text.height + 12;
+        shown.background
+          .clear()
+          .roundRect(-width / 2, -height, width, height, 8)
+          .fill({ color: 0xffffff, alpha: 0.95 });
+      }
+      shown.container.position.set(p.x, p.y - anchor.y * p.scale - 8);
+      shown.container.alpha = Math.min(1, bubble.ageMs / 150);
+    }
+    const effectIds = new Set(frame.effects.map((effect) => effect.id));
+    for (const [id, effect] of effects) {
+      if (!effectIds.has(id)) {
+        effect.graphics.destroy();
+        effects.delete(id);
+      }
     }
     for (const effect of frame.effects) {
-      const graphics = new Graphics();
-      const age = effect.ageMs / (effect.effect === 'cut' ? 300 : 1200);
-      if (effect.effect === 'hearts') {
-        graphics
-          .moveTo(0, 5)
-          .bezierCurveTo(-18, -7, -8, -18, 0, -10)
-          .bezierCurveTo(8, -18, 18, -7, 0, 5)
-          .fill(0xff769e);
-      } else {
-        graphics.circle(-8, 0, 12).circle(8, 2, 14).circle(0, -10, 11).fill(0xeeeeee);
+      let shown = effects.get(effect.id);
+      if (shown && shown.effect !== effect.effect) {
+        shown.graphics.destroy();
+        shown = undefined;
       }
+      if (!shown) {
+        const graphics = new Graphics();
+        if (effect.effect === 'hearts') {
+          graphics
+            .moveTo(0, 5)
+            .bezierCurveTo(-18, -7, -8, -18, 0, -10)
+            .bezierCurveTo(8, -18, 18, -7, 0, 5)
+            .fill(0xff769e);
+        } else {
+          graphics.circle(-8, 0, 12).circle(8, 2, 14).circle(0, -10, 11).fill(0xeeeeee);
+        }
+        decorations.addChild(graphics);
+        shown = { graphics, effect: effect.effect };
+        effects.set(effect.id, shown);
+      }
+      const graphics = shown.graphics;
+      const age = effect.ageMs / (effect.effect === 'cut' ? 300 : 1200);
       graphics.position.set(effect.x, effect.y - age * 35);
       graphics.alpha = Math.max(0, 1 - age);
       graphics.scale.set(1 + age);

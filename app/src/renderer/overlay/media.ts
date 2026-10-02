@@ -1,5 +1,5 @@
 import { Texture, VideoSource } from 'pixi.js';
-import type { Clip } from '../../shared/schemas';
+import type { Clip, Pose } from '../../shared/schemas';
 import { contentUrl } from '../../shared/content-url';
 import { hitMaskLayout } from '../../shared/hitmask';
 import { zh } from '../../shared/strings.zh-CN';
@@ -69,9 +69,11 @@ export class ClipMedia {
     }
   }
 
-  freezeLastFrame(): void {
+  freezeForPose(pose: Pose): void {
     this.video.pause();
-    this.video.currentTime = (this.clip.frameCount - 1) / this.clip.fps;
+    const frame =
+      this.clip.kind === 'transition' && pose === this.clip.fromPose ? 0 : this.clip.frameCount - 1;
+    this.video.currentTime = frame / this.clip.fps;
   }
 
   sync(timeMs: number, rate: number): void {
