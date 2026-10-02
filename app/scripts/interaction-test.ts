@@ -98,6 +98,8 @@ interface MainLog {
   facts: LoggedFact[];
   overlay: LoggedOverlay[];
   report?: StageDebugReport;
+  /** 原生右键菜单弹出、关闭的次数（Electron 菜单的 menu-will-show / menu-will-close）。 */
+  menus: { shown: number; closed: number };
 }
 interface OverlayLog {
   downs: { t: number; x: number; y: number; button: number }[];
@@ -491,6 +493,13 @@ class Harness {
   expectedDropX(cat: Cat, dx: number): number {
     return this.floor.clampX(cat.x + dx, this.shapes.get(cat.id)?.relativeSize ?? 1);
   }
+  /** 测试兜底：关掉还开着的右键菜单。 */
+  async closeMenu(): Promise<void> {
+    await this.app.evaluate(() => {
+      (globalThis as unknown as { interactionMenu?: Electron.Menu }).interactionMenu?.closePopup();
+    });
+    await sleep(200);
+  }
   async reportOf(id: string): Promise<StageDebugReport['cats'][number] | undefined> {
     return (await this.mainLog()).report?.cats.find((c) => c.cat === id);
   }
@@ -519,8 +528,9 @@ async function main(): Promise<void> {
   const notepadFiles: string[] = [];
   try {
     await app.evaluate(
-      ({ ipcMain }, channels) => {
+      ({ ipcMain, Menu }, channels) => {
         const log = {
+          menus: { shown: 0, closed: 0 },
           seq: 0,
           facts: [] as unknown[],
           overlay: [] as unknown[],
@@ -544,6 +554,15 @@ async function main(): Promise<void> {
             log.overlay.push({ ...message, seq: ++log.seq, t: Date.now() });
           },
         );
+        // 只旁听原生菜单的显示和关闭，照常调用正式的 popup
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- 下面用 call 绑回原来的菜单对象
+        const popup = Menu.prototype.popup;
+        Menu.prototype.popup = function (options) {
+          this.once('menu-will-show', () => log.menus.shown++);
+          this.once('menu-will-close', () => log.menus.closed++);
+          Object.assign(globalThis, { interactionMenu: this });
+          popup.call(this, options);
+        };
         Object.assign(globalThis, { interactionLog: log });
       },
       { fact: IPC_CHANNELS.fact, overlayToMain: IPC_CHANNELS.overlayToMain },
@@ -1170,7 +1189,7 @@ async function main(): Promise<void> {
     });
 
     await h.scenario('M1 互动', async () => {
-      // 右键菜单：在探针窗口打字时右键点猫，菜单弹出、按 Esc 关掉以后继续打字
+      // 右键菜单：在探针窗口打字时右键点猫，菜单弹出；先按 Esc 关，关不掉就像真人一样点回输入框，再继续打字
       await probePage.evaluate("document.getElementById('input').value = ''");
       await h.click(inputBox);
       await h.sleep(200);
@@ -1180,33 +1199,52 @@ async function main(): Promise<void> {
       h.moveTo(core);
       await h.sleep(120);
       const m = await h.mark();
-      await h.click(core, 30, 'secondary');
-      const shown = await waitFor(() => input.popupMenuVisible(), 1500, 20);
-      await h.sleep(200);
-      const fgDuring = input.foregroundWindow();
-      const menuAsked = (await h.overlaySince(m)).some(
-        (o) => o.type === 'catMenu' && o.cat === a.id,
-      );
-      input.key(VK.ESCAPE, true);
-      input.key(VK.ESCAPE, false);
-      const closed = await waitFor(() => !input.popupMenuVisible(), 1500, 20);
-      await h.sleep(200);
-      await h.type('def');
-      await h.sleep(200);
-      const value = await probePage.evaluate<string>("document.getElementById('input').value");
-      const fgAfter = input.foregroundWindow();
-      const facts = await h.factsSince(m);
-      record(
-        'M1 互动',
-        '右键菜单不抢焦点',
-        menuAsked &&
-          shown !== null &&
-          closed !== null &&
-          fgAfter === probeHwnd &&
-          value === 'abcdef' &&
-          facts.length === 0,
-        `请求菜单=${menuAsked}，菜单弹出=${shown !== null}，菜单开着时前台=${input.windowText(fgDuring) || input.windowClass(fgDuring)}，Esc 后关掉=${closed !== null}，之后前台=${input.windowText(fgAfter)}，输入框内容="${value}"，误触发互动 ${facts.length} 次`,
-      );
+      const before = (await h.mainLog()).menus;
+      const menus = async (): Promise<MainLog['menus']> => (await h.mainLog()).menus;
+      let closedBy = '';
+      try {
+        await h.click(core, 30, 'secondary');
+        const shown =
+          (await waitFor(async () => (await menus()).shown > before.shown, 1500, 20)) !== null;
+        await h.sleep(200);
+        const fgDuring = input.foregroundWindow();
+        const menuAsked = (await h.overlaySince(m)).some(
+          (o) => o.type === 'catMenu' && o.cat === a.id,
+        );
+        h.check();
+        input.key(VK.ESCAPE, true);
+        input.key(VK.ESCAPE, false);
+        if ((await waitFor(async () => (await menus()).closed > before.closed, 1000, 20)) !== null)
+          closedBy = 'Esc';
+        else {
+          await h.click(inputBox);
+          if (
+            (await waitFor(async () => (await menus()).closed > before.closed, 1000, 20)) !== null
+          )
+            closedBy = '点回输入框';
+        }
+        await h.sleep(200);
+        await h.type('def');
+        await h.sleep(200);
+        const value = await probePage.evaluate<string>("document.getElementById('input').value");
+        const fgAfter = input.foregroundWindow();
+        const facts = await h.factsSince(m);
+        record(
+          'M1 互动',
+          '右键菜单不抢焦点',
+          menuAsked &&
+            shown &&
+            fgDuring === probeHwnd &&
+            closedBy !== '' &&
+            fgAfter === probeHwnd &&
+            value === 'abcdef' &&
+            facts.length === 0,
+          `请求菜单=${menuAsked}，菜单弹出=${shown}，菜单开着时前台=${input.windowText(fgDuring)}，关菜单的方式=${closedBy || '关不掉'}，之后前台=${input.windowText(fgAfter)}，输入框内容="${value}"，误触发互动 ${facts.length} 次`,
+        );
+      } finally {
+        // 无论结果如何，都不能让一个没关掉的菜单影响后面的测试
+        if (!closedBy) await h.closeMenu();
+      }
     });
 
     // ===== 防卡死 =====
