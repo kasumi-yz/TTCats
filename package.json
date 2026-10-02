@@ -14,6 +14,7 @@
     "validate:content": "npm run validate:content -w app",
     "gen:schemas": "npm run gen:schemas -w app",
     "build": "npm run build -w app",
-    "test:smoke": "npm run test:smoke -w app"
+    "test:smoke": "npm run test:smoke -w app",
+    "dist": "npm run dist -w app"
   }
 }

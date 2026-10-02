@@ -1,8 +1,34 @@
 # 安装包只包含构建输出；测试猫咪包、脚本和测试源码不随应用发布。
+appId: top.ttcats.desktop
+productName: TTCats
+directories:
+  output: dist
+  buildResources: build
+asar: true
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  packElevateHelper: false
+  installerLanguages: [zh_CN]
+  language: 2052
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  runAfterFinish: false
+  deleteAppDataOnUninstall: false
+  artifactName: TTCats-Setup-${version}-${arch}.${ext}
+  include: build/installer.nsh
 files:
   - out/**/*
   - package.json
   - '!test-content/**/*'
+  - '!**/{scripts,e2e,test,tests,__tests__,test-*}/**/*'
+  - '!**/*.{test,spec}.*'
+  - '!**/test-*.js'
 extraResources:
   - from: ../content
     to: content
