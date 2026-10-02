@@ -47,6 +47,8 @@ export async function createOverlay(options: OverlayOptions) {
   let queue: Promise<void> = Promise.resolve();
   let pendingDisplayRebuild: Promise<void> | undefined;
   let displayKey: string | undefined;
+  /** 桌面层实际在哪块显示器（Display.id）。挪不过去时按窗口实际位置算，不是想去的那块。 */
+  let displayId: number | undefined;
   let lastFullscreenCheck = -Infinity;
   let rendererReady = false;
   const send = (message: MainToOverlay): void => {
@@ -63,6 +65,8 @@ export async function createOverlay(options: OverlayOptions) {
     const cursor = screen.getCursorScreenPoint();
     return {
       now: Date.now(),
+      x: cursor.x - (bounds?.x ?? 0),
+      y: cursor.y - (bounds?.y ?? 0),
       inside:
         bounds !== undefined &&
         cursor.x >= bounds.x &&
@@ -99,7 +103,7 @@ export async function createOverlay(options: OverlayOptions) {
         }
       }
       state.paused = fullscreen || hidden;
-      const result = safety.poll(state);
+      const result = safety.poll(state, ignore);
       if (result.cancel) send({ type: 'dragCancel' });
       if (result.ghost !== ghost) {
         ghost = result.ghost;
@@ -109,6 +113,7 @@ export async function createOverlay(options: OverlayOptions) {
         ignore = result.ignore;
         window.setIgnoreMouseEvents(ignore, { forward: true });
       }
+      if (result.clickThrough) send({ type: 'clickThrough', x: state.x, y: state.y });
     } catch (error) {
       // 系统查询失败时优先释放鼠标，不能把失败当成安全的查询结果。
       ignore = true;
@@ -200,7 +205,7 @@ export async function createOverlay(options: OverlayOptions) {
         target.scaleFactor,
       ]);
       const placed = (): void => {
-        options.onDisplays?.(displays.map(displayInfo), target.id);
+        if (displayId !== undefined) options.onDisplays?.(displays.map(displayInfo), displayId);
       };
       if (!force && key === displayKey && window && !window.isDestroyed()) {
         placed();
@@ -219,17 +224,19 @@ export async function createOverlay(options: OverlayOptions) {
             bounds.height === area.height
           );
         };
+        displayId = target.id;
         if (!matches()) {
           window.setBounds(area);
-          if (!matches())
+          if (!matches()) {
+            const actual = window.getBounds();
             options.onError(
               new Error(
-                zh.integration.overlayBoundsMismatch(
-                  JSON.stringify(area),
-                  JSON.stringify(window.getBounds()),
-                ),
+                zh.integration.overlayBoundsMismatch(JSON.stringify(area), JSON.stringify(actual)),
               ),
             );
+            // 没挪到目标显示器上时，调试台要看到窗口实际在的那块
+            displayId = screen.getDisplayMatching(actual).id;
+          }
         }
         displayKey = key;
         placed();
@@ -256,6 +263,7 @@ export async function createOverlay(options: OverlayOptions) {
       });
       window = next;
       displayKey = key;
+      displayId = target.id;
       placed();
       next.setIgnoreMouseEvents(true, { forward: true });
       next.setContentProtection(!settings.showInScreenCapture);

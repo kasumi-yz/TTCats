@@ -302,6 +302,10 @@ export const zh = {
     loadFailed: (cat: string, file: string) => `${cat}：无法加载片段文件 ${file}。`,
     badMask: (cat: string, file: string) => `${cat}：点击遮罩 ${file} 的长度不正确。`,
   },
+  overlayAudio: {
+    failed: (cat: string, file: string, detail: string) =>
+      `${cat}：无法播放声音文件 ${file}。原因：${detail}`,
+  },
   integration: {
     summon: '召唤',
     visibility: '显示或隐藏猫',
@@ -327,7 +331,7 @@ export const zh = {
     disabledPack: (name: string) =>
       `猫咪包「${name}」因桌面层连续故障在本次运行中停用，原文件和显示偏好保留。`,
   },
-  /** M2 共享接口（#52）：存档迁移，以及功能还没做好时先拒绝的命令。 */
+  /** M2 共享接口（#52）：存档迁移。 */
   interfaces: {
     migrationBadShape: (from: number) =>
       `版本 ${from} 的存档状态格式不对（应该是带 settings 的对象），无法迁移。`,
