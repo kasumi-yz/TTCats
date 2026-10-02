@@ -1,6 +1,5 @@
 // core/stage 的入口：实现 shared/core-api.ts 里的 StageCore。
 // 管理可以随时丢掉的画面状态（ADR-0004）：每只猫在哪、正在播哪个片段、接下来要做什么。
-// 鼠标互动（单击、撸猫、拎起放下、鼠标靠近）在 #24 里做。
 import type {
   ContentCatalog,
   CreateStageCore,
@@ -17,6 +16,7 @@ import { CatActor, type ActorEnv, type StageObserver } from './actor';
 import type { Behavior } from './behavior';
 import { Floor, STANDARD_CAT_HEIGHT } from './floor';
 import { pick, uniform, type Random } from './random';
+import { HEARTS_MS, PointerReactions } from './pointer-reactions';
 
 /**
  * 两次推进之间隔了这么久（毫秒），就当作是隐藏后恢复：当前的计划照真实时间推进完，
@@ -55,6 +55,7 @@ export class Stage implements StageCore {
   private pointer: Point | undefined;
   private effects: ActiveEffect[] = [];
   private nextEffectId = 1;
+  private readonly pointerReactions: PointerReactions;
 
   constructor(options: StageOptions) {
     this.content = options.content;
@@ -73,6 +74,7 @@ export class Stage implements StageCore {
       },
       observer: options.observer,
     };
+    this.pointerReactions = new PointerReactions(() => this.actors, this.env);
     this.syncActors(options.now);
   }
 
@@ -90,6 +92,11 @@ export class Stage implements StageCore {
 
   handleCommand(command: StageCommand, now: number): void {
     this.advanceTo(now);
+    if (command.type !== 'debug/simulate' && command.type !== 'cat/summon') {
+      const actor = this.actor(command.cat);
+      if (actor?.isAirborne()) return;
+      if (actor !== undefined) this.pointerReactions.cancelFor(actor, now);
+    }
     switch (command.type) {
       case 'cat/summon':
         this.summon(command.cats, command.to, now);
@@ -101,7 +108,10 @@ export class Stage implements StageCore {
         this.actor(command.cat)?.playDebugClip(command.clip, command.variant, now);
         break;
       case 'debug/simulate':
-        // 模拟鼠标互动在 #24 里做
+        {
+          const actor = this.actor(command.cat);
+          if (actor !== undefined) this.pointerReactions.simulate(actor, command.interaction, now);
+        }
         break;
     }
   }
@@ -110,11 +120,12 @@ export class Stage implements StageCore {
     this.advanceTo(now);
     // 召唤没写目标时，走到最后一次看到鼠标的地方
     if (input.type !== 'cancel') this.pointer = { x: input.x, y: input.y };
+    this.pointerReactions.handle(input, now);
   }
 
-  setGhostMode(_active: boolean, now: number): void {
-    // 幽灵模式只影响鼠标互动（#24）
+  setGhostMode(active: boolean, now: number): void {
     this.advanceTo(now);
+    this.pointerReactions.setGhost(active, now);
   }
 
   setBounds(bounds: StageBounds, now: number): void {
@@ -127,7 +138,10 @@ export class Stage implements StageCore {
 
   update(now: number): StageFrame {
     this.advanceTo(now);
-    this.effects = this.effects.filter((e) => now - e.at < CUT_EFFECT_MS);
+    this.pointerReactions.refresh(now);
+    this.effects = this.effects.filter(
+      (e) => now - e.at < (e.effect === 'hearts' ? HEARTS_MS : CUT_EFFECT_MS),
+    );
     const cats = this.actors
       .map((actor, order) => ({ placement: actor.placement(), order }))
       // 离得远的先画，离得近的后画、挡住远的；一样远时按显示顺序
@@ -135,7 +149,7 @@ export class Stage implements StageCore {
       .map((entry) => entry.placement);
     return {
       cats,
-      bubbles: [],
+      bubbles: this.pointerReactions.frameBubbles(now),
       effects: this.effects.map((e) => ({
         id: e.id,
         effect: e.effect,
@@ -147,8 +161,7 @@ export class Stage implements StageCore {
   }
 
   drainFacts(): Fact[] {
-    // 事实都来自鼠标互动（#24）
-    return [];
+    return this.pointerReactions.drainFacts();
   }
 
   debugReport(now: number): StageDebugReport {
@@ -176,9 +189,18 @@ export class Stage implements StageCore {
     const dt = now - this.lastNow;
     if (dt < 0) {
       for (const effect of this.effects) effect.at += dt;
+      this.pointerReactions.shiftTime(dt);
     } else if (dt > 0) {
       const catchUp = dt > LONG_GAP_MS;
-      for (const actor of this.actors) actor.advance(this.lastNow, now, catchUp);
+      let from = this.lastNow;
+      const expiry = this.pointerReactions.expiry();
+      if (expiry !== undefined && expiry <= now) {
+        const at = Math.max(from, expiry);
+        for (const actor of this.actors) actor.advance(from, at, catchUp);
+        this.pointerReactions.expire(at);
+        from = at;
+      }
+      for (const actor of this.actors) actor.advance(from, now, catchUp);
     }
     this.lastNow = now;
   }
@@ -203,6 +225,9 @@ export class Stage implements StageCore {
         entry !== undefined && missingRequiredClips(entry.clips.map((c) => c.name)).length === 0
       );
     });
+    for (const actor of this.actors) {
+      if (!visible.includes(actor.id)) this.pointerReactions.cancelFor(actor, now, true);
+    }
     this.actors = visible.map((id) => this.actor(id) ?? this.createActor(id, now));
   }
 
@@ -226,7 +251,8 @@ export class Stage implements StageCore {
     const floor = this.env.floor;
     const target = to ?? this.pointer ?? { x: floor.width / 2, y: floor.nearY };
     const unit = STANDARD_CAT_HEIGHT * this.settings.scale;
-    const actors = this.actors.filter((actor) => cats.includes(actor.id));
+    const actors = this.actors.filter((actor) => cats.includes(actor.id) && !actor.isAirborne());
+    for (const actor of actors) this.pointerReactions.cancelFor(actor, now);
     const left = actors.filter((actor) => actor.x <= target.x).sort((a, b) => b.x - a.x);
     const right = actors.filter((actor) => actor.x > target.x).sort((a, b) => a.x - b.x);
     for (const [side, group] of [
@@ -267,6 +293,13 @@ function describeBehavior(behavior: Behavior): string {
       return b.sleepCommand;
     case 'debugClip':
       return b.debugClip(behavior.clip);
+    case 'poked':
+    case 'petted':
+    case 'pickedUp':
+    case 'dropped':
+    case 'approach':
+    case 'avoid':
+      return zh.stagePointer.behaviors[behavior.kind];
   }
 }
 

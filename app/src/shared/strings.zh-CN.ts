@@ -232,6 +232,18 @@ export const zh = {
       debugClip: (clip: string) => `调试：播放「${clip}」`,
     },
   },
+  stagePointer: {
+    friendly: '喵～',
+    reserved: '喵？',
+    behaviors: {
+      poked: '被戳到',
+      petted: '被撸着',
+      pickedUp: '被拎着',
+      dropped: '放下落地',
+      approach: '凑近鼠标',
+      avoid: '走开',
+    },
+  },
   content: {
     packReadFailed: (detail: string) =>
       `无法读取猫咪包文件，请检查 cat.json、clips 目录和文件权限：${detail}`,

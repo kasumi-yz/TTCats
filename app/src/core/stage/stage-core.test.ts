@@ -476,8 +476,16 @@ describe('命令', () => {
     const { stage } = setup();
     stage.handlePointer({ type: 'move', x: 1500, y: 1000, cat: null }, T0 + 10);
     stage.handleCommand({ type: 'cat/summon', cats: ['a'] }, T0 + 20);
-    const final = placementOf(at(run(stage, T0 + 20, T0 + 40_000), -1));
-    expect(Math.abs(final.x - 1500)).toBeLessThan(300);
+    let arrived = false;
+    for (let t = T0 + 20; t <= T0 + 40_000; t += 33) {
+      const p = placementOf(stage.update(t));
+      if (at(stage.debugReport(t).cats, 0).behavior !== '被召唤过来' || p.clip !== 'idle-stand')
+        continue;
+      expect(Math.abs(p.x - 1500)).toBeLessThan(300);
+      arrived = true;
+      break;
+    }
+    expect(arrived).toBe(true);
   });
 
   it('同时召唤几只猫，它们分开站在鼠标两边，不叠在一起', () => {
