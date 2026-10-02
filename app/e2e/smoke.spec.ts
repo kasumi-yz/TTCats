@@ -275,8 +275,10 @@ test('正式调试台：命令抵达桌面层、三猫画面报告、双窗口�
     await debug.getByRole('button', { name: zh.panels.simulations.drop, exact: true }).click();
     await expect.poll(async () => (await current())?.clip).not.toBe('dangle');
     await debug.getByRole('button', { name: zh.panels.hide, exact: true }).click();
+    await expect.poll(async () => (await current())?.behavior).toBe(zh.stageLifecycle.exit);
+    // M2 隐藏要先落地、走到屏幕外，不能沿用 M1 立刻消失的 5 秒期限。
     await expect
-      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat))
+      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat), { timeout: 60_000 })
       .not.toContain('test-calm');
     await debug.getByRole('button', { name: zh.panels.show, exact: true }).click();
     await expect
@@ -342,6 +344,8 @@ test('正式调试台：命令抵达桌面层、三猫画面报告、双窗口�
 });
 
 test('旁边连续点击：正式输入采样链路保持穿透，调试命令能让开并在勿扰时原地接着睡', async () => {
+  // 等出场、入场，以及靠边的猫让开时横穿屏幕，都按真实时间走。
+  test.setTimeout(240_000);
   const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-nearby-'));
   const app = await launch(directory);
   try {
@@ -443,8 +447,9 @@ test('旁边连续点击：正式输入采样链路保持穿透，调试命令�
     await debug.evaluate(
       'window.ttcats.sendCommand({type:"settings/update",patch:{visibleCats:["test-calm"]}})',
     );
+    // 被隐藏的猫要先走出屏幕才移除（#59）。
     await expect
-      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat))
+      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat), { timeout: 60_000 })
       .toEqual(['test-calm']);
     // 勿扰命令和到期计时由 #58 实现；这里在快照边界提供勿扰状态，验证 #60 的响应。
     const dndSnapshot: StateSnapshot = {
@@ -462,12 +467,17 @@ test('旁边连续点击：正式输入采样链路保持穿透，调试命令�
       },
       { channel: IPC_CHANNELS.snapshot, state: dndSnapshot },
     );
+    // 先等它入场、走到勿扰角落睡下，再验证让开后不回角落。
+    await expect
+      .poll(async () => (await report(debug))?.cats[0]?.clip, { timeout: 60_000 })
+      .toBe('sleep');
     await debug.evaluate(
       'window.ttcats.sendCommand({type:"debug/simulate",cat:"test-calm",interaction:"nearbyClicks"})',
     );
     await expect.poll(async () => (await report(debug))?.cats[0]?.behavior).toBe('走开');
+    // 角落靠边时只能往另一头走，慢猫横穿屏幕要几十秒。
     await expect
-      .poll(async () => (await report(debug))?.cats[0]?.clip, { timeout: 20000 })
+      .poll(async () => (await report(debug))?.cats[0]?.clip, { timeout: 90_000 })
       .toBe('sleep');
     const sleepingX = (await report(debug))?.cats[0]?.x;
     await new Promise((resolve) => setTimeout(resolve, 7000));

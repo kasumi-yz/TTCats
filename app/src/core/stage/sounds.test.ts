@@ -73,9 +73,10 @@ describe('片段声音提示', () => {
     const { stage, command } = setup();
     command('purr', 0);
     stage.applySnapshot(snapshot([], {}, 2), 0);
-    expect(stage.update(0)).toMatchObject({ cats: [], sounds: [] });
-    stage.applySnapshot(snapshot(['sound-cat'], {}, 3), 100);
-    expect(stage.update(3000).sounds).toEqual([]);
+    expect(stage.update(0).sounds).toEqual([]);
+    expect(stage.update(60_000).cats).toEqual([]);
+    stage.applySnapshot(snapshot(['sound-cat'], {}, 3), 60_100);
+    expect(stage.update(63_000).sounds).toEqual([]);
   });
 
   it('随机挑选本猫的声音文件，空声音位不发提示', () => {
