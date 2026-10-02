@@ -6,6 +6,7 @@ import { zh } from '../../shared/strings.zh-CN';
 import { ClipCache } from './cache';
 import { hitCat } from './coordinates';
 import { ClipMedia } from './media';
+import { createPhotoAnimation } from './photo';
 
 interface CatView {
   cache: ClipCache<ClipMedia>;
@@ -51,6 +52,7 @@ export async function createOverlayView(
   }
   document.body.append(app.canvas);
   app.ticker.maxFPS = 30;
+  const photo = createPhotoAnimation();
   const cats = new Map<string, CatView>();
   let drawnOrder: string[] = [];
   const decorations = new Container();
@@ -337,6 +339,7 @@ export async function createOverlayView(
   app.ticker.add(draw);
   unsubscribe.push(
     bridge.onOverlay((message) => {
+      if (message.type === 'photo' && !paused) photo.play(message);
       if (message.type === 'ghost') {
         ghost = message.active;
         stage.setGhostMode(ghost, Date.now());
@@ -347,6 +350,7 @@ export async function createOverlayView(
       if (message.type === 'paused') {
         paused = message.paused;
         if (paused) {
+          photo.clear();
           cancel();
           app.stop();
           for (const view of cats.values()) view.current?.video.pause();
@@ -379,6 +383,7 @@ export async function createOverlayView(
     }),
     dispose(): void {
       disposed = true;
+      photo.clear();
       abort.abort();
       clearInterval(timer);
       unsubscribe.forEach((off) => {
