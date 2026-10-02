@@ -13,7 +13,7 @@ export const CURRENT_SAVE_VERSION = 2;
 
 /**
  * 需要存档的游戏状态，由 core/game 管理。以后需要什么，靠存档迁移再加（硬性规则 8）。
- * 一键隐藏、开机静默、调试台快进的时钟偏移都是临时的，不进存档。
+ * 一键隐藏、开机静默、调试台快进的时钟偏移都是临时的，不进存档；存档里的时刻都是真实时间，不带快进的偏移。
  */
 export const GameStateSchema = z.strictObject({
   settings: SettingsSchema,

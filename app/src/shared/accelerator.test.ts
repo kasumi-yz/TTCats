@@ -63,6 +63,24 @@ describe('全局快捷键的写法', () => {
     expect(hideAllShortcutProblem(input)).toBe(zh.validation.acceleratorFormat);
   });
 
+  // 普通对象继承来的属性名不能被当成按键或修饰键（#75 审查）
+  it.each([
+    'Ctrl+__proto__',
+    'Ctrl+constructor',
+    'Ctrl+toString',
+    'Ctrl+hasOwnProperty',
+    'Ctrl+valueOf',
+    '__proto__+H',
+    'constructor+H',
+    'Ctrl+__proto__+H',
+    'Ctrl+constructor+H',
+    'toString+Ctrl+H',
+  ])('对象原型上的名字不是合法的按键或修饰键：%s', (input) => {
+    expect(parseAccelerator(input)).toBeUndefined();
+    expect(normalizeAccelerator(input)).toBeUndefined();
+    expect(hideAllShortcutProblem(input)).toBe(zh.validation.acceleratorFormat);
+  });
+
   it.each(['H', 'F5', 'Shift+H', 'shift+Space'])(
     '%s 没有 Ctrl、Alt 或 Super，打字时会误触发',
     (input) => {

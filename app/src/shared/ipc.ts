@@ -11,8 +11,8 @@
 // - 程序状态（AppStatus）：版本号、自动更新、快捷键注册结果、显示器列表。不存档、不归 core/game 管，
 //   主进程推给面板显示。
 //
-// 所有时间都是 Unix 毫秒（真实时间），不按帧数累加（ADR-0004）。
-// 例外：勿扰模式的结束时刻是 core/game 看到的时间，见 StateSnapshot.clockOffsetMs。
+// 所有时间都是 Unix 毫秒（真实时间），不按帧数累加（ADR-0004）。调试台快进的偏移只在 core/game 内部用，
+// 消息和存档里的时刻都不带偏移（见 core-api.ts 的 GameCore）。
 // 所有坐标都是桌面层里的 CSS 像素，原点在桌面层左上角。
 import type { ContentCatalog } from './core-api';
 import type { DisplayInfo } from './display';
@@ -87,6 +87,7 @@ export type GameCommand =
   /**
    * 快进时钟：core/game 看到的时间往后跳 minutes 分钟（1～10080，也就是最多 7 天），用来测勿扰到点、安静时段。
    * 可以多次快进，累加。偏移不存档，重启后清零。core/game 收到后立刻按新时间推进一次（相当于 tick）。
+   * 没到期的定时勿扰，剩余时间跟着减少（快照和存档里的 until 提前同样的时长，仍是真实时间）。
    */
   | { type: 'debug/advanceClock'; minutes: number }
   /** 模拟开机启动的静默：从现在起 STARTUP_QUIET_MS 内不出声（D10，#67）。 */
@@ -178,8 +179,8 @@ export interface StateSnapshot {
   at: number;
   settings: Settings;
   /**
-   * 勿扰模式（M2）。桌面层只看 mode 是不是 off：到点由 core/game 的 tick 结束并推送新快照，
-   * 桌面层不用 until 自己判断。面板显示剩余时间：until -（at + clockOffsetMs）。
+   * 勿扰模式（M2）。until 是真实时间，面板显示的剩余时间就是 until - at，显示结束时刻直接用 until。
+   * 桌面层只看 mode 是不是 off：到点由 core/game 的 tick 结束并推送新快照，桌面层不用 until 自己判断。
    */
   doNotDisturb: DoNotDisturb;
   /** 一键隐藏开着没有（M2）。不存档。 */
@@ -191,7 +192,8 @@ export interface StateSnapshot {
    */
   silencedBy: SilenceReason[];
   /**
-   * 调试台快进的时钟偏移（毫秒，M2）。core/game 看到的时间 = 真实时间 + 它。没快进过是 0，重启后清零。
+   * 调试台快进的时钟偏移（毫秒，M2），只给调试台显示。core/game 看到的时间 = 真实时间 + 它。
+   * 没快进过是 0，重启后清零。快照里其他时刻都不带这个偏移。
    */
   clockOffsetMs: number;
 }

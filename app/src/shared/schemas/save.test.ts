@@ -149,6 +149,15 @@ describe('M2 的设置项', () => {
     ]);
   });
 
+  it.each(['Ctrl+__proto__', 'Ctrl+constructor', 'Ctrl+__proto__+H', 'Ctrl+constructor+H'])(
+    '快捷键 %s 是对象原型上的名字，设置不接受',
+    (hideAllShortcut) => {
+      expect(problemsOf(SettingsSchema, { ...defaultSettings([]), hideAllShortcut })).toEqual([
+        `字段 hideAllShortcut（一键隐藏快捷键） 不对：${zh.validation.acceleratorFormat}`,
+      ]);
+    },
+  );
+
   it('安静时段可以跨午夜，也可以开始等于结束（表示没有安静时段）', () => {
     for (const [start, end] of [
       ['22:30', '06:00'],

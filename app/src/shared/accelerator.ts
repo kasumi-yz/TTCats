@@ -10,49 +10,52 @@ export const DEBUG_PANEL_SHORTCUT = 'CommandOrControl+Shift+F10';
 const MODIFIER_ORDER = ['Ctrl', 'Alt', 'Shift', 'Super'] as const;
 type Modifier = (typeof MODIFIER_ORDER)[number];
 
+// 下面两张表用 Map 而不是普通对象：查的是外面传进来的字符串，普通对象会把 `__proto__`、
+// `constructor` 这些继承来的属性也当成查到了（#75 审查）。
+
 /**
  * 修饰键的各种写法（不分大小写）→ 规范写法。Windows 上 CommandOrControl 就是 Ctrl，Meta 就是 Super（Win 键）。
  * 只收 Windows 上有效的写法：Electron 在 Windows 上会忽略 Command、Option，
  * 写了等于没有修饰键，所以不收；Mac 版（第四阶段）再按需要加。
  */
-const MODIFIERS: Readonly<Record<string, Modifier>> = {
-  commandorcontrol: 'Ctrl',
-  cmdorctrl: 'Ctrl',
-  control: 'Ctrl',
-  ctrl: 'Ctrl',
-  alt: 'Alt',
-  shift: 'Shift',
-  super: 'Super',
-  meta: 'Super',
-};
+const MODIFIERS: ReadonlyMap<string, Modifier> = new Map([
+  ['commandorcontrol', 'Ctrl'],
+  ['cmdorctrl', 'Ctrl'],
+  ['control', 'Ctrl'],
+  ['ctrl', 'Ctrl'],
+  ['alt', 'Alt'],
+  ['shift', 'Shift'],
+  ['super', 'Super'],
+  ['meta', 'Super'],
+]);
 
 /** 有名字的按键（不分大小写）→ 规范写法。Return 和 Enter、Escape 和 Esc 是同一个键。 */
-const NAMED_KEYS: Readonly<Record<string, string>> = {
-  plus: 'Plus',
-  space: 'Space',
-  tab: 'Tab',
-  backspace: 'Backspace',
-  delete: 'Delete',
-  insert: 'Insert',
-  return: 'Enter',
-  enter: 'Enter',
-  up: 'Up',
-  down: 'Down',
-  left: 'Left',
-  right: 'Right',
-  home: 'Home',
-  end: 'End',
-  pageup: 'PageUp',
-  pagedown: 'PageDown',
-  escape: 'Esc',
-  esc: 'Esc',
-  printscreen: 'PrintScreen',
-  numdec: 'numdec',
-  numadd: 'numadd',
-  numsub: 'numsub',
-  nummult: 'nummult',
-  numdiv: 'numdiv',
-};
+const NAMED_KEYS: ReadonlyMap<string, string> = new Map([
+  ['plus', 'Plus'],
+  ['space', 'Space'],
+  ['tab', 'Tab'],
+  ['backspace', 'Backspace'],
+  ['delete', 'Delete'],
+  ['insert', 'Insert'],
+  ['return', 'Enter'],
+  ['enter', 'Enter'],
+  ['up', 'Up'],
+  ['down', 'Down'],
+  ['left', 'Left'],
+  ['right', 'Right'],
+  ['home', 'Home'],
+  ['end', 'End'],
+  ['pageup', 'PageUp'],
+  ['pagedown', 'PageDown'],
+  ['escape', 'Esc'],
+  ['esc', 'Esc'],
+  ['printscreen', 'PrintScreen'],
+  ['numdec', 'numdec'],
+  ['numadd', 'numadd'],
+  ['numsub', 'numsub'],
+  ['nummult', 'nummult'],
+  ['numdiv', 'numdiv'],
+]);
 
 /** 可以直接写的标点（Electron 文档列出的那些）。加号是分隔符，要写成 Plus。 */
 const PUNCTUATION = new Set(')!@#$%^&*(:;=<,_->.?/~`{][|\\}"');
@@ -63,7 +66,7 @@ function normalizeKey(token: string): string | undefined {
   if (/^f(?:[1-9]|1[0-9]|2[0-4])(?![\s\S])/.test(lower)) return lower.toUpperCase();
   if (/^num[0-9](?![\s\S])/.test(lower)) return lower;
   if (token.length === 1 && PUNCTUATION.has(token)) return token;
-  return NAMED_KEYS[lower];
+  return NAMED_KEYS.get(lower);
 }
 
 export interface Accelerator {
@@ -82,7 +85,7 @@ export function parseAccelerator(text: string): Accelerator | undefined {
   if (key === undefined) return undefined;
   const modifiers = new Set<Modifier>();
   for (const token of tokens) {
-    const modifier = MODIFIERS[token.toLowerCase()];
+    const modifier = MODIFIERS.get(token.toLowerCase());
     if (modifier === undefined || modifiers.has(modifier)) return undefined;
     modifiers.add(modifier);
   }

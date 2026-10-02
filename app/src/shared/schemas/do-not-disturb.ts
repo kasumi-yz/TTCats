@@ -14,7 +14,10 @@ export const DoNotDisturbSchema = z.discriminatedUnion('mode', [
   z.strictObject({
     mode: z.literal('timed'),
     /**
-     * 结束时刻（Unix 毫秒），是 core/game 看到的时间（真实时间加上调试台快进的偏移，见 StateSnapshot.clockOffsetMs）。
+     * 结束时刻（Unix 毫秒），**按真实时间**：不再快进的话，勿扰在真实时间的这一刻结束。存档和快照里都是这个意思，
+     * 所以重启（快进的偏移清零）后剩余时间不变。
+     * 调试台每快进 d 毫秒，没到期的勿扰剩余时间少 d，也就是 until 提前 d；提前到已经过去就结束。
+     * core/game 内部怎么存由它自己定（比如按"真实时间 + 偏移"存），但 exportState 和快照里必须换算成真实时间（#75 审查）。
      * 桌面层不用它自己判断到点，只看 mode 是不是 off。
      */
     until: z.number(),

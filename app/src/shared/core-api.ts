@@ -38,9 +38,13 @@ export interface GameOutput {
 export const STARTUP_QUIET_MS = 60_000;
 
 /**
- * core/game 看到的时间 = 调用方传进来的 now + 调试台快进的偏移（GameCommand 的 debug/advanceClock）。
- * 勿扰的结束时刻、开机静默的结束时刻、安静时段的判断都按这个时间算。偏移由 core/game 自己记，不存档，
- * 重启（重新创建 GameCore）后清零；当前值放在快照的 clockOffsetMs 里。
+ * 调试台的快进（GameCommand 的 debug/advanceClock）：core/game 看到的时间 = 调用方传进来的 now + 快进的偏移。
+ * 偏移由 core/game 自己记，不存档，重启（重新创建 GameCore）后清零；当前值放在快照的 clockOffsetMs 里。
+ * - 安静时段、开机静默按 core/game 看到的时间判断。
+ * - 勿扰的剩余时间也跟着快进减少，但对外（exportState、快照）的结束时刻 `doNotDisturb.until` 一律是**真实时间**：
+ *   每快进 d，没到期的勿扰 until 提前 d。这样存进存档的 until 不带偏移，重启后剩余时间不变（#75 审查）。
+ *   比如先快进 7 天、再开 30 分钟勿扰，存档里的 until 是真实时间 + 30 分钟，重启后还剩 30 分钟，不是 7 天多。
+ *   #58 要用单元测试覆盖："快进后开始勿扰 → 导出 → 重建"和"开着勿扰 → 快进一部分 → 导出 → 重建"，剩余时间都不变。
  */
 export interface GameCore {
   handleCommand(command: GameCommand, now: number): GameOutput;
@@ -53,13 +57,16 @@ export interface GameCore {
   tick(now: number): GameOutput;
   /** 生成要推送的快照。每调用一次 revision 加 1。 */
   snapshot(now: number): StateSnapshot;
-  /** 导出当前状态用于存档。 */
+  /** 导出当前状态用于存档。里面的时刻都是真实时间，不带快进的偏移。 */
   exportState(): GameState;
 }
 
 export type CreateGameCore = (options: {
   content: ContentCatalog;
-  /** 读到的存档（已经迁移到当前版本并校验过）；第一次运行时不传，用默认状态。 */
+  /**
+   * 读到的存档（已经迁移到当前版本并校验过）；第一次运行时不传，用默认状态。
+   * 新建的 GameCore 没有快进偏移，存档里的真实时间直接就是它看到的时间。
+   */
   state?: GameState;
   now: number;
   /**

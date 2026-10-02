@@ -149,4 +149,34 @@ describe('窗口消息校验', () => {
       FactSchema.safeParse({ type: 'cat/petted', cat: 'test-a', at: 1, durationMs: -1 }).success,
     ).toBe(false);
   });
+
+  it('M2 的命令：合法的能通过，坏快捷键、超范围的快进、不认识的时长和声音被拒绝', () => {
+    for (const payload of [
+      { type: 'settings/update', patch: { hideAllShortcut: 'Ctrl+Alt+K', meowVolume: 0.5 } },
+      { type: 'doNotDisturb/start', duration: '2h' },
+      { type: 'doNotDisturb/end' },
+      { type: 'hideAll/toggle' },
+      { type: 'debug/advanceClock', minutes: 30 },
+      { type: 'debug/sound', cat: 'test-a', sound: 'purr' },
+      { type: 'debug/simulate', cat: 'test-a', interaction: 'nearbyClicks' },
+      { type: 'debug/simulateFullscreen', active: true },
+      { type: 'photo/take' },
+    ]) {
+      expect(CommandSchema.safeParse(payload).success).toBe(true);
+    }
+    for (const payload of [
+      ...['Ctrl+__proto__', 'Ctrl+constructor', 'Ctrl+__proto__+H', 'Ctrl+constructor+H'].map(
+        (hideAllShortcut) => ({ type: 'settings/update', patch: { hideAllShortcut } }),
+      ),
+      { type: 'settings/update', patch: { hideAllShortcut: 'Ctrl+Shift+F10' } },
+      { type: 'doNotDisturb/start', duration: '45m' },
+      { type: 'debug/advanceClock', minutes: 0 },
+      { type: 'debug/advanceClock', minutes: 7 * 24 * 60 + 1 },
+      { type: 'debug/advanceClock', minutes: 1.5 },
+      { type: 'debug/sound', cat: 'test-a', sound: 'hiss' },
+      { type: 'photo/take', path: 'C:/x.png' },
+    ]) {
+      expect(CommandSchema.safeParse(payload).success).toBe(false);
+    }
+  });
 });
