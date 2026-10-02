@@ -93,8 +93,8 @@ export async function createOverlayView(
       }),
     };
   };
-  const hit = (): string | null => {
-    if (ghost && dragging === undefined) return null;
+  const hit = (point = pointer, includeGhost = false): string | null => {
+    if (!includeGhost && ghost && dragging === undefined) return null;
     for (let i = drawnOrder.length - 1; i >= 0; i--) {
       const cat = drawnOrder[i];
       const view = cat === undefined ? undefined : cats.get(cat);
@@ -105,7 +105,7 @@ export async function createOverlayView(
         media &&
         p &&
         view.sprite.visible &&
-        hitCat(pointer, { ...p, mirrored: view.shownMirrored }, media.clip, media.mask, media.frame)
+        hitCat(point, { ...p, mirrored: view.shownMirrored }, media.clip, media.mask, media.frame)
       )
         return cat ?? null;
     }
@@ -353,6 +353,9 @@ export async function createOverlayView(
   app.ticker.add(draw);
   unsubscribe.push(
     bridge.onOverlay((message) => {
+      if (message.type === 'clickThrough' && !paused) {
+        stage.handlePointer({ ...message, cat: hit(message, true) }, Date.now());
+      }
       if (message.type === 'ghost') {
         ghost = message.active;
         stage.setGhostMode(ghost, Date.now());

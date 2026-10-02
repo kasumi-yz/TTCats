@@ -72,6 +72,7 @@ export class Stage implements StageCore {
       floor: this.makeFloor(),
       scale: this.settings.scale,
       activityLevel: this.settings.activityLevel,
+      doNotDisturb: options.snapshot.doNotDisturb.mode !== 'off',
       addEffect: (effect, x, y, at) => {
         this.effects.push({ id: this.nextEffectId++, effect, x, y, at });
       },
@@ -91,6 +92,7 @@ export class Stage implements StageCore {
     this.settings = snapshot.settings;
     this.env.scale = this.settings.scale;
     this.env.activityLevel = this.settings.activityLevel;
+    this.env.doNotDisturb = snapshot.doNotDisturb.mode !== 'off';
     this.env.floor = this.makeFloor();
     for (const actor of this.actors) actor.clampToFloor();
     this.syncActors(now);
