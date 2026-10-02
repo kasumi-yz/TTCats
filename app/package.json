@@ -24,6 +24,7 @@
     "start:test-pack": "electron-vite build && tsx scripts/start-test-pack.ts"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "koffi": "^3.3.2",
     "pixi.js": "^8.21.0",
     "react": "^19.3.0",

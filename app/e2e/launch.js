@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import fs, { readFileSync } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import { extname, resolve, sep } from 'node:path';
-import { app, Tray, Menu, dialog, globalShortcut } from 'electron';
+import { app, Tray, Menu, dialog, globalShortcut, shell } from 'electron';
 import koffi from 'koffi';
 
 // 只观察原生边界，业务仍执行正式构建入口。
@@ -19,6 +19,9 @@ globalThis.smoke = {
   fullscreen: false,
   crashes: 0,
   slowRequests: 0,
+  saveDialogs: [],
+  savePath: null,
+  shownItems: [],
 };
 // 在文件系统边界模拟存档目录拒绝写入，保留正式 SaveStore、退出流程和日志。
 const openSync = fs.openSync;
@@ -81,7 +84,17 @@ dialog.showMessageBox = async (options) => {
       );
     });
   }
-  return { response: 1, checkboxChecked: false };
+  // 其余提示框按取消键（关闭）处理。
+  return { response: options.cancelId ?? 1, checkboxChecked: false };
+};
+// 保存对话框返回测试指定的路径；没指定时当作取消。
+dialog.showSaveDialog = async (options) => {
+  globalThis.smoke.saveDialogs.push(options);
+  const filePath = globalThis.smoke.savePath;
+  return filePath ? { canceled: false, filePath } : { canceled: true, filePath: '' };
+};
+shell.showItemInFolder = (path) => {
+  globalThis.smoke.shownItems.push(path);
 };
 dialog.showErrorBox = (title, message) => {
   console.error(title, message);

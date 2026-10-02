@@ -31,6 +31,8 @@ export interface RecoveryOptions {
   onSafeMode?: () => void;
   /** 与正式入口使用相同的桌面层加载函数。 */
   reload: () => void | Promise<void>;
+  /** 安全模式提示框里"导出诊断信息"按钮的处理（D13）。 */
+  exportDiagnostics?: () => Promise<void>;
   /** 默认显示原生中文提示；测试可以替换以免阻塞自动化。 */
   notify?: (message: string) => void | Promise<void>;
   unresponsiveMs?: number;
@@ -96,15 +98,21 @@ export function attachRecovery(options: RecoveryOptions): {
   const notify =
     options.notify ??
     (async (message: string): Promise<void> => {
+      const exportDiagnostics = options.exportDiagnostics;
+      const buttons = [zh.recovery.openLogs, zh.recovery.close];
+      if (exportDiagnostics) buttons.unshift(zh.recovery.exportDiagnostics);
       const result = await dialog.showMessageBox({
         type: 'warning',
         title: zh.recovery.safeModeTitle,
         message,
-        buttons: [zh.recovery.openLogs, zh.recovery.close],
-        defaultId: 1,
-        cancelId: 1,
+        buttons,
+        // 有导出按钮时默认导出：D13 要求进入安全模式时提示用户导出诊断信息。
+        defaultId: exportDiagnostics ? 0 : buttons.length - 1,
+        cancelId: buttons.length - 1,
       });
-      if (result.response === 0) {
+      const choice = buttons[result.response];
+      if (choice === zh.recovery.exportDiagnostics) await exportDiagnostics?.();
+      else if (choice === zh.recovery.openLogs) {
         const error = await shell.openPath(log.directory);
         if (error !== '') throw new Error(error);
       }

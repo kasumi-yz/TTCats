@@ -342,6 +342,25 @@ describe('故障恢复保留存档并停止不安全的重试', () => {
     );
     expect(native.openPath).toHaveBeenCalledWith(join(target.directory, 'logs'));
   });
+
+  it('提供导出诊断信息时，按钮排在最前并调用导出', async () => {
+    native.showMessageBox.mockResolvedValue({ response: 0 });
+    const exportDiagnostics = vi.fn(() => Promise.resolve());
+    const target = setup({ notify: undefined, exportDiagnostics });
+    for (let index = 0; index < 4; index++) {
+      target.recovery.crash();
+      await settle();
+    }
+    expect(native.showMessageBox).toHaveBeenCalledWith(
+      expect.objectContaining({
+        buttons: [zh.recovery.exportDiagnostics, zh.recovery.openLogs, zh.recovery.close],
+        defaultId: 0,
+        cancelId: 2,
+      }),
+    );
+    expect(exportDiagnostics).toHaveBeenCalledOnce();
+    expect(native.openPath).not.toHaveBeenCalled();
+  });
 });
 
 describe('调试台崩溃命令只接受可信主框架', () => {
