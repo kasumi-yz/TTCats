@@ -51,6 +51,8 @@ export interface ActorEnv {
   /** 用户设置的缩放。 */
   scale: number;
   activityLevel: ActivityLevel;
+  /** 旁边连续点击让开以后，在新位置继续睡；聚到角落的行为由 #59 负责。 */
+  doNotDisturb?: boolean;
   addEffect(effect: StageEffect, x: number, y: number, at: number): void;
   readonly observer?: StageObserver | undefined;
 }
@@ -113,6 +115,7 @@ export class CatActor {
   private cutPending = false;
   private readonly lastVariant = new Map<string, number>();
   private held = false;
+  private restAfterNearbyClicks = false;
   private airY: number | undefined;
   private fall: { fromY: number; elapsedMs: number } | undefined;
 
@@ -228,6 +231,12 @@ export class CatActor {
   }
 
   private planAutonomous(): void {
+    if (this.restAfterNearbyClicks && this.env.doNotDisturb) {
+      this.behavior = { kind: 'rest', pose: 'sleep' };
+      this.queue = [this.restStep('sleep')];
+      return;
+    }
+    this.restAfterNearbyClicks = false;
     const rest = this.restPose();
     const behavior = chooseBehavior(this.env.random, {
       personality: this.cat.personality,
@@ -409,6 +418,7 @@ export class CatActor {
    * cut：立刻换。当前片段不在姿势上时，放一个小特效盖住切换处（ADR-0002）。
    */
   interrupt(steps: Step[], behavior: Behavior, mode: InterruptMode, t: number): void {
+    this.restAfterNearbyClicks = false;
     this.held = false;
     this.behavior = behavior;
     this.queue = steps;
@@ -434,6 +444,20 @@ export class CatActor {
         ? seg.clip.toPose
         : seg.clip.fromPose;
     this.startNext(t);
+  }
+
+  /** 防打扰让开；勿扰期间后续休息留在新位置，主动命令仍可替换计划。 */
+  avoidNearbyClicks(x: number, t: number): void {
+    this.interrupt(
+      [
+        { kind: 'move', gait: 'walk', x, d: this.d },
+        { kind: 'clip', name: REST_LOOPS[this.env.doNotDisturb ? 'sleep' : 'stand'], holdMs: 5000 },
+      ],
+      { kind: 'avoid' },
+      'cut',
+      t,
+    );
+    this.restAfterNearbyClicks = true;
   }
 
   /** 召唤：走（或跑）到 (x, d)，转向 towardX，再站着等一会儿。 */
