@@ -66,6 +66,10 @@ function snapshot(revision = 1): StateSnapshot {
     revision,
     at: new Date('2026-10-01T12:00:00').getTime(),
     settings: defaultSettings([cat.id]),
+    doNotDisturb: { mode: 'off' },
+    hideAll: false,
+    silencedBy: [],
+    clockOffsetMs: 0,
   };
 }
 function fakeBridge(content = catalog()) {
@@ -76,6 +80,16 @@ function fakeBridge(content = catalog()) {
     sendCommand,
     getSnapshot: vi.fn(() => Promise.resolve(snapshot())),
     getContent: vi.fn(() => Promise.resolve(content)),
+    getAppStatus: vi.fn(() =>
+      Promise.resolve({
+        revision: 1,
+        version: '0.0.0',
+        update: { state: 'unsupported' as const },
+        hideAllShortcut: { accelerator: 'CommandOrControl+Alt+Shift+H', registered: true },
+        displays: [],
+        overlayDisplayId: null,
+      }),
+    ),
     onSnapshot: vi.fn((listener: (value: StateSnapshot) => void) => {
       snapshots.add(listener);
       return () => {
@@ -88,6 +102,7 @@ function fakeBridge(content = catalog()) {
         reports.delete(listener);
       };
     }),
+    onAppStatus: vi.fn(() => () => undefined),
   };
   return {
     bridge,

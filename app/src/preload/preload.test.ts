@@ -44,9 +44,12 @@ describe('preload 桥', () => {
     await expect(panelsBridge.getSnapshot()).resolves.toEqual({ revision: 3 });
     electron.ipcRenderer.invoke.mockResolvedValueOnce({ cats: {}, disabled: [] });
     await expect(overlayBridge.getContent()).resolves.toEqual({ cats: {}, disabled: [] });
+    electron.ipcRenderer.invoke.mockResolvedValueOnce({ revision: 5 });
+    await expect(panelsBridge.getAppStatus()).resolves.toEqual({ revision: 5 });
     expect(electron.ipcRenderer.invoke.mock.calls).toEqual([
       [IPC_CHANNELS.getSnapshot],
       [IPC_CHANNELS.getContent],
+      [IPC_CHANNELS.getAppStatus],
     ]);
   });
 
@@ -64,12 +67,14 @@ describe('preload 桥', () => {
     expect(electron.ipcRenderer.removeListener).toHaveBeenCalledWith(channel, handler);
   });
 
-  it('面板收快照和调试台的画面状态', () => {
+  it('面板收快照、调试台的画面状态和程序状态', () => {
     panelsBridge.onSnapshot(() => undefined);
     panelsBridge.onStageDebug(() => undefined);
+    panelsBridge.onAppStatus(() => undefined);
     expect(electron.ipcRenderer.on.mock.calls.map((call) => call[0] as string)).toEqual([
       IPC_CHANNELS.snapshot,
       IPC_CHANNELS.stageDebug,
+      IPC_CHANNELS.appStatus,
     ]);
   });
 });

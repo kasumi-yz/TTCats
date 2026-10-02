@@ -20,9 +20,14 @@ import type {
   StageCommand,
   StateSnapshot,
 } from '../shared/ipc';
-import { IPC_CHANNELS } from '../shared/ipc';
+import { IPC_CHANNELS, isMainCommand } from '../shared/ipc';
 import { CONTENT_PROTOCOL } from '../shared/content-url';
-import { CURRENT_SAVE_VERSION, defaultSettings, GameStateSchema } from '../shared/schemas';
+import {
+  CURRENT_SAVE_VERSION,
+  defaultGameState,
+  GameStateSchema,
+  SAVE_MIGRATIONS,
+} from '../shared/schemas';
 import { zh } from '../shared/strings.zh-CN';
 import {
   contentDirectory,
@@ -66,7 +71,8 @@ if (!app.requestSingleInstanceLock()) {
         directory: join(app.getPath('appData'), 'TTCats'),
         currentVersion: CURRENT_SAVE_VERSION,
         schema: GameStateSchema,
-        defaultState: () => ({ settings: defaultSettings([]) }),
+        defaultState: () => defaultGameState([]),
+        migrations: SAVE_MIGRATIONS,
         now: Date.now,
         log: report,
       });
@@ -82,9 +88,7 @@ if (!app.requestSingleInstanceLock()) {
       const content = loadContent(directory, report);
       const names = new Map(Object.entries(content.cats).map(([id, pack]) => [id, pack.cat.name]));
       const initialState =
-        loaded.source === 'default'
-          ? { settings: defaultSettings(Object.keys(content.cats)) }
-          : loaded.state;
+        loaded.source === 'default' ? defaultGameState(Object.keys(content.cats)) : loaded.state;
       registerContentProtocol(protocol, net, directory, content);
       const windows = new Set<BrowserWindow>();
       const panels = new Map<string, BrowserWindow>();
@@ -287,7 +291,8 @@ if (!app.requestSingleInstanceLock()) {
           invalidMessage(payload, parsed.error.issues);
           return;
         }
-        if (parsed.data.type !== 'debug/crashOverlay') command(parsed.data);
+        // debug/crashOverlay 由恢复模块自己监听；其他 MainCommand 由 M2 各功能的 issue 接上。
+        if (!isMainCommand(parsed.data)) command(parsed.data);
       };
       const onFact = (event: Electron.IpcMainEvent, payload: unknown): void => {
         if (
@@ -333,7 +338,7 @@ if (!app.requestSingleInstanceLock()) {
             overlay: window,
             save,
             log,
-            defaultState: () => ({ settings: defaultSettings([...names.keys()]) }),
+            defaultState: () => defaultGameState([...names.keys()]),
             activeCats: () =>
               session
                 .snapshot()

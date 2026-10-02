@@ -1,4 +1,4 @@
-// M1 定稿（#18）。
+// M1 定稿（#18），M2 新增 CatSound（#52）。
 // 猫咪包（CatPack）里的 cat.json：一只猫的身份、体型、性格参数、关系和声音位（ADR-0005）。
 // 代码只能根据这里的性格参数和关系来决定行为，不能为某一只猫写死行为。
 import { z } from 'zod';
@@ -44,6 +44,10 @@ export const SoundSlotsSchema = z.strictObject({
   purr: z.array(PackPathSchema),
 });
 export type SoundSlots = z.infer<typeof SoundSlotsSchema>;
+
+/** 猫的声音种类（M2，#52）：喵叫、呼噜。 */
+export const CatSoundSchema = SoundSlotsSchema.keyof();
+export type CatSound = z.infer<typeof CatSoundSchema>;
 
 export const CatSchema = z
   .strictObject({

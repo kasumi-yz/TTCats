@@ -11,7 +11,7 @@ import {
 } from '@playwright/test';
 import type { ContentCatalog } from '../src/shared/core-api';
 import type { StageCommand, StageDebugReport, StateSnapshot } from '../src/shared/ipc';
-import { CURRENT_SAVE_VERSION, defaultSettings } from '../src/shared/schemas';
+import { CURRENT_SAVE_VERSION, defaultGameState, defaultSettings } from '../src/shared/schemas';
 import { zh } from '../src/shared/strings.zh-CN';
 
 interface Smoke {
@@ -350,7 +350,11 @@ test('四次真实渲染崩溃：安全模式回退、设置不唤醒猫且不�
   };
   const backupSettings = { ...defaultSettings(ids), scale: 0.8 };
   const envelope = (settings: typeof originalSettings) =>
-    JSON.stringify({ saveVersion: CURRENT_SAVE_VERSION, savedAt: Date.now(), state: { settings } });
+    JSON.stringify({
+      saveVersion: CURRENT_SAVE_VERSION,
+      savedAt: Date.now(),
+      state: { ...defaultGameState(ids), settings },
+    });
   const original = envelope(originalSettings);
   const backup = envelope(backupSettings);
   writeFileSync(join(data, 'save.json'), original);

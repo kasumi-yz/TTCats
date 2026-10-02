@@ -6,8 +6,7 @@ import { join } from 'node:path';
 import type { BrowserWindow, IpcMain, IpcMainEvent } from 'electron';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { IPC_CHANNELS } from '../../shared/ipc';
-import { CURRENT_SAVE_VERSION, GameStateSchema } from '../../shared/schemas/save';
-import { defaultSettings } from '../../shared/schemas/settings';
+import { CURRENT_SAVE_VERSION, defaultGameState, GameStateSchema } from '../../shared/schemas/save';
 import { zh } from '../../shared/strings.zh-CN';
 import { FileLog } from '../log';
 import { SaveStore } from '../save';
@@ -44,15 +43,15 @@ function setup(extra: Partial<RecoveryOptions> = {}) {
     directory,
     currentVersion: CURRENT_SAVE_VERSION,
     schema: GameStateSchema,
-    defaultState: () => ({ settings: defaultSettings([]) }),
+    defaultState: () => defaultGameState([]),
     now: () => 1000,
     log: (message) => {
       log.write(message);
     },
   });
-  save.requestSave({ settings: defaultSettings(['backup-cat']) });
+  save.requestSave(defaultGameState(['backup-cat']));
   save.flush();
-  save.requestSave({ settings: defaultSettings(['active-cat']) });
+  save.requestSave(defaultGameState(['active-cat']));
   save.flush();
   const contents = Object.assign(new EventEmitter(), {
     isDestroyed: () => false,
@@ -77,7 +76,7 @@ function setup(extra: Partial<RecoveryOptions> = {}) {
     overlay: overlay as unknown as BrowserWindow,
     save,
     log,
-    defaultState: () => ({ settings: defaultSettings([]) }),
+    defaultState: () => defaultGameState([]),
     activeCats: () => ['active-cat', 'other-cat'],
     catName: (id) => (id === 'active-cat' ? '测试猫' : '另一只测试猫'),
     now: () => now,
@@ -126,7 +125,7 @@ describe('故障恢复保留存档并停止不安全的重试', () => {
       target.applySafeMode.mock.invocationCallOrder[0] ?? Infinity,
     );
     expect(target.applySafeMode).toHaveBeenCalledWith({
-      state: { settings: defaultSettings(['backup-cat']) },
+      state: defaultGameState(['backup-cat']),
       disabledCats: ['active-cat', 'other-cat'],
       source: 'backup',
     });

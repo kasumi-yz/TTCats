@@ -46,6 +46,8 @@ export class PointerReactions {
   ) {}
 
   handle(input: PointerInput, now: number): void {
+    // 在猫旁边连续点击在 #60 里实现，在那之前先忽略。
+    if (input.type === 'clickThrough') return;
     // 调试模拟只由调试命令结束，不跟随真实鼠标，也不被真实松手或取消打乱。
     if (this.press?.simulated || this.pet?.simulated) return;
     if (input.type === 'cancel' || input.type === 'up') {
@@ -162,6 +164,8 @@ export class PointerReactions {
   }
 
   simulate(actor: CatActor, interaction: SimulatedInteraction, now: number): void {
+    // 在猫旁边连续点击在 #60 里实现，在那之前先忽略。
+    if (interaction === 'nearbyClicks') return;
     if (interaction === 'drop') {
       if (this.press?.actor === actor && this.press.dragging) {
         this.press = undefined;

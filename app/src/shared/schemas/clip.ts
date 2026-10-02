@@ -1,5 +1,5 @@
 // 片段（Clip）元数据：猫咪包里 clips/ 下每个 *.webm 旁边的同名 *.json（设计方案第三章）。
-// M1 定稿（#18）。片段格式在 M0-A 用合成片段验证过；ADR-0002 等豆豆的真实片段复测后再改成 accepted。
+// M1 定稿（#18），M2 加了 CLIP_SOUNDS（#52）。片段格式在 M0-A 用合成片段验证过；ADR-0002 等豆豆的真实片段复测后再改成 accepted。
 // 所有坐标都是片段画面里的像素坐标，原点在左上角。
 import { z } from 'zod';
 import { zh } from '../strings.zh-CN';
@@ -10,6 +10,7 @@ import {
   PointSchema,
   SchemaVersionSchema,
 } from './common';
+import type { CatSound } from './cat';
 import { PoseSchema, type Pose } from './pose';
 
 /**
@@ -68,6 +69,15 @@ export const CLIP_SLOTS = {
 } as const satisfies Record<string, ClipSlot>;
 export type ClipSlotName = keyof typeof CLIP_SLOTS;
 
+/**
+ * 哪些片段会出声、出哪种声（D11，M2 #52）。声音文件来自 cat.json 的 sounds，
+ * 什么时候开始和停止见 core-api.ts 的 SoundCue。
+ */
+export const CLIP_SOUNDS = {
+  meow: 'meow',
+  purr: 'purr',
+} as const satisfies Partial<Record<ClipSlotName, CatSound>>;
+
 export function isClipSlotName(name: string): name is ClipSlotName {
   return Object.hasOwn(CLIP_SLOTS, name);
 }
@@ -113,7 +123,10 @@ export const ClipSchema = z
     speed: z.number().min(0),
     /** 关键点：比如 `nose`。每个关键点逐帧记录，看不到的帧写 null。 */
     keypoints: z.record(IdSchema, z.array(PointSchema.nullable())),
-    /** 声音从第几帧开始播放（从 0 算起）。没有声音就不写。 */
+    /**
+     * 声音从第几帧开始播放（从 0 算起），没写就从片段开头。只对 CLIP_SOUNDS 里列出的片段
+     * （meow 叫一声、purr 被撸时呼噜）有用，其他片段写了也不出声。规则见 core-api.ts 的 SoundCue。
+     */
     soundStartFrame: z.int().min(0).optional(),
   })
   .superRefine((clip, ctx) => {

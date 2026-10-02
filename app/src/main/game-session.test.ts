@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadContent } from './content';
 import { createGameSession } from './game-session';
 import { SaveStore } from './save';
-import { CURRENT_SAVE_VERSION, defaultSettings, GameStateSchema } from '../shared/schemas';
+import { CURRENT_SAVE_VERSION, defaultGameState, GameStateSchema } from '../shared/schemas';
 import type { StateSnapshot } from '../shared/ipc';
 import { CommandSchema, FactSchema } from './messages';
 
@@ -20,7 +20,7 @@ function setup() {
   const directory = mkdtempSync(join(import.meta.dirname, '../../../test-results-session-'));
   directories.push(directory);
   const content = loadContent(join(import.meta.dirname, '../../..', 'test-content'));
-  const state = { settings: defaultSettings(Object.keys(content.cats)) };
+  const state = defaultGameState(Object.keys(content.cats));
   const save = new SaveStore({
     directory,
     currentVersion: CURRENT_SAVE_VERSION,
