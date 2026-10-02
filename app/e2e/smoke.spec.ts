@@ -445,8 +445,9 @@ test('旁边连续点击：正式输入采样链路保持穿透，调试命令�
     await debug.evaluate(
       'window.ttcats.sendCommand({type:"settings/update",patch:{visibleCats:["test-calm"]}})',
     );
+    // 被隐藏的猫要先走出屏幕才移除（#59）。
     await expect
-      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat))
+      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat), { timeout: 60_000 })
       .toEqual(['test-calm']);
     // 勿扰命令和到期计时由 #58 实现；这里在快照边界提供勿扰状态，验证 #60 的响应。
     const dndSnapshot: StateSnapshot = {
@@ -464,6 +465,10 @@ test('旁边连续点击：正式输入采样链路保持穿透，调试命令�
       },
       { channel: IPC_CHANNELS.snapshot, state: dndSnapshot },
     );
+    // 先等它入场、走到勿扰角落睡下，再验证让开后不回角落。
+    await expect
+      .poll(async () => (await report(debug))?.cats[0]?.clip, { timeout: 60_000 })
+      .toBe('sleep');
     await debug.evaluate(
       'window.ttcats.sendCommand({type:"debug/simulate",cat:"test-calm",interaction:"nearbyClicks"})',
     );
