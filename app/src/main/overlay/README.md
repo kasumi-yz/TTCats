@@ -6,16 +6,22 @@
 
 1. 在 app.ready 之前调用 `configureOverlayGpu()`，强制低功耗 GPU。
 2. ready 后调用 `createOverlay({ system, settings, onError, ... })`，system 使用 #19 的 `createPlatform()`。
-3. `onWindow(window)` 可安装崩溃恢复与日志。窗口重建时会再次调用。
+3. `onWindow(window)` 在首次加载之前调用一次，由主入口安装崩溃恢复与日志。`reload()` 和 `rebuild()` 都复用该窗口，不再次安装恢复控制器，保留滚动窗口内的重试额度。
 4. `onMessage` 只转出右键菜单请求和画面调试报告。存档、快照、StageCommand、Fact 的路由仍由 #28 负责。
-5. 设置变化时调用 `updateSettings(settings)`；退出时等待 `dispose()`。
+5. 设置变化时调用 `updateSettings(settings)`；恢复模块的 `reload` 回调调用返回控制器的 `reload()`；进入安全模式时调用 `enterSafeMode()`；退出时等待 `dispose()`。
 6. 默认 preload 是 `out/preload/index.cjs`；默认页面是 `out/renderer/overlay/index.html`，开发服务器对应 `/overlay/index.html`。#28 接线时需把桌面层 HTML 加入 renderer 构建入口；当前构建配置只有 panels，#25 允许范围不含构建配置。
 
 每 20ms 在主进程检查租约、光标、左键和 Ctrl，每 500ms 查询全屏。按 shared 的 OVERLAY_TIMING 执行。拖动中按 Ctrl 不释放猫；松手事件丢失时发送 dragCancel。系统查询失败会释放鼠标、取消拖动并交给 onError，不能把错误当成正常状态。
 
-显示器事件串行处理，同一时间最多保留一个尚未开始的事件重建。开始前读取最新主屏 id、工作区和缩放；参数未变时跳过，所以副屏通知或重复通知不会重建。显式调用 rebuild() 仍可强制重建。先建立新窗口再销毁旧窗口，避免过程中零窗口导致 Electron 默认退出。关闭时取消队列中尚未开始的工作。
+显示器事件串行处理，同一时间最多保留一个尚未开始的事件重建。开始前读取最新主屏 id、工作区和缩放；参数未变时跳过，所以副屏通知或重复通知不会重建。`rebuild()` 更新原窗口 bounds 后调用同一个正式加载函数；`reload()` 只重载原窗口。两者共享串行队列，不销毁窗口、不清零恢复额度。窗口已关闭时不自动新建；退出时取消队列中尚未开始的工作。
 
-收到 hover 时，租约接收和即时安全检查共用一次系统输入采样；20ms 看门狗继续独立运行。
+每次加载前重置鼠标租约、拖动、幽灵状态和 rendererReady，并隐藏窗口、恢复穿透。加载期间忽略旧页面输入；成功后按当前设置和全屏状态决定是否显示。失败时继续隐藏和穿透，将错误交给 onError，并让 reload/rebuild 的 Promise reject，保留原窗口等待恢复模块处理随后到达的崩溃事件。
+
+首次加载失败的特殊约定：仅当 onWindow 已成功返回且 webContents.isCrashed() 确认渲染进程崩溃时，createOverlay 仍返回可用控制器，错误由 onError 报告，保留窗口等待随后到达的 gone。onWindow 存在本身不代表失败已被处理；文件缺失等非崩溃加载错误仍清理窗口及监听并 reject。主入口负责在 onWindow 内接入恢复，reload 回调等待 overlayReady，避免首次初始化竞态。没有 onWindow 或挂钩本身抛错时也清理并 reject。
+
+`enterSafeMode()` 在本次运行中不可撤销：立即释放输入并隐藏窗口；设置变化、全屏恢复、加载完成、显式 reload/rebuild 和显示器事件都不能再次显示或重载。主入口仍需协调恢复失败路径调用此方法，以及停用包、回退游戏状态和存档写入；本模块只负责窗口。IPC 输入只接受该窗口的主框架。
+
+收到 hover 时，租约接收和即时安全检查共用一次系统输入采样；20ms 看门狗继续独立运行。发送 IPC 前跳过已销毁或已崩溃的 webContents，避免死进程发送异常阻断安全模式隐藏。
 
 ## 验证
 

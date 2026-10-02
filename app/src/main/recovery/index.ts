@@ -27,6 +27,8 @@ export interface RecoveryOptions {
   faultedCat?: () => string | undefined;
   /** 主进程替换游戏状态，过滤内容目录并停止旧的自动存档任务。不能由渲染进程执行。 */
   applySafeMode: (result: SafeModeState) => void | Promise<void>;
+  /** 先停止正常运行；读备份或重载失败时也必须封住所有显示入口和正常写盘。 */
+  onSafeMode?: () => void;
   /** 与正式入口使用相同的桌面层加载函数。 */
   reload: () => void | Promise<void>;
   /** 默认显示原生中文提示；测试可以替换以免阻塞自动化。 */
@@ -127,6 +129,7 @@ export function attachRecovery(options: RecoveryOptions): {
         return;
       }
       overlay.hide();
+      options.onSafeMode?.();
       const active = [...new Set(options.activeCats())];
       const faulted = options.faultedCat?.();
       const disabledCats = faulted !== undefined && active.includes(faulted) ? [faulted] : active;
@@ -149,6 +152,7 @@ export function attachRecovery(options: RecoveryOptions): {
       if (disposed) return;
       // 恢复失败不能继续循环崩溃或悄悄写默认存档。隐藏桌面层，保留磁盘原件。
       state = { ...state, safeMode: true };
+      options.onSafeMode?.();
       if (!overlay.isDestroyed()) {
         overlay.setIgnoreMouseEvents(true);
         overlay.hide();
