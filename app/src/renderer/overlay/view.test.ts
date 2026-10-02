@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CatPlacement, StageCore, StageFrame } from '../../shared/core-api';
 import type { Clip } from '../../shared/schemas';
 import { catalog, testCat, testClip } from '../../core/stage/test-fixtures';
-import type { OverlayBridge, StageCommand, StateSnapshot } from '../../shared/ipc';
+import type { MainToOverlay, OverlayBridge, StageCommand, StateSnapshot } from '../../shared/ipc';
 import { defaultSettings } from '../../shared/schemas/settings';
 
 const mock = vi.hoisted(() => {
@@ -87,6 +87,8 @@ vi.mock('pixi.js', () => ({
       },
     };
     stage = new mock.Container();
+    start = vi.fn();
+    stop = vi.fn();
     init() {
       return mock.ready;
     }
@@ -114,9 +116,18 @@ afterEach(() => {
 });
 
 function setup() {
-  const snapshot: StateSnapshot = { revision: 1, at: 0, settings: defaultSettings([]) };
+  const snapshot: StateSnapshot = {
+    revision: 1,
+    at: 0,
+    settings: defaultSettings([]),
+    doNotDisturb: { mode: 'off' },
+    hideAll: false,
+    silencedBy: [],
+    clockOffsetMs: 0,
+  };
   let onSnapshot: ((snapshot: StateSnapshot) => void) | undefined;
   let onCommand: ((command: StageCommand) => void) | undefined;
+  let onOverlay: ((message: MainToOverlay) => void) | undefined;
   const off = vi.fn();
   const sendOverlay = vi.fn();
   const bridge: OverlayBridge = {
@@ -133,7 +144,10 @@ function setup() {
       onCommand = listener;
       return off;
     },
-    onOverlay: () => off,
+    onOverlay: (listener) => {
+      onOverlay = listener;
+      return off;
+    },
   };
   const applySnapshot = vi.fn();
   const handleCommand = vi.fn();
@@ -144,7 +158,7 @@ function setup() {
     handlePointer,
     setGhostMode: vi.fn(),
     setBounds: vi.fn(),
-    update: () => ({ cats: [], bubbles: [], effects: [] }),
+    update: () => ({ cats: [], bubbles: [], effects: [], sounds: [] }),
     drainFacts: () => [],
     debugReport: (at) => ({ at, cats: [] }),
   };
@@ -159,6 +173,7 @@ function setup() {
     sendOverlay,
     pushSnapshot: () => onSnapshot?.(snapshot),
     pushCommand: () => onCommand?.({ type: 'cat/sleep', cat: 'test' }),
+    pushOverlay: (message: MainToOverlay) => onOverlay?.(message),
   };
 }
 
@@ -199,12 +214,54 @@ const smallClip = () =>
   });
 
 describe('桌面层审查回归', () => {
+  it('穿透点击按消息坐标和最前猫的遮罩转发，幽灵模式也保留命中，暂停时丢弃', async () => {
+    const fixture = setup();
+    const clip = smallClip();
+    mock.load.mockImplementation((_cat: string, loaded: Clip) => Promise.resolve(media(loaded)));
+    fixture.stage.update = () => ({
+      cats: [placement('a'), placement('b')],
+      bubbles: [],
+      effects: [],
+      sounds: [],
+    });
+    const view = await createOverlayView(
+      catalog([
+        { cat: testCat('a'), clips: [clip] },
+        { cat: testCat('b'), clips: [clip] },
+      ]),
+      fixture.stage,
+      fixture.bridge,
+    );
+    try {
+      mock.draw();
+      await vi.waitFor(() => {
+        expect(view.inspect().cats.every((cat) => cat.visible)).toBe(true);
+      });
+      fixture.pushOverlay({ type: 'ghost', active: true });
+      fixture.pushOverlay({ type: 'clickThrough', x: 100, y: 95 });
+      expect(fixture.handlePointer).toHaveBeenLastCalledWith(
+        { type: 'clickThrough', x: 100, y: 95, cat: 'b' },
+        expect.any(Number),
+      );
+      fixture.pushOverlay({ type: 'clickThrough', x: 200, y: 95 });
+      expect(fixture.handlePointer).toHaveBeenLastCalledWith(
+        { type: 'clickThrough', x: 200, y: 95, cat: null },
+        expect.any(Number),
+      );
+      fixture.pushOverlay({ type: 'paused', paused: true });
+      fixture.handlePointer.mockClear();
+      fixture.pushOverlay({ type: 'clickThrough', x: 200, y: 95 });
+      expect(fixture.handlePointer).not.toHaveBeenCalled();
+    } finally {
+      view.dispose();
+    }
+  });
   it('同纵深时点击最前面的猫，绘制顺序变化后不能沿用创建顺序', async () => {
     const fixture = setup();
     const clip = smallClip();
     mock.load.mockImplementation((_cat: string, loaded: Clip) => Promise.resolve(media(loaded)));
     let order = [placement('a'), placement('b')];
-    fixture.stage.update = () => ({ cats: order, bubbles: [], effects: [] });
+    fixture.stage.update = () => ({ cats: order, bubbles: [], effects: [], sounds: [] });
     const view = await createOverlayView(
       catalog([
         { cat: testCat('a'), clips: [clip] },
@@ -245,7 +302,12 @@ describe('桌面层审查回归', () => {
     const fixture = setup();
     const clip = smallClip();
     mock.load.mockResolvedValue(media(clip));
-    fixture.stage.update = () => ({ cats: [placement('test')], bubbles: [], effects: [] });
+    fixture.stage.update = () => ({
+      cats: [placement('test')],
+      bubbles: [],
+      effects: [],
+      sounds: [],
+    });
     const view = await createOverlayView(
       catalog([{ cat: testCat('test'), clips: [clip] }]),
       fixture.stage,
@@ -283,7 +345,7 @@ describe('桌面层审查回归', () => {
     const old = media(clip);
     mock.load.mockResolvedValueOnce(old).mockImplementationOnce(() => new Promise(() => {}));
     const p = placement('test', clip.name);
-    fixture.stage.update = () => ({ cats: [p], bubbles: [], effects: [] });
+    fixture.stage.update = () => ({ cats: [p], bubbles: [], effects: [], sounds: [] });
     const view = await createOverlayView(
       catalog([{ cat: testCat('test'), clips: [clip, testClip('idle-stand')] }]),
       fixture.stage,
@@ -313,6 +375,7 @@ describe('桌面层审查回归', () => {
       cats: [p],
       bubbles: [{ cat: 'test', text: '喵', ageMs: 150 }],
       effects: [{ id: 7, effect: 'hearts', x: 100, y: 70, ageMs: 150 }],
+      sounds: [],
     };
     fixture.stage.update = () => frame;
     const view = await createOverlayView(
@@ -441,7 +504,7 @@ describe('未缓存片段的朝向切换', () => {
         depth: 0,
         pose: 'stand',
       };
-      fixture.stage.update = () => ({ cats: [placement], bubbles: [], effects: [] });
+      fixture.stage.update = () => ({ cats: [placement], bubbles: [], effects: [], sounds: [] });
       const view = await createOverlayView(
         catalog([{ cat: testCat('test'), clips: [oldClip, newClip] }]),
         fixture.stage,

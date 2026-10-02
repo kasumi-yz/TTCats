@@ -10,7 +10,12 @@ import { EventTriggerSchema } from './event';
 import { validateWith } from './validate';
 import { CLIP_SLOTS, missingRequiredClips } from './clip';
 import { defaultSettings, SettingsSchema } from './settings';
-import { CURRENT_SAVE_VERSION, GameStateSchema, SaveEnvelopeSchema } from './save';
+import {
+  CURRENT_SAVE_VERSION,
+  defaultGameState,
+  GameStateSchema,
+  SaveEnvelopeSchema,
+} from './save';
 
 function clip(overrides: Partial<Clip> = {}): Clip {
   return {
@@ -255,7 +260,7 @@ describe('设置和存档', () => {
   });
 
   it('存档外层先校验版本号，里面的状态按当前版本校验', () => {
-    const state = { settings: defaultSettings(['test-a']) };
+    const state = defaultGameState(['test-a']);
     expect(problemsOf(GameStateSchema, state)).toEqual([]);
     expect(
       problemsOf(SaveEnvelopeSchema, { saveVersion: CURRENT_SAVE_VERSION, savedAt: 1, state }),

@@ -7,6 +7,7 @@ import type { ContentCatalog } from '../shared/core-api';
 import {
   BRIDGE_KEY,
   IPC_CHANNELS,
+  type AppStatus,
   type MainToOverlay,
   type RendererBridge,
   type StageCommand,
@@ -43,6 +44,9 @@ export const bridge: RendererBridge = {
   getContent() {
     return ipcRenderer.invoke(IPC_CHANNELS.getContent) as Promise<ContentCatalog>;
   },
+  getAppStatus() {
+    return ipcRenderer.invoke(IPC_CHANNELS.getAppStatus) as Promise<AppStatus>;
+  },
   onSnapshot(listener) {
     return listen<StateSnapshot>(IPC_CHANNELS.snapshot, listener);
   },
@@ -54,6 +58,9 @@ export const bridge: RendererBridge = {
   },
   onStageDebug(listener) {
     return listen<StageDebugReport>(IPC_CHANNELS.stageDebug, listener);
+  },
+  onAppStatus(listener) {
+    return listen<AppStatus>(IPC_CHANNELS.appStatus, listener);
   },
 };
 
