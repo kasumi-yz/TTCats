@@ -1,7 +1,8 @@
-import type { CreateGameCore, GameOutput } from '../../shared/core-api';
-import type { StageCommand } from '../../shared/ipc';
+import { STARTUP_QUIET_MS, type CreateGameCore, type GameOutput } from '../../shared/core-api';
+import type { SilenceReason, StageCommand } from '../../shared/ipc';
 import {
   defaultSettings,
+  DO_NOT_DISTURB_DURATION_MS,
   SettingsSchema,
   validateWith,
   type DoNotDisturb,
@@ -37,11 +38,65 @@ function output(stageCommands: StageCommand[] = [], problems: string[] = []): Ga
   return { stageCommands, stateChanged: false, snapshotChanged: false, problems };
 }
 
-export const createGameCore: CreateGameCore = ({ content, state }) => {
+export const createGameCore: CreateGameCore = ({
+  content,
+  state,
+  now,
+  utcOffsetMinutes,
+  startupQuiet,
+}) => {
   let settings = state ? copySettings(state.settings) : defaultSettings(Object.keys(content.cats));
-  // 勿扰模式的规则在 #58 里做；在那之前原样保留存档里的状态，不丢数据。
-  const doNotDisturb: DoNotDisturb = state ? { ...state.doNotDisturb } : { mode: 'off' };
+  // 始终保存真实结束时刻；快进直接减少它，重启清零偏移也不会延长勿扰。
+  let doNotDisturb: DoNotDisturb = state ? { ...state.doNotDisturb } : { mode: 'off' };
+  if (doNotDisturb.mode === 'timed' && now >= doNotDisturb.until) doNotDisturb = { mode: 'off' };
+  let hideAll = false;
+  let clockOffsetMs = 0;
+  let startupQuietUntil = startupQuiet ? now + STARTUP_QUIET_MS : undefined;
   let revision = 0;
+  let silencedBy = silenceReasons(now);
+
+  function silenceReasons(now: number): SilenceReason[] {
+    const at = now + clockOffsetMs;
+    const localMinutes = (((Math.floor(at / 60_000) + utcOffsetMinutes(at)) % 1440) + 1440) % 1440;
+    const minutes = (time: string): number => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+    const start = minutes(settings.quietHoursStart);
+    const end = minutes(settings.quietHoursEnd);
+    const quietHours =
+      start < end
+        ? localMinutes >= start && localMinutes < end
+        : start > end && (localMinutes >= start || localMinutes < end);
+    const reasons: SilenceReason[] = [];
+    if (doNotDisturb.mode !== 'off') reasons.push('doNotDisturb');
+    if (quietHours) reasons.push('quietHours');
+    if (startupQuietUntil !== undefined && at < startupQuietUntil) reasons.push('startupQuiet');
+    return reasons;
+  }
+
+  function finish(result: GameOutput, now: number): GameOutput {
+    if (startupQuietUntil !== undefined && now + clockOffsetMs >= startupQuietUntil) {
+      startupQuietUntil = undefined;
+    }
+    const next = silenceReasons(now);
+    result.snapshotChanged ||= result.stateChanged || !sameValue(next, silencedBy);
+    silencedBy = next;
+    return result;
+  }
+
+  function tick(now: number): GameOutput {
+    const result = output();
+    if (doNotDisturb.mode === 'timed' && now >= doNotDisturb.until) {
+      doNotDisturb = { mode: 'off' };
+      result.stateChanged = true;
+    }
+    return finish(result, now);
+  }
+
+  function setDoNotDisturb(next: DoNotDisturb, now: number): GameOutput {
+    const result = output();
+    result.stateChanged = !sameValue(doNotDisturb, next);
+    doNotDisturb = next;
+    return finish(result, now);
+  }
 
   function updateSettings(patch: Partial<Settings>): GameOutput {
     const result = validateWith(SettingsSchema, { ...settings, ...patch });
@@ -61,8 +116,11 @@ export const createGameCore: CreateGameCore = ({ content, state }) => {
   }
 
   return {
-    handleCommand(command) {
-      if (command.type === 'settings/update') return updateSettings(command.patch);
+    handleCommand(command, now) {
+      if (command.type === 'settings/update') {
+        const result = updateSettings(command.patch);
+        return result.problems.length > 0 ? result : finish(result, now);
+      }
 
       if (command.type === 'cat/setVisible') {
         const problems = catProblem(command.cat, false);
@@ -84,25 +142,50 @@ export const createGameCore: CreateGameCore = ({ content, state }) => {
           command.cat === undefined
             ? [...new Set(settings.visibleCats.filter((cat) => Object.hasOwn(content.cats, cat)))]
             : [command.cat];
-        if (cats.length === 0) return output();
-        return output([
+        const result = output();
+        if (hideAll) {
+          hideAll = false;
+          result.snapshotChanged = true;
+          result.stageCommands.push({ type: 'cat/entrance' });
+        }
+        if (cats.length === 0) return result;
+        result.stageCommands.push(
           command.to === undefined
             ? { type: 'cat/summon', cats }
             : { type: 'cat/summon', cats, to: { ...command.to } },
-        ]);
+        );
+        return result;
       }
 
       if (command.type === 'debug/entrance') return output([{ type: 'cat/entrance' }]);
 
-      // M2 的勿扰模式、一键隐藏、快进时钟、开机静默在 #58 里实现，在那之前先一律拒绝。
-      if (
-        command.type === 'doNotDisturb/start' ||
-        command.type === 'doNotDisturb/end' ||
-        command.type === 'hideAll/toggle' ||
-        command.type === 'debug/advanceClock' ||
-        command.type === 'debug/startupQuiet'
-      ) {
-        return output([], [zh.interfaces.commandNotReady(command.type)]);
+      if (command.type === 'doNotDisturb/start') {
+        return setDoNotDisturb(
+          command.duration === 'untilOff'
+            ? { mode: 'untilOff' }
+            : { mode: 'timed', until: now + DO_NOT_DISTURB_DURATION_MS[command.duration] },
+          now,
+        );
+      }
+      if (command.type === 'doNotDisturb/end') return setDoNotDisturb({ mode: 'off' }, now);
+      if (command.type === 'hideAll/toggle') {
+        hideAll = !hideAll;
+        return { ...output(hideAll ? [] : [{ type: 'cat/entrance' }]), snapshotChanged: true };
+      }
+      if (command.type === 'debug/advanceClock') {
+        const elapsed = command.minutes * 60_000;
+        clockOffsetMs += elapsed;
+        const timed = doNotDisturb.mode === 'timed';
+        if (doNotDisturb.mode === 'timed')
+          doNotDisturb = { ...doNotDisturb, until: doNotDisturb.until - elapsed };
+        const result = tick(now);
+        result.stateChanged ||= timed;
+        result.snapshotChanged = true;
+        return result;
+      }
+      if (command.type === 'debug/startupQuiet') {
+        startupQuietUntil = now + clockOffsetMs + STARTUP_QUIET_MS;
+        return finish(output(), now);
       }
 
       const problems = catProblem(command.cat, true);
@@ -125,10 +208,7 @@ export const createGameCore: CreateGameCore = ({ content, state }) => {
       return output();
     },
 
-    // 随时间变化的规则（勿扰到点、安静时段、开机静默）在 #58 里实现。
-    tick() {
-      return output();
-    },
+    tick,
 
     snapshot(now) {
       return {
@@ -136,9 +216,9 @@ export const createGameCore: CreateGameCore = ({ content, state }) => {
         at: now,
         settings: copySettings(settings),
         doNotDisturb: { ...doNotDisturb },
-        hideAll: false,
-        silencedBy: [],
-        clockOffsetMs: 0,
+        hideAll,
+        silencedBy: silenceReasons(now),
+        clockOffsetMs,
       };
     },
 
