@@ -16,6 +16,7 @@ import {
   registerContentProtocol,
   registerContentScheme,
 } from './content';
+import { createAppStatus } from './app-status';
 import { showCatMenu } from './cat-menu';
 import { createGameCommands } from './game-commands';
 import { createGameSession } from './game-session';
@@ -93,6 +94,12 @@ if (!app.requestSingleInstanceLock()) {
         if (overlay?.window && !session.safeMode) sendToWindow(overlay.window, channel, payload);
       };
       const panels = createPanelWindows({ log, report, overlaySend });
+      const appStatus = createAppStatus({
+        version: app.getVersion(),
+        publish: (status) => {
+          panels.publishAppStatus(status);
+        },
+      });
       const updateTray = (): void => {
         tray?.update();
       };
@@ -147,6 +154,7 @@ if (!app.requestSingleInstanceLock()) {
           session.fact(message);
         },
         snapshot: session.snapshot,
+        appStatus: appStatus.get,
         content,
         report,
       });
@@ -155,6 +163,9 @@ if (!app.requestSingleInstanceLock()) {
         system: await createPlatform(),
         settings: initialState.settings,
         onError: report,
+        onDisplays: (displays, current) => {
+          appStatus.set({ displays, overlayDisplayId: current });
+        },
         onWindow: (window) => {
           panels.registerWindow(window);
           recovery = attachRecovery({

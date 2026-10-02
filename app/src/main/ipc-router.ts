@@ -1,6 +1,13 @@
 import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent, WebContents } from 'electron';
 import type { ContentCatalog } from '../shared/core-api';
-import type { Fact, GameCommand, MainCommand, StateSnapshot, ToMainCommand } from '../shared/ipc';
+import type {
+  AppStatus,
+  Fact,
+  GameCommand,
+  MainCommand,
+  StateSnapshot,
+  ToMainCommand,
+} from '../shared/ipc';
 import { IPC_CHANNELS, isMainCommand } from '../shared/ipc';
 import { zh } from '../shared/strings.zh-CN';
 import { CommandSchema, FactSchema } from './messages';
@@ -21,6 +28,7 @@ export function registerIpcRoutes(options: {
   mainCommands: MainCommandHandlers;
   fact: (message: Fact) => void;
   snapshot: () => StateSnapshot;
+  appStatus: () => AppStatus;
   content: ContentCatalog;
   report: (error: unknown) => void;
 }): () => void {
@@ -87,6 +95,10 @@ export function registerIpcRoutes(options: {
     if (!allowed(event)) throw new Error(text.unknownSender);
     return options.snapshot();
   });
+  ipc.handle(IPC_CHANNELS.getAppStatus, (event) => {
+    if (!allowed(event)) throw new Error(text.unknownSender);
+    return options.appStatus();
+  });
   ipc.handle(IPC_CHANNELS.getContent, (event) => {
     if (!allowed(event)) throw new Error(text.unknownSender);
     return options.content;
@@ -99,6 +111,7 @@ export function registerIpcRoutes(options: {
     ipc.removeListener(IPC_CHANNELS.command, onCommand);
     ipc.removeListener(IPC_CHANNELS.fact, onFact);
     ipc.removeHandler(IPC_CHANNELS.getSnapshot);
+    ipc.removeHandler(IPC_CHANNELS.getAppStatus);
     ipc.removeHandler(IPC_CHANNELS.getContent);
   };
 }

@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import type { Platform } from '../platform';
 import type { Settings } from '../../shared/schemas';
+import { chooseDisplay, type DisplayInfo } from '../../shared/display';
 import {
   IPC_CHANNELS,
   OVERLAY_TIMING,
@@ -9,6 +10,7 @@ import {
   type OverlayToMain,
 } from '../../shared/ipc';
 import { zh } from '../../shared/strings.zh-CN';
+import { displayInfo, listDisplays, toOverlayDisplay } from './displays';
 import { OverlaySafety } from './safety';
 
 /** 必须在 app.ready 之前调用。 */
@@ -24,6 +26,8 @@ export interface OverlayOptions {
   onWindow?: (window: BrowserWindow) => void;
   onMessage?: (message: OverlayToMain) => void;
   onReady?: () => void;
+  /** 每次按显示器重新摆放桌面层后调用（参数没变、跳过重建时也调用）：现在的全部显示器，以及桌面层在哪一块。 */
+  onDisplays?: (displays: DisplayInfo[], current: number) => void;
   onError: (error: unknown) => void;
 }
 
@@ -82,7 +86,12 @@ export async function createOverlay(options: OverlayOptions) {
     try {
       const state = sample ?? input();
       if (state.now - lastFullscreenCheck >= 500) {
-        const next = options.system.isFullscreen();
+        // 只管桌面层所在的那块显示器：别的显示器上的全屏不影响猫（#65）
+        const bounds = window.getBounds();
+        const next = options.system.isFullscreen({
+          x: bounds.x + bounds.width / 2,
+          y: bounds.y + bounds.height / 2,
+        });
         lastFullscreenCheck = state.now;
         if (next !== fullscreen) {
           fullscreen = next;
@@ -176,17 +185,27 @@ export async function createOverlay(options: OverlayOptions) {
     const job = queue.then(async () => {
       if (!force) pendingDisplayRebuild = undefined;
       if (disposed || safeMode) return;
-      const display = screen.getPrimaryDisplay();
-      const area = display.workArea;
+      const primary = screen.getPrimaryDisplay();
+      const displays = listDisplays(screen.getAllDisplays(), primary.id);
+      // 设置的那块不在时用主显示器；不改设置，接回来以后下一次显示器事件会把猫放回去
+      const target =
+        chooseDisplay(settings.display, displays) ?? toOverlayDisplay(primary, primary.id);
+      const area = target.workArea;
       const key = JSON.stringify([
-        display.id,
+        target.id,
         area.x,
         area.y,
         area.width,
         area.height,
-        display.scaleFactor,
+        target.scaleFactor,
       ]);
-      if (!force && key === displayKey && window && !window.isDestroyed()) return;
+      const placed = (): void => {
+        options.onDisplays?.(displays.map(displayInfo), target.id);
+      };
+      if (!force && key === displayKey && window && !window.isDestroyed()) {
+        placed();
+        return;
+      }
       if (window) {
         if (window.isDestroyed()) return;
         window.setBounds(area);
@@ -213,6 +232,7 @@ export async function createOverlay(options: OverlayOptions) {
             );
         }
         displayKey = key;
+        placed();
         await load();
         return;
       }
@@ -236,6 +256,7 @@ export async function createOverlay(options: OverlayOptions) {
       });
       window = next;
       displayKey = key;
+      placed();
       next.setIgnoreMouseEvents(true, { forward: true });
       next.setContentProtection(!settings.showInScreenCapture);
       options.onWindow?.(next);
@@ -290,11 +311,13 @@ export async function createOverlay(options: OverlayOptions) {
     },
     updateSettings(next: Settings): void {
       if (disposed) return;
+      const moved = JSON.stringify(next.display) !== JSON.stringify(settings.display);
       settings = next;
       hidden = next.visibleCats.length === 0;
       if (window && !window.isDestroyed()) window.setContentProtection(!next.showInScreenCapture);
       applyVisibility();
       poll();
+      if (moved) changed();
     },
     async dispose(): Promise<void> {
       disposed = true;

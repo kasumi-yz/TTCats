@@ -10,7 +10,7 @@ import {
   type Locator,
 } from '@playwright/test';
 import type { ContentCatalog } from '../src/shared/core-api';
-import type { StageCommand, StageDebugReport, StateSnapshot } from '../src/shared/ipc';
+import type { AppStatus, StageCommand, StageDebugReport, StateSnapshot } from '../src/shared/ipc';
 import { CURRENT_SAVE_VERSION, defaultGameState, defaultSettings } from '../src/shared/schemas';
 import { zh } from '../src/shared/strings.zh-CN';
 
@@ -221,6 +221,14 @@ test('正式调试台：命令抵达桌面层、三猫画面报告、双窗口�
     await pageFor(app, 'panel=settings');
     const overlay = await pageFor(app, '/overlay/');
     const debug = await openDebug(app);
+    // 调试台从程序状态看到桌面层在哪块显示器上：没设置时是主显示器（#65）
+    const primary = await app.evaluate(({ screen }) => screen.getPrimaryDisplay().id);
+    await expect
+      .poll(() => debug.evaluate<AppStatus>('window.ttcats.getAppStatus()'))
+      .toMatchObject({
+        overlayDisplayId: primary,
+        displays: expect.arrayContaining([expect.objectContaining({ id: primary, primary: true })]),
+      });
     await expect
       .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat).sort(), {
         timeout: 30_000,

@@ -4,7 +4,7 @@
 
 通过 `await createPlatform()`（从 `main/platform/index.ts` 导入）创建接口，然后同步查询：
 
-- `isFullscreen()`：通知状态为 2、3、4 时返回 `true`，覆盖全屏程序、D3D 独占全屏和演示模式；HRESULT 失败会抛出含 API 名和错误码的诊断错误。
+- `isFullscreen(display)`：通知状态为 3（D3D 独占全屏）、4（演示模式）时直接返回 `true`，系统不说是哪块屏幕；状态 2（忙碌）时再核对前台窗口：要和猫在同一块显示器上（`display` 是那块显示器上的一点，Electron 坐标，用 `screen.dipToScreenPoint` 换成物理像素后 `MonitorFromPoint`），并且盖满那块显示器，桌面、任务栏和白名单程序不算（#29、#65）。HRESULT 失败会抛出含 API 名和错误码的诊断错误。
 - `isCtrlDown()`：读取合并的 Ctrl 当前按下位，左右 Ctrl 均有效，不使用不可靠的“最近按过”位。
 - `isLeftButtonDown()`：读取系统设置里的主按钮。每次检查 `SM_SWAPBUTTON`，交换左右键后立即改读物理右键，供拖动松手兜底使用。
 
