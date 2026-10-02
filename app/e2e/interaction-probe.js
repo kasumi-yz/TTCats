@@ -15,11 +15,11 @@ void app.whenReady().then(async () => {
   // 性能测试的"全屏时自动隐藏"阶段用真正的全屏窗口，让系统报告前台有全屏程序。
   const fullscreen = process.env.TTCATS_PROBE_FULLSCREEN === '1';
   const window = new BrowserWindow({
-    ...(fullscreen ? screen.getPrimaryDisplay().bounds : screen.getPrimaryDisplay().workArea),
-    fullscreen,
+    ...screen.getPrimaryDisplay().workArea,
     title: 'TTCats interaction probe',
     frame: false,
-    resizable: false,
+    // 不可调整大小的窗口在 Windows 上切不到真正的全屏
+    resizable: fullscreen,
     backgroundColor: '#4d6f8f',
     show: false,
     webPreferences: { sandbox: true },
@@ -40,6 +40,12 @@ void app.whenReady().then(async () => {
   );
   window.show();
   window.focus();
+  // 构造时直接设 fullscreen 在 Windows 上可能只拿到工作区大小，要显示以后再切换
+  if (fullscreen) {
+    const entered = new Promise((resolve) => window.once('enter-full-screen', resolve));
+    window.setFullScreen(true);
+    await entered;
+  }
   globalThis.probe = {
     hwnd: Number(window.getNativeWindowHandle().readBigUInt64LE(0)),
     window,
