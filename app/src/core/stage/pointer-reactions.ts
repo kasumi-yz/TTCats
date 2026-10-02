@@ -259,6 +259,7 @@ export class PointerReactions {
         ? 'meow'
         : undefined;
     if (name !== undefined) actor.react(name, { kind: 'poked' }, false, now);
+    else actor.startSound('meow', now);
   }
 
   private strokeMove(actor: CatActor, point: Point, now: number): void {

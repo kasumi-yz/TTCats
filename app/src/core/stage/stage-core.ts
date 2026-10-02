@@ -8,6 +8,7 @@ import type {
   StageCore,
   StageEffect,
   StageFrame,
+  SoundCue,
 } from '../../shared/core-api';
 import type { Fact, StageCommand, StageDebugReport, StateSnapshot } from '../../shared/ipc';
 import { missingRequiredClips, type Point, type Settings } from '../../shared/schemas';
@@ -55,6 +56,8 @@ export class Stage implements StageCore {
   private pointer: Point | undefined;
   private effects: ActiveEffect[] = [];
   private nextEffectId = 1;
+  private sounds: { cue: SoundCue; at: number }[] = [];
+  private readonly debugPurrUntil = new Map<string, number>();
   private readonly pointerReactions: PointerReactions;
 
   constructor(options: StageOptions) {
@@ -73,6 +76,9 @@ export class Stage implements StageCore {
         this.effects.push({ id: this.nextEffectId++, effect, x, y, at });
       },
       observer: options.observer,
+      addSound: (cue, at) => {
+        this.sounds.push({ cue, at });
+      },
     };
     this.pointerReactions = new PointerReactions(() => this.actors, this.env);
     this.syncActors(options.now);
@@ -92,8 +98,14 @@ export class Stage implements StageCore {
 
   handleCommand(command: StageCommand, now: number): void {
     this.advanceTo(now);
-    // 重新入场在 #59、调试台的声音在 #61 里实现，在那之前先忽略。
-    if (command.type === 'cat/entrance' || command.type === 'debug/sound') return;
+    // 重新入场在 #59 里实现。
+    if (command.type === 'cat/entrance') return;
+    if (command.type === 'debug/sound') {
+      const actor = this.actor(command.cat);
+      actor?.startSound(command.sound, now);
+      if (actor && command.sound === 'purr') this.debugPurrUntil.set(actor.id, now + 3000);
+      return;
+    }
     if (command.type !== 'debug/simulate' && command.type !== 'cat/summon') {
       const actor = this.actor(command.cat);
       if (actor?.isAirborne()) return;
@@ -159,8 +171,7 @@ export class Stage implements StageCore {
         y: e.y,
         ageMs: Math.max(0, now - e.at),
       })),
-      // 声音提示在 #61 里实现。
-      sounds: [],
+      sounds: this.drainSounds(now),
     };
   }
 
@@ -192,6 +203,8 @@ export class Stage implements StageCore {
   private advanceTo(now: number): void {
     const dt = now - this.lastNow;
     if (dt < 0) {
+      for (const sound of this.sounds) sound.at += dt;
+      for (const [cat, until] of this.debugPurrUntil) this.debugPurrUntil.set(cat, until + dt);
       for (const effect of this.effects) effect.at += dt;
       this.pointerReactions.shiftTime(dt);
     } else if (dt > 0) {
@@ -207,6 +220,21 @@ export class Stage implements StageCore {
       for (const actor of this.actors) actor.advance(from, now, catchUp);
     }
     this.lastNow = now;
+    for (const [cat, until] of this.debugPurrUntil) {
+      if (now >= until) {
+        this.sounds.push({ cue: { cat, sound: 'purr', action: 'stop' }, at: until });
+        this.debugPurrUntil.delete(cat);
+      }
+    }
+  }
+
+  private drainSounds(now: number): SoundCue[] {
+    const sounds = this.sounds;
+    this.sounds = [];
+    return sounds
+      .filter(({ cue, at }) => this.actor(cue.cat) && (cue.action === 'stop' || now - at <= 1000))
+      .sort((a, b) => a.at - b.at)
+      .map(({ cue }) => cue);
   }
 
   private makeFloor(): Floor {
@@ -230,7 +258,11 @@ export class Stage implements StageCore {
       );
     });
     for (const actor of this.actors) {
-      if (!visible.includes(actor.id)) this.pointerReactions.cancelFor(actor, now, true);
+      if (!visible.includes(actor.id)) {
+        this.pointerReactions.cancelFor(actor, now, true);
+        this.debugPurrUntil.delete(actor.id);
+        this.sounds = this.sounds.filter(({ cue }) => cue.cat !== actor.id);
+      }
     }
     this.actors = visible.map((id) => this.actor(id) ?? this.createActor(id, now));
   }

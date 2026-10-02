@@ -42,5 +42,6 @@
   "mirrorable": true,
   "facing": "right",
   "speed": 0,
-  "keypoints": {}
+  "keypoints": {},
+  "soundStartFrame": 6
 }
