@@ -8,6 +8,7 @@ import type {
   StageCore,
   StageEffect,
   StageFrame,
+  SoundCue,
 } from '../../shared/core-api';
 import type { Fact, StageCommand, StageDebugReport, StateSnapshot } from '../../shared/ipc';
 import { missingRequiredClips, type Point, type Settings } from '../../shared/schemas';
@@ -55,6 +56,8 @@ export class Stage implements StageCore {
   private pointer: Point | undefined;
   private effects: ActiveEffect[] = [];
   private nextEffectId = 1;
+  private sounds: { cue: SoundCue; at: number }[] = [];
+  private readonly debugPurrUntil = new Map<string, number>();
   private readonly pointerReactions: PointerReactions;
   private doNotDisturb: boolean;
   private cornerSide: 'left' | 'right' | undefined;
@@ -72,10 +75,14 @@ export class Stage implements StageCore {
       floor: this.makeFloor(),
       scale: this.settings.scale,
       activityLevel: this.settings.activityLevel,
+      doNotDisturb: options.snapshot.doNotDisturb.mode !== 'off',
       addEffect: (effect, x, y, at) => {
         this.effects.push({ id: this.nextEffectId++, effect, x, y, at });
       },
       observer: options.observer,
+      addSound: (cue, at) => {
+        this.sounds.push({ cue, at });
+      },
     };
     this.pointerReactions = new PointerReactions(
       () => this.actors.filter((a) => !a.isExiting()),
@@ -93,6 +100,7 @@ export class Stage implements StageCore {
     this.doNotDisturb = snapshot.doNotDisturb.mode !== 'off';
     this.env.scale = this.settings.scale;
     this.env.activityLevel = this.settings.activityLevel;
+    this.env.doNotDisturb = snapshot.doNotDisturb.mode !== 'off';
     this.env.floor = this.makeFloor();
     for (const actor of this.actors) actor.clampToFloor();
     this.syncActors(now);
@@ -101,8 +109,6 @@ export class Stage implements StageCore {
 
   handleCommand(command: StageCommand, now: number): void {
     this.advanceTo(now);
-    // 调试台的声音在 #61 里实现。
-    if (command.type === 'debug/sound') return;
     if (command.type === 'cat/entrance') {
       this.startEntrances(
         this.actors.filter((a) => !a.isExiting()),
@@ -111,6 +117,12 @@ export class Stage implements StageCore {
       return;
     }
     if ('cat' in command && this.actor(command.cat)?.isExiting()) return;
+    if (command.type === 'debug/sound') {
+      const actor = this.actor(command.cat);
+      actor?.startSound(command.sound, now);
+      if (actor && command.sound === 'purr') this.debugPurrUntil.set(actor.id, now + 3000);
+      return;
+    }
     if (command.type !== 'debug/simulate' && command.type !== 'cat/summon') {
       const actor = this.actor(command.cat);
       if (actor?.isAirborne()) return;
@@ -177,8 +189,7 @@ export class Stage implements StageCore {
         y: e.y,
         ageMs: Math.max(0, now - e.at),
       })),
-      // 声音提示在 #61 里实现。
-      sounds: [],
+      sounds: this.drainSounds(now),
     };
   }
 
@@ -210,6 +221,8 @@ export class Stage implements StageCore {
   private advanceTo(now: number): void {
     const dt = now - this.lastNow;
     if (dt < 0) {
+      for (const sound of this.sounds) sound.at += dt;
+      for (const [cat, until] of this.debugPurrUntil) this.debugPurrUntil.set(cat, until + dt);
       for (const effect of this.effects) effect.at += dt;
       this.pointerReactions.shiftTime(dt);
     } else if (dt > 0) {
@@ -226,6 +239,21 @@ export class Stage implements StageCore {
     }
     this.lastNow = now;
     this.actors = this.actors.filter((actor) => !actor.hasExited());
+    for (const [cat, until] of this.debugPurrUntil) {
+      if (now >= until) {
+        this.sounds.push({ cue: { cat, sound: 'purr', action: 'stop' }, at: until });
+        this.debugPurrUntil.delete(cat);
+      }
+    }
+  }
+
+  private drainSounds(now: number): SoundCue[] {
+    const sounds = this.sounds;
+    this.sounds = [];
+    return sounds
+      .filter(({ cue, at }) => this.actor(cue.cat) && (cue.action === 'stop' || now - at <= 1000))
+      .sort((a, b) => a.at - b.at)
+      .map(({ cue }) => cue);
   }
 
   private makeFloor(): Floor {
@@ -251,6 +279,8 @@ export class Stage implements StageCore {
     for (const actor of this.actors) {
       if (!visible.includes(actor.id)) {
         if (!actor.isExiting()) this.pointerReactions.cancelFor(actor, now, true);
+        this.debugPurrUntil.delete(actor.id);
+        this.sounds = this.sounds.filter(({ cue }) => cue.cat !== actor.id);
         actor.exit(now);
       }
     }

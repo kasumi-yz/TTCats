@@ -8,6 +8,7 @@ import { STANDARD_CAT_HEIGHT } from './floor';
 const STROKE_WINDOW_MS = 1500;
 const PET_IDLE_MS = 600;
 const POKE_WINDOW_MS = 2000;
+const NEARBY_CLICK_WINDOW_MS = 2000;
 const PROXIMITY_COOLDOWN_MS = 30000;
 const PROXIMITY_DWELL_MS = 1000;
 const AVOID_WAIT_MS = 5000;
@@ -33,6 +34,7 @@ export class PointerReactions {
       }
     | undefined;
   private readonly pokes = new Map<CatActor, number[]>();
+  private readonly nearbyClicks = new Map<CatActor, { x: number; at: number }[]>();
   private readonly proximity = new Map<CatActor, number>();
   private readonly dwell = new Map<CatActor, number>();
   private readonly impatience = new Map<CatActor, number>();
@@ -46,8 +48,11 @@ export class PointerReactions {
   ) {}
 
   handle(input: PointerInput, now: number): void {
-    // 在猫旁边连续点击在 #60 里实现，在那之前先忽略。
-    if (input.type === 'clickThrough') return;
+    // 穿透点击也包括幽灵模式；它没有被桌面层接收，不能变成单击或拖动。
+    if (input.type === 'clickThrough') {
+      if (this.press === undefined && !this.pet?.simulated) this.clickThrough(input, now);
+      return;
+    }
     // 调试模拟只由调试命令结束，不跟随真实鼠标，也不被真实松手或取消打乱。
     if (this.press?.simulated || this.pet?.simulated) return;
     if (input.type === 'cancel' || input.type === 'up') {
@@ -164,8 +169,16 @@ export class PointerReactions {
   }
 
   simulate(actor: CatActor, interaction: SimulatedInteraction, now: number): void {
-    // 在猫旁边连续点击在 #60 里实现，在那之前先忽略。
-    if (interaction === 'nearbyClicks') return;
+    if (interaction === 'nearbyClicks') {
+      if (this.press !== undefined || actor.isAirborne()) return;
+      this.finishPet(now);
+      const p = actor.placement();
+      const unit = STANDARD_CAT_HEIGHT * p.scale;
+      const x = p.x + (p.x < this.env.floor.width / 2 ? 1 : -1) * unit * 1.5;
+      for (let i = 0; i < this.nearbyClickThreshold(actor); i++)
+        this.clickThrough({ type: 'clickThrough', x, y: p.y - unit / 2, cat: null }, now, actor);
+      return;
+    }
     if (interaction === 'drop') {
       if (this.press?.actor === actor && this.press.dragging) {
         this.press = undefined;
@@ -196,6 +209,7 @@ export class PointerReactions {
       this.press = undefined;
     }
     this.pokes.delete(actor);
+    this.nearbyClicks.delete(actor);
     this.dwell.delete(actor);
     if (removed) {
       this.proximity.delete(actor);
@@ -220,11 +234,53 @@ export class PointerReactions {
     for (const [actor, t] of this.proximity) this.proximity.set(actor, t + dt);
     for (const [actor, t] of this.dwell) this.dwell.set(actor, t + dt);
     for (const [actor, t] of this.impatience) this.impatience.set(actor, t + dt);
+    for (const clicks of this.nearbyClicks.values()) for (const click of clicks) click.at += dt;
     for (const bubble of this.bubbles) bubble.at += dt;
   }
 
   private dragThreshold(actor: CatActor): number {
     return 0.04 * STANDARD_CAT_HEIGHT * actor.finalScale();
+  }
+
+  private nearbyClickThreshold(actor: CatActor): number {
+    return 3 + Math.round(2 * actor.cat.personality.patience);
+  }
+
+  private clickThrough(
+    input: Extract<PointerInput, { type: 'clickThrough' }>,
+    now: number,
+    only?: CatActor,
+  ): void {
+    for (const actor of only === undefined ? this.actors() : [only]) {
+      if (actor.id === input.cat || actor.isAirborne() || this.isImpatient(actor, now)) continue;
+      const p = actor.placement();
+      const unit = STANDARD_CAT_HEIGHT * p.scale;
+      if (Math.hypot(input.x - p.x, input.y - (p.y - unit / 2)) > unit * 2) continue;
+      const clicks = (this.nearbyClicks.get(actor) ?? []).filter(
+        (click) => now - click.at <= NEARBY_CLICK_WINDOW_MS,
+      );
+      clicks.push({ x: input.x, at: now });
+      this.nearbyClicks.set(actor, clicks);
+      if (clicks.length < this.nearbyClickThreshold(actor)) continue;
+      this.nearbyClicks.delete(actor);
+      const fromX = clicks.reduce((sum, click) => sum + click.x, 0) / clicks.length;
+      const range = this.env.floor.xRange(actor.cat.relativeSize);
+      const dir =
+        actor.x > fromX ? 1 : actor.x < fromX ? -1 : actor.x < this.env.floor.width / 2 ? 1 : -1;
+      let x = this.env.floor.clampX(actor.x + dir * unit * 2, actor.cat.relativeSize);
+      // 边缘不能继续走时，只在另一端确实离点击更远时换方向，不能反而凑上去。
+      if (Math.abs(x - actor.x) < actor.stopTolerance()) {
+        const other = dir > 0 ? range.min : range.max;
+        if (Math.abs(other - fromX) <= Math.abs(actor.x - fromX) + actor.stopTolerance()) continue;
+        x = other;
+      }
+      if (this.pet?.actor === actor) this.finishPet(now);
+      this.stroke = undefined;
+      this.dwell.delete(actor);
+      this.impatience.set(actor, now);
+      this.proximity.set(actor, now);
+      actor.avoidNearbyClicks(x, now);
+    }
   }
 
   private drag(press: NonNullable<PointerReactions['press']>, point: Point): void {
@@ -259,6 +315,7 @@ export class PointerReactions {
         ? 'meow'
         : undefined;
     if (name !== undefined) actor.react(name, { kind: 'poked' }, false, now);
+    else actor.startSound('meow', now);
   }
 
   private strokeMove(actor: CatActor, point: Point, now: number): void {

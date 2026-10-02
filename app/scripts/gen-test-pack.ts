@@ -145,6 +145,36 @@ async function json(file: string, value: unknown): Promise<void> {
 const first = join(root, 'test-calm');
 mkdirSync(join(first, 'clips'), { recursive: true });
 mkdirSync(join(first, 'poses'), { recursive: true });
+mkdirSync(join(first, 'sounds'), { recursive: true });
+// 仅测试猫使用合成提示音，不冒充真实猫叫。WAV 写法固定，重复生成得到相同字节。
+function tone(frequency: number, seconds: number): Buffer {
+  const rate = 22050;
+  const samples = Math.round(rate * seconds);
+  const wav = Buffer.alloc(44 + samples * 2);
+  wav.write('RIFF', 0);
+  wav.writeUInt32LE(wav.length - 8, 4);
+  wav.write('WAVEfmt ', 8);
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(rate, 24);
+  wav.writeUInt32LE(rate * 2, 28);
+  wav.writeUInt16LE(2, 32);
+  wav.writeUInt16LE(16, 34);
+  wav.write('data', 36);
+  wav.writeUInt32LE(samples * 2, 40);
+  for (let i = 0; i < samples; i++) {
+    const envelope = Math.min(1, i / (rate * 0.02), (samples - 1 - i) / (rate * 0.02));
+    wav.writeInt16LE(
+      Math.round(8000 * envelope * Math.sin((2 * Math.PI * frequency * i) / rate)),
+      44 + i * 2,
+    );
+  }
+  return wav;
+}
+writeFileSync(join(first, 'sounds/meow-1.wav'), tone(660, 0.8));
+writeFileSync(join(first, 'sounds/meow-2.wav'), tone(880, 0.8));
+writeFileSync(join(first, 'sounds/purr.wav'), tone(110, 1));
 const standards = new Map<Pose, Buffer>();
 for (const pose of Object.keys(poses) as Pose[]) {
   const frame = render(poses[pose]);
@@ -214,6 +244,7 @@ for (const [name, slot] of Object.entries(CLIP_SLOTS)) {
     facing: 'right',
     speed,
     keypoints: {},
+    ...(['meow', 'purr'].includes(name) ? { soundStartFrame: 6 } : {}),
   });
   writeFileSync(join(first, clip.video), video);
   writeFileSync(
@@ -233,6 +264,7 @@ for (const [index, id] of ids.entries()) {
     mkdirSync(dir, { recursive: true });
     cpSync(join(first, 'clips'), join(dir, 'clips'), { recursive: true });
     cpSync(join(first, 'poses'), join(dir, 'poses'), { recursive: true });
+    cpSync(join(first, 'sounds'), join(dir, 'sounds'), { recursive: true });
   }
   await json(
     join(dir, 'cat.json'),
@@ -255,7 +287,7 @@ for (const [index, id] of ids.entries()) {
           closeness: other === 'test-close' || id === 'test-close' ? 0.8 : 0.3,
           dominance: (index - ids.indexOf(other)) * 0.3,
         })),
-      sounds: { meow: [], purr: [] },
+      sounds: { meow: ['sounds/meow-1.wav', 'sounds/meow-2.wav'], purr: ['sounds/purr.wav'] },
     }),
   );
 }

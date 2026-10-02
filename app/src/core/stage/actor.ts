@@ -4,7 +4,8 @@
 // 走不通时才硬切（ADR-0002）。计划播完，就按性格参数选下一个行为。
 //
 // 时间全部按真实经过的毫秒数推进，不按帧数累加（ADR-0004）。片段时间 = 真实时间 × 播放速度。
-import type { CatPlacement, StageEffect } from '../../shared/core-api';
+import type { CatPlacement, SoundCue, StageEffect } from '../../shared/core-api';
+import { CLIP_SOUNDS } from '../../shared/schemas';
 import type { ActivityLevel, BasePose, Cat, Clip, Pose } from '../../shared/schemas';
 import {
   chooseBehavior,
@@ -51,7 +52,10 @@ export interface ActorEnv {
   /** 用户设置的缩放。 */
   scale: number;
   activityLevel: ActivityLevel;
+  /** 旁边连续点击让开以后，在新位置继续睡；聚到角落的行为由 #59 负责。 */
+  doNotDisturb?: boolean;
   addEffect(effect: StageEffect, x: number, y: number, at: number): void;
+  addSound?(cue: SoundCue, at: number): void;
   readonly observer?: StageObserver | undefined;
 }
 
@@ -87,6 +91,7 @@ interface Move {
 }
 
 interface Segment {
+  soundStarted?: boolean;
   clip: Clip;
   rate: number;
   mirrored: boolean;
@@ -114,6 +119,7 @@ export class CatActor {
   private cutPending = false;
   private readonly lastVariant = new Map<string, number>();
   private held = false;
+  private restAfterNearbyClicks = false;
   private airY: number | undefined;
   private fall: { fromY: number; elapsedMs: number } | undefined;
   private passage:
@@ -157,6 +163,7 @@ export class CatActor {
       this.startNext(from);
     }
     if (this.held || this.fall !== undefined) {
+      this.advanceSound(this.seg, to - from, from);
       this.seg.elapsed =
         (this.seg.elapsed + (to - from) * this.seg.rate) % clipDurationMs(this.seg.clip);
       if (this.fall === undefined) return;
@@ -182,9 +189,11 @@ export class CatActor {
       const seg = this.seg;
       const realRemaining = (seg.end - seg.elapsed) / seg.rate;
       if (to - t < realRemaining) {
+        this.advanceSound(seg, to - t, t);
         this.progress(seg, to - t);
         return;
       }
+      this.advanceSound(seg, realRemaining, t);
       this.progress(seg, realRemaining);
       seg.elapsed = seg.end;
       t += realRemaining;
@@ -253,6 +262,12 @@ export class CatActor {
   }
 
   private planAutonomous(): void {
+    if (this.restAfterNearbyClicks && this.env.doNotDisturb) {
+      this.behavior = { kind: 'rest', pose: 'sleep' };
+      this.queue = [this.restStep('sleep')];
+      return;
+    }
+    this.restAfterNearbyClicks = false;
     const rest = this.restPose();
     const behavior = chooseBehavior(this.env.random, {
       personality: this.cat.personality,
@@ -422,7 +437,10 @@ export class CatActor {
   }
 
   private beginSegment(clip: Clip, t: number, opts: { holdMs?: number; move?: Move }): void {
+    if (this.seg.clip.name === 'purr' && this.seg.soundStarted && this.cat.sounds.purr.length > 0)
+      this.env.addSound?.({ cat: this.id, sound: 'purr', action: 'stop' }, t);
     this.seg = this.makeSegment(clip, opts);
+    this.advanceSound(this.seg, 0, t);
     const cut = this.cutPending;
     this.cutPending = false;
     this.pose = clip.fromPose;
@@ -437,12 +455,29 @@ export class CatActor {
 
   // ---------- 打断 ----------
 
+  /** 只在第一次跨过起始帧时出声，循环和低帧率都不能重复发。 */
+  private advanceSound(seg: Segment, dt: number, at: number): void {
+    const sound =
+      seg.clip.name === 'meow' || seg.clip.name === 'purr' ? CLIP_SOUNDS[seg.clip.name] : undefined;
+    const start = ((seg.clip.soundStartFrame ?? 0) * 1000) / seg.clip.fps;
+    if (!sound || seg.soundStarted || seg.elapsed + dt * seg.rate < start) return;
+    seg.soundStarted = true;
+    this.startSound(sound, at + Math.max(0, start - seg.elapsed) / seg.rate);
+  }
+
+  startSound(sound: 'meow' | 'purr', at: number): void {
+    if (this.cat.sounds[sound].length === 0) return;
+    const file = pick(this.env.random, this.cat.sounds[sound]);
+    if (file !== undefined) this.env.addSound?.({ cat: this.id, sound, action: 'start', file }, at);
+  }
+
   /**
    * 换成新的计划。soft：等当前片段回到姿势（循环片段到这一遍结束）再换；
    * cut：立刻换。当前片段不在姿势上时，放一个小特效盖住切换处（ADR-0002）。
    */
   interrupt(steps: Step[], behavior: Behavior, mode: InterruptMode, t: number): void {
     this.entranceDelayMs = 0;
+    this.restAfterNearbyClicks = false;
     this.held = false;
     this.behavior = behavior;
     this.queue = steps;
@@ -468,6 +503,20 @@ export class CatActor {
         ? seg.clip.toPose
         : seg.clip.fromPose;
     this.startNext(t);
+  }
+
+  /** 防打扰让开；勿扰期间后续休息留在新位置，主动命令仍可替换计划。 */
+  avoidNearbyClicks(x: number, t: number): void {
+    this.interrupt(
+      [
+        { kind: 'move', gait: 'walk', x, d: this.d },
+        { kind: 'clip', name: REST_LOOPS[this.env.doNotDisturb ? 'sleep' : 'stand'], holdMs: 5000 },
+      ],
+      { kind: 'avoid' },
+      'cut',
+      t,
+    );
+    this.restAfterNearbyClicks = true;
   }
 
   /** 召唤：走（或跑）到 (x, d)，转向 towardX，再站着等一会儿。 */
@@ -731,7 +780,8 @@ export class CatActor {
       }
       this.clampToFloor();
     }
-    if (this.cornerX === undefined) return false;
+    // 勿扰期间被点开的猫在新位置接着睡（#60），不走回角落。
+    if (this.cornerX === undefined || this.restAfterNearbyClicks) return false;
     if (this.atFloorTarget(this.cornerX)) {
       this.behavior = { kind: 'doNotDisturbSleep' };
       this.queue = [{ kind: 'clip', name: REST_LOOPS.sleep, holdMs: Infinity }];

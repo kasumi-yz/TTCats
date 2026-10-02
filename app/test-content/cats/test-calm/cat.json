@@ -14,5 +14,5 @@
     { "cat": "test-close", "closeness": 0.8, "dominance": -0.3 },
     { "cat": "test-active", "closeness": 0.3, "dominance": -0.6 }
   ],
-  "sounds": { "meow": [], "purr": [] }
+  "sounds": { "meow": ["sounds/meow-1.wav", "sounds/meow-2.wav"], "purr": ["sounds/purr.wav"] }
 }
