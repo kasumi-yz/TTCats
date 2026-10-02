@@ -1,3 +1,8 @@
+; 即使用户主动以管理员身份启动安装器，也只能安装到当前用户。
+!macro customInstallMode
+  StrCpy $isForceCurrentInstall "1"
+!macroend
+
 !macro customUnInstall
   ; 覆盖安装和自动更新会调用旧版卸载程序，不能弹窗或删除数据。
   ${IfNot} ${isUpdated}
