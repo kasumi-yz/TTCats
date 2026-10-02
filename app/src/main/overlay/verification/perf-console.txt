@@ -1,0 +1,6 @@
+PHASE playing: 15s warmup, 300s measurement
+{"phase":"playing","cpuAverage":1.1142795599403543,"cpuPeak":1.7122858749160441,"privateAverageMB":552.679757756295,"privatePeakMB":567.83203125,"samples":278}
+PHASE hidden: 15s warmup, 300s measurement
+{"phase":"hidden","cpuAverage":0.46316351582041987,"cpuPeak":0.7186133562676571,"privateAverageMB":559.9817708333334,"privatePeakMB":561.625,"samples":279}
+PHASE fullscreen: 15s warmup, 300s measurement
+{"phase":"fullscreen","cpuAverage":0.4694200426147159,"cpuPeak":0.5884864543592035,"privateAverageMB":594.7634765625,"privatePeakMB":597.1328125,"samples":280}

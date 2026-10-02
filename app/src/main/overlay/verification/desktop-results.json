@@ -1,0 +1,66 @@
+{
+  "display": {
+    "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1200
+    },
+    "workArea": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1152
+    },
+    "scaleFactor": 1.5
+  },
+  "checks": [
+    {
+      "name": "transparent topmost nonactivating window",
+      "at": 1790918405185
+    },
+    {
+      "name": "blank click reaches underlying real window",
+      "at": 1790918406263
+    },
+    {
+      "name": "transparent leg gap passes through",
+      "at": 1790918406606
+    },
+    {
+      "name": "drag outside cat, Ctrl mid-drag, release and focus preserved",
+      "at": 1790918407218
+    },
+    {
+      "name": "Ctrl release retains ghost for two seconds",
+      "at": 1790918409441
+    },
+    {
+      "name": "renderer stalled: main restores passthrough under 200ms",
+      "at": 1790918410683
+    },
+    {
+      "name": "cold clip retains old sprite; rapid interruptions keep playback alive",
+      "at": 1790918411786
+    },
+    {
+      "name": "per-cat cache bounded to current plus recent two",
+      "at": 1790918412240
+    },
+    {
+      "name": "real Pixi bubble has sized backdrop; bubble and effect reuse objects",
+      "at": 1790918412624
+    },
+    {
+      "name": "real foreground fullscreen pauses drawing",
+      "at": 1790918414013
+    },
+    {
+      "name": "three queued rebuilds finish with one live overlay",
+      "at": 1790918415596
+    }
+  ],
+  "recoveryMs": 74.9455999999991,
+  "failures": 0,
+  "driver": "test-driver (fixed-position window/input fixture)"
+}

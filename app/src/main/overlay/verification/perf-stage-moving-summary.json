@@ -1,0 +1,155 @@
+{
+  "seconds": 300,
+  "warmupSeconds": 15,
+  "exclusive": true,
+  "fps": 30,
+  "cats": 3,
+  "driver": "core/stage",
+  "movingPointer": true,
+  "pointerMoves": 11919,
+  "pointerEvents": 11918,
+  "cpuMethod": "Sum app.getAppMetrics percentCPUUsage for all processes; no extra division",
+  "memoryMethod": "Sum privateBytes (KB) / 1024; all processes",
+  "gpu": {
+    "auxAttributes": {
+      "amdSwitchable": false,
+      "canSupportThreadedTextureMailbox": false,
+      "directMLFeatureLevel": "Not supported",
+      "displayType": "ANGLE_D3D11",
+      "dx12FeatureLevel": "Not supported",
+      "glExtensions": "GL_AMD_performance_monitor GL_ANGLE_base_vertex_base_instance_shader_builtin GL_ANGLE_blob_cache GL_ANGLE_client_arrays GL_ANGLE_clip_cull_distance GL_ANGLE_copy_texture_3d GL_ANGLE_depth_texture GL_ANGLE_framebuffer_blit GL_ANGLE_framebuffer_multisample GL_ANGLE_get_serialized_context_string GL_ANGLE_get_tex_level_parameter GL_ANGLE_instanced_arrays GL_ANGLE_memory_size GL_ANGLE_multiview_multisample GL_ANGLE_pack_reverse_row_order GL_ANGLE_polygon_mode GL_ANGLE_program_binary_readiness_query GL_ANGLE_program_cache_control GL_ANGLE_provoking_vertex GL_ANGLE_renderability_validation GL_ANGLE_request_extension GL_ANGLE_robust_client_memory GL_ANGLE_shader_pixel_local_storage GL_ANGLE_shader_pixel_local_storage_coherent GL_ANGLE_stencil_texturing GL_ANGLE_texture_compression_dxt3 GL_ANGLE_texture_compression_dxt5 GL_ANGLE_texture_multisample GL_ANGLE_texture_usage GL_ANGLE_translated_shader_source GL_APPLE_clip_distance GL_ARM_rgba8 GL_CHROMIUM_bind_generates_resource GL_CHROMIUM_bind_uniform_location GL_CHROMIUM_copy_compressed_texture GL_CHROMIUM_copy_texture GL_CHROMIUM_lose_context GL_EXT_EGL_image_external_wrap_modes GL_EXT_base_instance GL_EXT_blend_func_extended GL_EXT_blend_minmax GL_EXT_clip_control GL_EXT_clip_cull_distance GL_EXT_color_buffer_float GL_EXT_color_buffer_half_float GL_EXT_conservative_depth GL_EXT_debug_label GL_EXT_debug_marker GL_EXT_depth_clamp GL_EXT_discard_framebuffer GL_EXT_disjoint_timer_query GL_EXT_draw_buffers GL_EXT_draw_buffers_indexed GL_EXT_draw_elements_base_vertex GL_EXT_float_blend GL_EXT_frag_depth GL_EXT_instanced_arrays GL_EXT_map_buffer_range GL_EXT_occlusion_query_boolean GL_EXT_polygon_offset_clamp GL_EXT_read_format_bgra GL_EXT_render_snorm GL_EXT_robustness GL_EXT_sRGB GL_EXT_shader_texture_lod GL_EXT_texture_border_clamp GL_EXT_texture_compression_bptc GL_EXT_texture_compression_dxt1 GL_EXT_texture_compression_rgtc GL_EXT_texture_compression_s3tc_srgb GL_EXT_texture_filter_anisotropic GL_EXT_texture_format_BGRA8888 GL_EXT_texture_mirror_clamp_to_edge GL_EXT_texture_norm16 GL_EXT_texture_rg GL_EXT_texture_storage GL_EXT_texture_type_2_10_10_10_REV GL_EXT_unpack_subimage GL_KHR_debug GL_KHR_parallel_shader_compile GL_KHR_robustness GL_NV_EGL_stream_consumer_external GL_NV_fence GL_NV_framebuffer_blit GL_NV_pack_subimage GL_NV_pixel_buffer_object GL_NV_shader_noperspective_interpolation GL_OES_EGL_image GL_OES_EGL_image_external GL_OES_EGL_image_external_essl3 GL_OES_depth24 GL_OES_depth32 GL_OES_draw_buffers_indexed GL_OES_draw_elements_base_vertex GL_OES_element_index_uint GL_OES_fbo_render_mipmap GL_OES_get_program_binary GL_OES_mapbuffer GL_OES_packed_depth_stencil GL_OES_required_internalformat GL_OES_rgb8_rgba8 GL_OES_sample_variables GL_OES_shader_multisample_interpolation GL_OES_standard_derivatives GL_OES_surfaceless_context GL_OES_texture_border_clamp GL_OES_texture_float GL_OES_texture_float_linear GL_OES_texture_half_float GL_OES_texture_half_float_linear GL_OES_texture_npot GL_OES_texture_stencil8 GL_OES_texture_storage_multisample_2d_array GL_OES_vertex_array_object GL_OVR_multiview GL_OVR_multiview2 ",
+      "glImplementationParts": "(gl=egl-angle,angle=d3d11)",
+      "glRenderer": "ANGLE (AMD, AMD Radeon 780M Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11-32.0.12019.1028)",
+      "glResetNotificationStrategy": 33362,
+      "glVendor": "Google Inc. (AMD)",
+      "glVersion": "OpenGL ES 3.0 (ANGLE 2.1.28489 git hash: 661a8dbf3847)",
+      "glWsExtensions": "EGL_EXT_create_context_robustness EGL_ANGLE_d3d_share_handle_client_buffer EGL_ANGLE_d3d_texture_client_buffer EGL_ANGLE_surface_d3d_texture_2d_share_handle EGL_ANGLE_query_surface_pointer EGL_ANGLE_window_fixed_size EGL_ANGLE_keyed_mutex EGL_ANGLE_surface_orientation EGL_ANGLE_direct_composition EGL_NV_post_sub_buffer EGL_KHR_create_context EGL_KHR_image EGL_KHR_image_base EGL_KHR_gl_texture_2D_image EGL_KHR_gl_texture_cubemap_image EGL_KHR_gl_renderbuffer_image EGL_KHR_get_all_proc_addresses EGL_KHR_stream EGL_KHR_stream_consumer_gltexture EGL_NV_stream_consumer_gltexture_yuv EGL_ANGLE_stream_producer_d3d_texture EGL_ANGLE_create_context_webgl_compatibility EGL_CHROMIUM_create_context_bind_generates_resource EGL_CHROMIUM_sync_control EGL_EXT_pixel_format_float EGL_KHR_surfaceless_context EGL_ANGLE_display_texture_share_group EGL_ANGLE_display_semaphore_share_group EGL_ANGLE_create_context_client_arrays EGL_ANGLE_program_cache_control EGL_ANGLE_robust_resource_initialization EGL_ANGLE_create_context_extensions_enabled EGL_ANDROID_blob_cache EGL_ANDROID_recordable EGL_ANGLE_image_d3d11_texture EGL_ANGLE_create_context_backwards_compatible EGL_KHR_no_config_context EGL_KHR_create_context_no_error EGL_KHR_reusable_sync EGL_ANGLE_memory_usage_report ",
+      "glWsVendor": "Google Inc. (AMD)",
+      "glWsVersion": "1.5 (ANGLE 2.1.28489 git hash: 661a8dbf3847)",
+      "inProcessGpu": false,
+      "initializationTime": 161.821,
+      "isAsan": false,
+      "isClangCoverage": false,
+      "jpegDecodeAcceleratorSupported": false,
+      "maxMsaaSamples": "8",
+      "optimus": false,
+      "overlayInfo": {
+        "bgra8OverlaySupport": "SOFTWARE",
+        "directComposition": true,
+        "nv12OverlaySupport": "SOFTWARE",
+        "p010OverlaySupport": "SOFTWARE",
+        "rgb10a2OverlaySupport": "SOFTWARE",
+        "supportsOverlays": true,
+        "yuy2OverlaySupport": "SOFTWARE"
+      },
+      "passthroughCmdDecoder": true,
+      "pixelShaderVersion": "5.0",
+      "sandboxed": true,
+      "skiaBackendType": "GaneshGL",
+      "subpixelFontRendering": true,
+      "supportsD3dSharedImages": true,
+      "supportsDirectML": false,
+      "supportsDx12": false,
+      "supportsVulkan": false,
+      "targetCpuBits": 64,
+      "vertexShaderVersion": "5.0",
+      "videoDecodeAcceleratorSupportedProfile": {
+        "encrypted_only": false,
+        "maxResolutionHeight": 4352,
+        "maxResolutionWidth": 8192,
+        "minResolutionHeight": 64,
+        "minResolutionWidth": 64,
+        "profile": 24
+      },
+      "visibilityCallbackCallCount": 0,
+      "vulkanVersion": "Not supported"
+    },
+    "gpuDevice": [
+      {
+        "active": false,
+        "deviceId": 10464,
+        "deviceString": "NVIDIA GeForce RTX 4060 Laptop GPU",
+        "driverVendor": "AMD",
+        "driverVersion": "32.0.15.6603",
+        "gpuPreference": 3,
+        "revision": 161,
+        "subSysId": 866652227,
+        "vendorId": 4318
+      },
+      {
+        "active": true,
+        "deviceId": 6400,
+        "deviceString": "AMD Radeon 780M Graphics",
+        "driverVersion": "32.0.12019.1028",
+        "gpuPreference": 2,
+        "revision": 203,
+        "subSysId": 866652227,
+        "vendorId": 4098
+      },
+      {
+        "active": false,
+        "deviceId": 6400,
+        "deviceString": "AMD Radeon 780M Graphics",
+        "driverVersion": "32.0.12019.1028",
+        "gpuPreference": 0,
+        "revision": 203,
+        "subSysId": 866652227,
+        "vendorId": 4098
+      },
+      {
+        "active": false,
+        "deviceId": 6400,
+        "deviceString": "AMD Radeon 780M Graphics",
+        "driverVersion": "32.0.12019.1028",
+        "gpuPreference": 0,
+        "revision": 203,
+        "subSysId": 866652227,
+        "vendorId": 4098
+      },
+      {
+        "active": false,
+        "deviceId": 140,
+        "deviceString": "Microsoft Basic Render Driver",
+        "driverVersion": "10.0.26100.9278",
+        "gpuPreference": 0,
+        "revision": 0,
+        "subSysId": 0,
+        "vendorId": 5140
+      },
+      {
+        "active": false,
+        "deviceId": 5378,
+        "driverVersion": "0.0.0.0",
+        "gpuPreference": 0,
+        "revision": 0,
+        "subSysId": 0,
+        "vendorId": 4130
+      }
+    ]
+  },
+  "display": {
+    "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1200
+    },
+    "workArea": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1152
+    },
+    "scaleFactor": 1.5
+  },
+  "summaries": [
+    {
+      "phase": "playing-moving-pointer",
+      "cpuAverage": 1.725927245465618,
+      "cpuPeak": 2.112849675166649,
+      "privateAverageMB": 594.7614694148937,
+      "privatePeakMB": 605.77734375,
+      "samples": 282
+    }
+  ]
+}

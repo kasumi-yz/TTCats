@@ -275,4 +275,12 @@ export const zh = {
     failed:
       '桌面层恢复失败，已停止自动重试并隐藏桌面层，原存档仍保留。请打开日志文件夹查看故障记录，修复问题后退出并重新打开 TTCats。',
   },
+  overlay: {
+    title: 'TTCats 桌面层',
+    bridgeMissing:
+      '\u684c\u9762\u5c42\u65e0\u6cd5\u8fde\u63a5\u4e3b\u8fdb\u7a0b\uff0c\u8bf7\u68c0\u67e5 preload \u8def\u5f84\u3002',
+    missingClip: (cat: string, clip: string) => `${cat}：缺少片段 ${clip}。`,
+    loadFailed: (cat: string, file: string) => `${cat}：无法加载片段文件 ${file}。`,
+    badMask: (cat: string, file: string) => `${cat}：点击遮罩 ${file} 的长度不正确。`,
+  },
 };
