@@ -498,7 +498,9 @@ export class CatActor {
 
   dragTo(x: number, y: number): void {
     this.x = this.env.floor.clampX(x, this.cat.relativeSize);
-    this.airY = Math.min(this.env.floor.yAt(this.d), Math.max(0, y));
+    // 顶边留一个当前猫身高，避免向上拖出屏幕时只剩落脚点可见。
+    const topY = STANDARD_CAT_HEIGHT * this.finalScale();
+    this.airY = Math.min(this.env.floor.yAt(this.d), Math.max(topY, y));
   }
 
   drop(t: number): void {

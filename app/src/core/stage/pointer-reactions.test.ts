@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { PointerInput } from '../../shared/core-api';
 import type { Personality } from '../../shared/schemas';
 import { CatActor, MAX_WALK_SLOPE, type ActorEnv } from './actor';
-import { Floor } from './floor';
+import { Floor, STANDARD_CAT_HEIGHT } from './floor';
 import { Stage } from './stage-core';
 import { at, catalog, NEUTRAL, SCREEN, snapshot, testCat, testClips } from './test-fixtures';
 
@@ -204,7 +204,9 @@ describe('拎起放下', () => {
     const { stage, send, pickUp } = setup();
     pickUp();
     send({ type: 'move', x: -500, y: -500, cat: null }, 100);
-    expect(placement(stage, 100)).toMatchObject({ x: 90, y: 0, clip: 'dangle' });
+    const top = placement(stage, 100);
+    expect(top).toMatchObject({ x: 90, clip: 'dangle' });
+    expect(top.y).toBeCloseTo(STANDARD_CAT_HEIGHT * top.scale);
     send({ type: 'move', x: 5000, y: -100, cat: null }, 200);
     expect(placement(stage, 200).x).toBe(1830);
     send({ type: 'cancel' }, 300);
@@ -552,6 +554,65 @@ describe('PR #46 复查回归：不耐烦、温和靠近和调试模拟', () => 
     simulate('drop', 400);
     expect(stage.drainFacts().map((f) => f.type)).toEqual(['cat/pickedUp', 'cat/dropped']);
     expect(placement(stage, 2500).pose).toBe('stand');
+  });
+});
+
+describe('拖动顶边（PR #46 第 6 条回归）', () => {
+  it.each([
+    { scale: 0.5, relativeSize: 0.5, depth: 0 },
+    { scale: 1, relativeSize: 1, depth: 0.5 },
+    { scale: 2, relativeSize: 1.5, depth: 1 },
+  ])(
+    '向屏幕上方拖动时按用户缩放 $scale、体型 $relativeSize 和纵深 $depth 留出身高',
+    ({ scale, relativeSize, depth }) => {
+      const env: ActorEnv = {
+        random: () => 0,
+        floor: new Floor({ bounds: SCREEN, scale, floorDepth: 1 }),
+        scale,
+        activityLevel: 'natural',
+        addEffect: () => undefined,
+      };
+      const actor = new CatActor(testCat('a', { relativeSize }), testClips(), env, {
+        x: 960,
+        d: depth,
+        facing: 'right',
+        now: T0,
+      });
+      expect(actor.pickUp(T0)).toBe(true);
+      actor.dragTo(960, -500);
+      const held = actor.placement();
+      expect(held.clip).toBe('dangle');
+      expect(held.y).toBeCloseTo(
+        STANDARD_CAT_HEIGHT * scale * relativeSize * env.floor.depthScale(depth),
+      );
+      expect(held.y - STANDARD_CAT_HEIGHT * held.scale).toBeCloseTo(0);
+      actor.dragTo(960, held.y + 50);
+      expect(actor.placement().y).toBeCloseTo(held.y + 50);
+    },
+  );
+
+  it.each([0, 100])('屏幕高度 %i 放不下猫时，以地板为限，拖动和放下不出现无效坐标', (height) => {
+    const env: ActorEnv = {
+      random: () => 0,
+      floor: new Floor({ bounds: { width: 1920, height }, scale: 2, floorDepth: 1 }),
+      scale: 2,
+      activityLevel: 'natural',
+      addEffect: () => undefined,
+    };
+    const actor = new CatActor(testCat('a', { relativeSize: 1.5 }), testClips(), env, {
+      x: 960,
+      d: 1,
+      facing: 'right',
+      now: T0,
+    });
+    actor.pickUp(T0);
+    actor.dragTo(960, -500);
+    expect(actor.placement().y).toBe(env.floor.nearY);
+    actor.drop(T0);
+    actor.advance(T0, T0 + 2000, true);
+    const landed = actor.placement();
+    expect([landed.x, landed.y, landed.scale, landed.clipTimeMs].every(Number.isFinite)).toBe(true);
+    expect(landed.pose).toBe('stand');
   });
 });
 
