@@ -532,4 +532,9 @@ export const zh = {
     shortcutFailed: (accelerator: string) =>
       `一键隐藏快捷键「${accelerator}」注册失败，可能已被其他程序占用。`,
   },
+  updater: {
+    install: (version: string) => `重启并更新到 ${version}`,
+    failed: (error: string) => `更新失败：${error}`,
+    retryLater: '检查失败，请稍后重试。',
+  },
 };

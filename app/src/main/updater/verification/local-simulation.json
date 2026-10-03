@@ -1,0 +1,17 @@
+{
+  "oldVersion": "0.2.9000",
+  "newVersion": "0.2.9001",
+  "downloaded": {
+    "state": "downloaded",
+    "version": "0.2.9001"
+  },
+  "retainedScale": 1.75,
+  "retainedAutoUpdate": false,
+  "silentInstallCompleted": true,
+  "requests": [
+    "latest.yml",
+    "TTCats-Setup-0.2.9001-x64.exe.blockmap",
+    "TTCats-Setup-0.2.9001-x64.exe"
+  ],
+  "note": "真实 NSIS 静默升级完成，未被旧版卸载确认弹窗阻塞；独立 appId、安装目录、数据目录、更新缓存。"
+}

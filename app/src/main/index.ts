@@ -34,6 +34,7 @@ import { createPhoto } from './photo';
 import { attachRecovery } from './recovery';
 import { SaveStore } from './save';
 import { attachShutdown } from './shutdown';
+import { createUpdater } from './updater';
 import {
   applicationMenuSection,
   captureMenuSection,
@@ -96,6 +97,8 @@ if (!app.requestSingleInstanceLock()) {
       let tray: ReturnType<typeof createTrayMenu> | undefined;
       // eslint-disable-next-line prefer-const -- IPC 和窗口回调在退出监听器注册前已经接线。
       let shutdown: ReturnType<typeof attachShutdown> | undefined;
+      // eslint-disable-next-line prefer-const -- 状态发布回调在更新控制器创建前定义。
+      let updates: ReturnType<typeof createUpdater> | undefined;
       const stopping = (): boolean => shutdown?.closing === true || shutdown?.quitting === true;
       const overlaySend = (channel: string, payload: StageCommand | MainToOverlay): void => {
         if (overlay?.window && !session.safeMode) sendToWindow(overlay.window, channel, payload);
@@ -141,6 +144,7 @@ if (!app.requestSingleInstanceLock()) {
         overlay?.updateSettings(snapshot.settings);
         overlay?.updateHideAll(snapshot.hideAll);
         hideAllShortcut.update(snapshot.settings.hideAllShortcut);
+        updates?.setEnabled(snapshot.settings.autoUpdate);
         updateTray();
       };
       const session = createGameSession({
@@ -171,6 +175,19 @@ if (!app.requestSingleInstanceLock()) {
         report,
         system: readSystemInfo,
       });
+      updates = createUpdater({
+        packaged: app.isPackaged,
+        enabled: initialState.settings.autoUpdate,
+        publish: (update) => {
+          appStatus.update({ update });
+          updateTray();
+        },
+        report,
+        quit: () => {
+          app.quit();
+        },
+      });
+      appStatus.update({ update: updates.status });
       const photo = createPhoto({
         overlay: () => overlay,
         allowed: () =>
@@ -189,11 +206,11 @@ if (!app.requestSingleInstanceLock()) {
         mainCommands: {
           'photo/take': photo.take,
           'diagnostics/export': exportDiagnostics,
-          'update/check': (message) => {
-            report(zh.interfaces.commandNotReady(message.type));
+          'update/check': () => {
+            if (!stopping()) return updates.check();
           },
-          'update/install': (message) => {
-            report(zh.interfaces.commandNotReady(message.type));
+          'update/install': () => {
+            if (!stopping()) updates.requestInstall();
           },
           'debug/simulateFullscreen': (message) => {
             if (!stopping() && !session.safeMode) overlay?.simulateFullscreen(message.active);
@@ -289,6 +306,7 @@ if (!app.requestSingleInstanceLock()) {
           createDoNotDisturbMenu(session.snapshot),
           captureMenuSection,
           photo.menuSection,
+          updates.menuSection,
           applicationMenuSection,
         ],
         openSettings: () => {
@@ -332,6 +350,9 @@ if (!app.requestSingleInstanceLock()) {
             hideAllShortcut.dispose();
           },
           () => {
+            updates.dispose();
+          },
+          () => {
             recovery?.dispose();
           },
           detachIpc,
@@ -356,6 +377,9 @@ if (!app.requestSingleInstanceLock()) {
         ],
         disposeOverlay: () => overlay.dispose(),
         detachMainLog,
+        finishQuit: () => {
+          updates.finishQuit();
+        },
       });
       if (startup.openSettings) panels.openPanel('settings');
     })
