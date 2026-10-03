@@ -7,7 +7,7 @@ import numpy as np
 from jsonschema import Draft202012Validator
 from PIL import Image
 
-from .models import ClipOptions, Confirmation, IngestRecord
+from .models import ClipOptions, Confirmation, IngestRecord, Suggestion
 from .pipeline import frame_paths
 from .storage import (
     FactoryError,
@@ -97,13 +97,35 @@ def validate_clip(metadata: dict, cat: str):
         raise FactoryError(f"猫「{cat}」：声音开始帧超出片段范围")
 
 
-def finalize(root: Path, job: str, options_path: Path):
+def finalize(
+    root: Path,
+    job: str,
+    options_path: Path,
+    *,
+    pending: bool = False,
+    selection_path: Path | None = None,
+    assessment: dict | None = None,
+):
     directory = job_path(root, job)
     record = load_record(directory / "ingest.json", IngestRecord)
     with operation(root, "finalize", record.cat, {"job": job}) as log:
-        confirmed = load_record(directory / "confirmation.json", Confirmation, record.cat)
+        if pending:
+            selection = load_record(selection_path, Suggestion, record.cat)
+            confirmed = Confirmation(
+                selection=selection,
+                accepted=False,
+                manual_seconds=0.0,
+                notes="自动候选，尚未人工确认。"
+                + (
+                    f"参考评分 {assessment['score']}；" + "；".join(assessment["reasons"])
+                    if assessment
+                    else ""
+                ),
+            )
+        else:
+            confirmed = load_record(directory / "confirmation.json", Confirmation, record.cat)
         options = load_record(options_path, ClipOptions, record.cat)
-        if not confirmed.accepted:
+        if not pending and not confirmed.accepted:
             raise FactoryError(f"猫「{record.cat}」：候选尚未人工确认合格，不能导出")
         selection = confirmed.selection
         if selection.cat != record.cat or len(selection.foot_anchors) != record.frame_count:
@@ -187,11 +209,16 @@ def finalize(root: Path, job: str, options_path: Path):
             "schemaVersion": 1,
             "candidateId": job,
             "cat": options.cat_id,
-            "status": "accepted",
+            "status": "pending" if pending else "accepted",
             "note": confirmed.notes,
             "assetLog": options.asset_log,
             "clip": metadata,
         }
+        if assessment:
+            candidate["assessment"] = {
+                "score": assessment["score"],
+                "reasons": assessment["reasons"],
+            }
         errors = list(Draft202012Validator(candidate_schema).iter_errors(candidate))
         if errors:
             raise FactoryError(

@@ -7,6 +7,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from .batch import run_batch
+from .derivation import derive_land, pickup_map
 from .export import finalize
 from .matting import MODEL_FILE, MODEL_MD5, MODEL_URL
 from .pipeline import confirm, ingest, matte, suggest
@@ -68,6 +70,27 @@ def parser():
     export = commands.add_parser("finalize", help="导出 2 倍尺寸的透明 WebM、点击遮罩和片段资料")
     export.add_argument("job")
     export.add_argument("--options", type=Path, required=True)
+    batch = commands.add_parser("batch", help="串行批量生成、初筛、处理为待挑选候选；同命令续跑")
+    batch.add_argument("--config", type=Path, required=True)
+    batch.add_argument("--adopt-task", action="append", default=[], metavar="片段-种子=任务号")
+    batch.add_argument(
+        "--retry-uncertain",
+        action="append",
+        default=[],
+        metavar="片段-种子",
+        help="仅在本人确认从未提交后重新生成；可能重复生成，请先查 ComfyUI",
+    )
+    batch.add_argument("--retry-failed", action="store_true", help="明确重试已记录的生成失败")
+    pickup = commands.add_parser("pickup-map", help="根据完整 scruff 轨迹建议鼠标高度到帧号映射")
+    pickup.add_argument("job")
+    pickup.add_argument("--options", type=Path)
+    land = commands.add_parser("derive-land", help="按选定时长从源帧派生落地原片（无插帧）")
+    land.add_argument("job")
+    land.add_argument("--start", type=int, required=True)
+    land.add_argument("--end", type=int, required=True)
+    land.add_argument("--seconds", type=float, required=True)
+    land.add_argument("--fps", type=float, default=48.0)
+    land.add_argument("--curve", choices=["linear", "ease-out"], default="linear")
     return cli
 
 
@@ -111,6 +134,30 @@ def main() -> int:
             confirm(root, args.job, args.parameters)
         elif args.command == "finalize":
             print(finalize(root, args.job, args.options))
+        elif args.command == "batch":
+            adopted = {}
+            for value in args.adopt_task:
+                if "=" not in value:
+                    raise FactoryError("补充任务号应写成 片段-种子=任务号")
+                key, prompt_id = value.split("=", 1)
+                adopted[key] = prompt_id
+            print(
+                run_batch(
+                    root,
+                    args.config,
+                    adopt=adopted,
+                    retry_uncertain=args.retry_uncertain,
+                    retry_failed=args.retry_failed,
+                )
+            )
+        elif args.command == "pickup-map":
+            print(pickup_map(root, args.job, args.options))
+        elif args.command == "derive-land":
+            print(
+                derive_land(
+                    root, args.job, args.start, args.end, args.seconds, args.fps, args.curve
+                )
+            )
         return 0
     except (FactoryError, OSError, ValidationError, RuntimeError) as error:
         print(f"素材处理失败：{error}", file=sys.stderr)

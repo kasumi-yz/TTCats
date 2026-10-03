@@ -1,0 +1,49 @@
+{
+  "record_version": 1,
+  "id": "example-cat-first-batch",
+  "cat": {
+    "id": "example-cat",
+    "name": "示例猫",
+    "appearance": "Replace this with the approved description of this individual cat.",
+    "background": [56, 130, 140],
+    "width": 1344,
+    "height": 768,
+    "stand_height": 270.0,
+    "display_height": 150,
+    "rear_foot": {"x": 588.0, "y": 690.0},
+    "ground_y": 690.0,
+    "poses": {
+      "stand": "poses/pose-stand.png",
+      "sit": "poses/pose-sit.png"
+    }
+  },
+  "clips": [
+    {
+      "name": "idle-stand",
+      "kind": "loop",
+      "from_pose": "stand",
+      "to_pose": "stand",
+      "prompt": "{appearance} A locked side-view camera. The cat stands calmly against a perfectly flat teal background. Only subtle breathing and one natural blink. No camera movement, no cuts, no props. Quiet room tone.",
+      "seconds": 4.0,
+      "steps": 20,
+      "seeds": [42, 2026, 1234, 5678],
+      "anchor_mode": "fixed"
+    },
+    {
+      "name": "stand-to-sit",
+      "kind": "transition",
+      "from_pose": "stand",
+      "to_pose": "sit",
+      "prompt": "{appearance} A locked side-view camera. The cat lowers its hindquarters into a calm sit over two seconds. The near rear toe stays planted; the front paws take natural small steps. No camera movement, no cuts, no props. Quiet room tone.",
+      "seconds": 4.0,
+      "action_seconds": 2.0,
+      "steps": 20,
+      "seeds": [42, 2026, 1234, 5678],
+      "anchor_mode": "fixed"
+    }
+  ],
+  "comfy_url": "http://127.0.0.1:8188",
+  "timeout": 7200.0,
+  "poll_seconds": 5.0,
+  "hit_mask_scale": 4
+}
