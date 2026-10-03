@@ -22,12 +22,13 @@ import {
 } from './content';
 import { showCatMenu } from './cat-menu';
 import { createGameCommands } from './game-commands';
+import { createDiagnosticsExport } from './diagnostics';
 import { createGameSession } from './game-session';
 import { registerIpcRoutes } from './ipc-router';
 import { attachMainLog, createApplicationLog } from './log';
 import { configureOverlayGpu, createOverlay } from './overlay';
 import { createPanelWindows, sendToWindow } from './panel-windows';
-import { createPlatform } from './platform';
+import { createPlatform, readSystemInfo } from './platform';
 import { createPhoto } from './photo';
 import { attachRecovery } from './recovery';
 import { SaveStore } from './save';
@@ -153,6 +154,17 @@ if (!app.requestSingleInstanceLock()) {
         updateTray,
         report,
       });
+      const exportDiagnostics = createDiagnosticsExport({
+        logDirectory: log.directory,
+        saveFile: save.file,
+        contentDirectory: directory,
+        content,
+        safeMode: () => session.safeMode,
+        stopping,
+        overlayWindow: () => overlay?.window,
+        report,
+        system: readSystemInfo,
+      });
       const photo = createPhoto({
         overlay: () => overlay,
         allowed: () =>
@@ -170,9 +182,7 @@ if (!app.requestSingleInstanceLock()) {
         command,
         mainCommands: {
           'photo/take': photo.take,
-          'diagnostics/export': (message) => {
-            report(zh.interfaces.commandNotReady(message.type));
-          },
+          'diagnostics/export': exportDiagnostics,
           'update/check': (message) => {
             report(zh.interfaces.commandNotReady(message.type));
           },
@@ -214,6 +224,7 @@ if (!app.requestSingleInstanceLock()) {
                 .snapshot()
                 .settings.visibleCats.filter((id) => Object.hasOwn(content.cats, id)),
             catName: (id) => names.get(id) ?? id,
+            exportDiagnostics,
             faultedCat: () => undefined,
             reload: async () => {
               await (await overlayReady).reload();

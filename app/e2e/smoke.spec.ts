@@ -1,5 +1,12 @@
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import {
+  appendFileSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir, userInfo } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
   _electron as electron,
@@ -9,6 +16,7 @@ import {
   type Page,
   type Locator,
 } from '@playwright/test';
+import { strFromU8, unzipSync } from 'fflate';
 import type { ContentCatalog } from '../src/shared/core-api';
 import type { AppStatus, StageCommand, StageDebugReport, StateSnapshot } from '../src/shared/ipc';
 import { IPC_CHANNELS } from '../src/shared/ipc';
@@ -28,6 +36,9 @@ interface Smoke {
   fullscreen: boolean;
   crashes: number;
   slowRequests: number;
+  saveDialogs: Electron.SaveDialogOptions[];
+  savePath: string | null;
+  shownItems: string[];
   pointerInput: { x: number; y: number; leftDown: boolean; ctrlDown: boolean } | null;
 }
 const ids = ['test-active', 'test-calm', 'test-close'];
@@ -94,6 +105,25 @@ async function setRange(locator: Locator, value: number): Promise<void> {
       );
     await expect(locator).toHaveValue(String(next));
   }
+}
+/** 通过面板的桥发出导出命令，等文件在文件夹里被选中，再解压读出全部文本。 */
+async function exportDiagnostics(
+  app: ElectronApplication,
+  page: Page,
+  file: string,
+): Promise<Record<string, string>> {
+  await app.evaluate((_, path) => {
+    (globalThis as unknown as { smoke: Smoke }).smoke.savePath = path;
+  }, file);
+  await page.evaluate('window.ttcats.sendCommand({ type: "diagnostics/export" })');
+  await expect
+    .poll(() => app.evaluate(() => (globalThis as unknown as { smoke: Smoke }).smoke.shownItems), {
+      timeout: 30_000,
+    })
+    .toContain(file);
+  return Object.fromEntries(
+    Object.entries(unzipSync(readFileSync(file))).map(([name, data]) => [name, strFromU8(data)]),
+  );
 }
 async function overlayVisible(app: ElectronApplication): Promise<boolean> {
   return app.evaluate(({ BrowserWindow }) =>
@@ -799,6 +829,19 @@ test('四次真实渲染崩溃：安全模式回退、设置不唤醒猫且不�
     for (const id of originalSettings.visibleCats)
       expect(notice).toContain(content.cats[id]?.cat.name);
     expect(notice).not.toContain(content.cats['test-close']?.cat.name);
+    expect(
+      await app.evaluate(
+        () => (globalThis as unknown as { smoke: Smoke }).smoke.dialogs[0]?.buttons,
+      ),
+    ).toEqual([zh.recovery.exportDiagnostics, zh.recovery.openLogs, zh.recovery.close]);
+    const exported = await exportDiagnostics(app, debug, join(directory, 'safe-mode.zip'));
+    const disabled = JSON.parse(exported['content.json'] ?? '{}') as {
+      safeMode: boolean;
+      disabled: { cat: string; problems: string[] }[];
+    };
+    expect(disabled.safeMode).toBe(true);
+    expect(disabled.disabled.map((pack) => pack.cat).sort()).toEqual(['test-active', 'test-calm']);
+    expect(disabled.disabled.every((pack) => pack.problems.length > 0)).toBe(true);
     const settings = await pageFor(app, 'panel=settings');
     await expect.poll(async () => (await snapshot(settings)).settings.scale).toBe(0.8);
     expect((await snapshot(settings)).revision).toBeGreaterThan(before);
@@ -857,6 +900,66 @@ test('四次真实渲染崩溃：安全模式回退、设置不唤醒猫且不�
     await app.close();
     expect(readFileSync(join(data, 'save.json'), 'utf8')).toBe(original);
     expect(readFileSync(join(data, 'save.backup.0000000000000001.json'), 'utf8')).toBe(backup);
+  } finally {
+    await app.close();
+  }
+});
+
+test('调试台命令导出诊断信息：能解压、文件齐全、不含电脑用户名', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-diagnostics-'));
+  mkdirSync(join(directory, 'TTCats'));
+  writeFileSync(
+    join(directory, 'TTCats', 'save.json'),
+    JSON.stringify({
+      saveVersion: CURRENT_SAVE_VERSION,
+      savedAt: Date.now(),
+      state: defaultGameState(ids),
+    }),
+  );
+  const app = await launch(directory);
+  try {
+    await pageFor(app, 'panel=settings');
+    const debug = await openDebug(app);
+    const file = join(directory, 'out', 'diagnostics.zip');
+    mkdirSync(join(directory, 'out'));
+    // 测试数据目录在系统临时目录（用户目录）下；按日志格式记一行带这个路径的记录。
+    appendFileSync(
+      join(directory, 'TTCats', 'logs', 'main.log'),
+      `${Date.now()} ${JSON.stringify(`冒烟测试路径：${file}`)}\n`,
+    );
+    const files = await exportDiagnostics(app, debug, file);
+    const dialog = await app.evaluate(
+      () => (globalThis as unknown as { smoke: Smoke }).smoke.saveDialogs[0],
+    );
+    expect(dialog?.defaultPath).toMatch(/TTCats-诊断-\d{8}-\d{6}\.zip$/);
+    expect(Object.keys(files)).toEqual(
+      expect.arrayContaining([
+        '说明.txt',
+        'save.json',
+        'version.json',
+        'system.json',
+        'content.json',
+        'logs/main.log',
+      ]),
+    );
+    const content = JSON.parse(files['content.json'] ?? '{}') as {
+      cats: { id: string; clips: number }[];
+    };
+    expect(content.cats.map((cat) => cat.id).sort()).toEqual(ids);
+    expect(content.cats.every((cat) => cat.clips > 0)).toBe(true);
+    const system = JSON.parse(files['system.json'] ?? '{}') as {
+      displays: unknown[];
+      overlayDisplayId: number | null;
+    };
+    expect(system.displays.length).toBeGreaterThan(0);
+    expect(system.overlayDisplayId).not.toBeNull();
+    const username = userInfo().username.toLowerCase();
+    for (const [name, body] of Object.entries(files))
+      expect(body.toLowerCase(), name).not.toContain(username);
+    // 日志是 JSON 编码，路径里的反斜杠写成两个。CI 的临时目录可能是 8.3 短文件名，走兜底替换。
+    expect(files['logs/main.log']).toMatch(
+      /冒烟测试路径：(%USERPROFILE%|[A-Z]:\\\\Users\\\\<用户名>)/,
+    );
   } finally {
     await app.close();
   }
@@ -1133,6 +1236,11 @@ test('声音：真实解码、调试命令、呼噜停止与空闲挂起', async
   const app = await launch(directory);
   try {
     const overlay = await pageFor(app, '/overlay/');
+    // 播放验收不能依赖机器是否正在默认安静时段内；用正式设置命令排除静音前置条件。
+    await overlay.evaluate(
+      'window.ttcats.sendCommand({type:"settings/update",patch:{quietHoursStart:"00:00",quietHoursEnd:"00:00"}})',
+    );
+    await expect.poll(async () => (await snapshot(overlay)).silencedBy).toEqual([]);
     const debug = await openDebug(app);
     // M2 已接入真实安静时段；声音解码测试不能随执行时的钟点变成静音测试。
     await debug.evaluate(

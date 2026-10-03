@@ -415,6 +415,7 @@ export const zh = {
     unresponsive: '桌面层长时间没有响应，正在终止故障的渲染进程。',
     safeModeTitle: 'TTCats 已进入安全模式',
     openLogs: '打开日志文件夹',
+    exportDiagnostics: '导出诊断信息',
     close: '关闭',
     safeMode: (cats: readonly string[], hasBackup: boolean, identified: boolean) =>
       `桌面层在 5 分钟内连续发生了 4 次故障，已停止自动重试并进入安全模式。本次运行里桌面上的猫不会再出现，面板仍可使用。${hasBackup ? '已加载最近一份正常的备份存档。' : '没有可用的备份存档，暂时使用默认设置，原存档仍保留。'}${cats.length > 0 ? `${identified ? '已确定故障来源，本次运行已停用猫咪包' : '无法确定故障来源，本次运行已停用所有当前显示的猫咪包'}：${cats.join('、')}。` : '当前没有显示中的猫咪包。'}请打开日志文件夹查看故障记录，修复或移除出问题的猫咪包后，退出并重新打开 TTCats。`,
@@ -465,6 +466,45 @@ export const zh = {
     migrationBadShape: (from: number) =>
       `版本 ${from} 的存档状态格式不对（应该是带 settings 的对象），无法迁移。`,
     commandNotReady: (type: string) => `命令「${type}」对应的功能还没做好，已忽略。`,
+  },
+  diagnostics: {
+    dialogTitle: '导出诊断信息',
+    fileName: (stamp: string) => `TTCats-诊断-${stamp}.zip`,
+    filterName: '压缩包',
+    homePlaceholder: '%USERPROFILE%',
+    userPlaceholder: '<用户名>',
+    started: '开始导出诊断信息。',
+    busy: '诊断信息正在导出，已忽略重复的导出命令。',
+    stopping: '程序正在退出，已忽略导出诊断信息的命令。',
+    canceled: '用户取消了诊断信息导出。',
+    saved: (file: string) => `诊断信息已导出到「${file}」。`,
+    failedTitle: '导出诊断信息失败',
+    failed: (error: string) =>
+      `导出诊断信息失败：${error}\n请检查保存位置是否可写、磁盘空间是否足够，然后再试一次。`,
+    gpuTimeout: (ms: number) => `显卡信息查询超过 ${ms} 毫秒没有返回。`,
+    noSave: '（没有找到存档文件 save.json，可能是第一次运行，或者存档还没写过。）',
+    readme: (files: { name: string; about: string }[]) =>
+      [
+        'TTCats 诊断信息',
+        '',
+        '这个压缩包是 TTCats 桌宠导出的诊断信息，用来交给 AI 或开发者排查问题。',
+        '隐私：电脑的用户目录已换成 %USERPROFILE%，电脑用户名已换成 <用户名>。不含截图和照片。',
+        '时间：日志每行开头的数字和 JSON 里的 at、savedAt 等字段都是 Unix 毫秒时间戳。',
+        '',
+        '文件说明：',
+        ...files.map((file) => `- ${file.name}：${file.about}`),
+        '',
+      ].join('\r\n'),
+    files: {
+      readme: '本说明。',
+      logs: '主进程日志（main.log 是最新的，main.log.1～5 是更早轮转下来的）。每行是“时间戳 + JSON 字符串”，包括面板和桌面层报告的错误。',
+      save: '当前的存档文件（里面有全部设置）。格式：saveVersion 是存档版本，state.settings 是设置。',
+      version: '版本：程序版本，Electron、Chromium、Node 的版本，是不是安装版（isPackaged）。',
+      system:
+        '系统信息：Windows 版本和构建号、CPU、内存、显卡（Electron app.getGPUInfo）、每块显示器的分辨率、缩放和工作区、猫在哪块显示器上（overlayDisplayId）、系统语言。',
+      content:
+        '内容：内容目录、加载了哪些猫和每只猫的片段数、被停用的猫咪包和中文原因、是否处于安全模式。',
+    },
   },
   photo: {
     title: '拍照',
