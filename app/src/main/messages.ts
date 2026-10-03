@@ -77,6 +77,7 @@ export const FactSchema = z.discriminatedUnion('type', [
   ...(['cat/poked', 'cat/pickedUp', 'cat/dropped'] as const).map((type) =>
     z.strictObject({ type: z.literal(type), cat: IdSchema, at: z.number() }),
   ),
+  z.strictObject({ type: z.literal('stage/created'), at: z.number() }),
   z.strictObject({
     type: z.literal('event/started'),
     at: z.number(),

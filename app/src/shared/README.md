@@ -51,7 +51,7 @@
 - **内容目录** `ContentCatalog` 加了 `events`：通过校验的事件配置。
 - **core/game**：`handleUserState`（系统空闲时间、锁屏、睡眠，判断离开、回来、坐太久）、`setFullscreen`；创建参数加 `random`；事件的调度规则写在 `GameCore` 的注释里。
 - **core/stage**：`setLedges` 收窗口顶边（`Ledges` / `LedgeWindow`）；事件执行、打断、窗口模式的规则写在 `StageCore` 的注释里；`StageFrame.effects` 加 `durationMs`。
-- **命令和事实**：StageCommand `event/start`；Fact `event/started`、`event/ended`（`EventOutcome`）；调试台的 `debug/triggerEvent`、`debug/resetCooldowns`、`debug/userState`、`debug/effect`（直接在猫身上放特效，#110 不用等事件做好）、`debug/ledgeLines`（MainCommand）。
+- **命令和事实**：StageCommand `event/start`；Fact `stage/created`（新建 StageCore 的第一条事实，core/game 靠它清掉旧的事件记录）、`event/started`、`event/ended`（`EventOutcome`）；调试台的 `debug/triggerEvent`、`debug/resetCooldowns`、`debug/userState`、`debug/effect`（直接在猫身上放特效，#110 不用等事件做好）、`debug/ledgeLines`（MainCommand）。
 - **状态快照**加 `events`（调试台算冷却剩余时间），**程序状态** `AppStatus` 加 `ledgeLines`，**桌面层消息** `MainToOverlay` 加 `ledges`、`ledgeLines`，调试台画面状态每只猫加 `event`、`surface`。
 - **中文文字**：`fields`、`validation` 补了新字段和新报错；末尾新开 `eventInterfaces` 段，放活动模式、触发条件、结束原因、特效等的中文名。
 

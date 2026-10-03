@@ -96,7 +96,10 @@ export const EventTargetSchema = z.enum([
   'oppositeSide',
   /** 鼠标附近（迎接）。桌面层不知道鼠标在哪时，去地板中间。 */
   'pointer',
-  /** 这只猫在本事件里最近一次放出的、还在播放的特效，比如飞虫。只能用在放特效的步骤之后。 */
+  /**
+   * 这只猫在本事件里最近一次放出的特效，比如飞虫。只能用在放特效的步骤之后。
+   * 特效已经播完（比如片段比预想的长、随机等待太久）时：face 跳过这一步，moveTo 走到特效最后在的位置。
+   */
   'effect',
 ]);
 export type EventTarget = z.infer<typeof EventTargetSchema>;
@@ -177,7 +180,7 @@ export const EventStepSchema = z.discriminatedUnion('do', [
   z.strictObject({ do: z.literal('wait'), minMs: z.int().min(0), maxMs: z.int().positive() }),
   /**
    * 保持现在的样子，一直到被打断，或者被新的事件接管（比如"你离开了"睡着，等"你回来了"）。只能是最后一步。
-   * 停在这一步的猫一直算在这个事件里。
+   * 停在这一步的猫一直算在这个事件里，不管多久都不会因为时间到了自己结束（桌面层重新加载除外），随机事件不会挑它。
    */
   z.strictObject({ do: z.literal('stay') }),
 ]);

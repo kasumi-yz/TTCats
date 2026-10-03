@@ -212,6 +212,13 @@ export type Fact = { at: number } & (
   | { type: 'cat/poked'; cat: CatId }
   | { type: 'cat/pickedUp'; cat: CatId }
   | { type: 'cat/dropped'; cat: CatId }
+  /**
+   * 桌面层新建了 StageCore（M3）：程序启动、桌面层崩溃后重新加载时各一次，是新 StageCore 的第一条事实。
+   * 新的 StageCore 里没有任何正在演的事件，之前发出的事件不会再有 ended，core/game 收到后清掉全部事件记录
+   * （规则见 core-api.ts 的 GameCore）。core/game 在收到第一条之前不触发事件。
+   * #111 要测：桌面层崩溃重新加载后，这条事实能交到 core/game，之后事件能重新触发。
+   */
+  | { type: 'stage/created' }
   /** 事件开始演了（M3）。cats 是真的开始演的猫；event/start 里一只都没开始时不发。 */
   | { type: 'event/started'; run: number; event: string; cats: CatId[] }
   /**

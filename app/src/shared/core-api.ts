@@ -71,15 +71,26 @@ export type UserStateSignal =
  * - 什么时候触发、谁参与、冷却，按 content.events 的配置和 `schemas/event.ts` 的说明判断；冷却和早安记录存档（GameState.events）。
  * - 触发时在 GameOutput.stageCommands 里放 StageCommand `event/start`（带 core/game 编的 run 号），并且 stateChanged 为 true。
  *   tick、handleUserState、handleCommand 都可能触发。
- * - 不触发的时候：勿扰模式、一键隐藏、全屏（setFullscreen）、没有显示中的猫。安全模式下主进程不再调用 tick 和
- *   handleUserState，所以也不会触发。这些时候错过的定时事件一律不补发（D16）。"你离开了"本来就是没人操作时触发的，照常触发。
- * - 同一只猫同一时间只参与一个事件：发出 event/start 后，这只猫一直算在事件里，直到收到它的 event/ended 事实。
- *   桌面层重新加载会丢掉正在演的事件、不发 ended，所以 core/game 要有上限时间，过了就当它结束（多久由 core/game 定）。
- *   优先级高的事件（比如"你离开了""你回来了"）可以接管正在演别的事件的猫：直接发新的 event/start，由 core/stage 让猫退出旧的。
+ * - 不触发的时候：勿扰模式、一键隐藏、全屏（setFullscreen）、没有显示中的猫、还没收到过 stage/created（桌面层还没准备好，
+ *   命令会丢）。安全模式下主进程不再调用 tick 和 handleUserState，所以也不会触发。这些时候错过的定时事件一律不补发（D16）。
+ *   "你离开了"本来就是没人操作时触发的，照常触发。
+ * - 同一只猫同一时间只参与一个事件。core/game 按猫记下它在哪一次事件（run）里：
+ *   - 发出 event/start 时记上；收到这只猫这一次的 event/ended 时去掉。
+ *   - 收到 event/started 时按它重新记上（桌面层重新加载前后发出的命令，可能被新的 StageCore 收到并开始演）。
+ *     同一只猫以 run 号大的那次为准：比它小的 started、ended 不改记录。
+ *   - 收到 stage/created（桌面层新建了 StageCore，原来正在演的事件全没了、不会再有 ended）时，全部记录清空。
+ *     这些事件不补演，冷却照算。
+ *   - **不按时间自己回收**：停在 stay 这一步的猫（比如"你离开了"睡着）离开多久都算在事件里，随机事件不会挑它，
+ *     直到被打断、被优先级高的事件（比如"你回来了"）接管，或者桌面层重新加载。
+ * - 优先级高的事件（"你离开了""你回来了"）可以接管正在演别的事件的猫：直接发新的 event/start，由 core/stage 让猫退出旧的。
+ *   #107 要用单元测试覆盖："你离开了"之后过了很久（比如 8 小时）还在睡、随机事件不挑它；收到 stage/created 后记录清空、
+ *   之后能重新触发；stage/created 之后再收到旧命令的 event/started 时重新记上。
  */
 export interface GameCore {
   handleCommand(command: GameCommand, now: number): GameOutput;
-  /** 桌面层的事实。事件的 event/started、event/ended 用来知道哪只猫已经不在事件里了（M3）。 */
+  /**
+   * 桌面层的事实。事件的 stage/created、event/started、event/ended 用来知道哪只猫还在事件里（M3，规则见上面）。
+   */
   handleFact(fact: Fact, now: number): GameOutput;
   /**
    * 用户状态的信号（M3）。主进程定期送 idle，锁屏、解锁、睡眠、唤醒时马上送。
@@ -147,15 +158,18 @@ export interface LedgeWindow {
    */
   id: string;
   /**
-   * 窗口可见上边缘整条线的左右端点和高度（y），没扣掉遮挡和标题栏按钮。
+   * 窗口可见上边缘整条线的左右端点和高度（y），没扣掉遮挡和标题栏按钮，**也不裁到桌面层范围之内**：
+   * 窗口有一部分在屏幕外时，left 可以小于 0、right 可以大于桌面层宽度，是窗口真实的边界。
    * 窗口移动时整条线跟着平移：前后两份 Ledges 里同一个窗口的位置差除以 at 的差，就是窗口移动的速度。
+   * #114、#115 要测：窗口一部分移出屏幕后继续移动，left 不被夹在 0，猫照常跟着走、速度照常算。
    */
   left: number;
   right: number;
   top: number;
   /**
-   * 这条边上猫可以站的段，从左到右、互不重叠，都在 left～right 之内。已经扣掉了被别的窗口挡住的部分和标题栏按钮区（D4）。
-   * 可能是空数组（整条边都被挡住了）。猫的宽度够不够站，由 core/stage 判断。
+   * 这条边上猫可以站的段，从左到右、互不重叠，都在 left～right 之内。已经扣掉了被别的窗口挡住的部分和标题栏按钮区（D4），
+   * 并且裁到桌面层的左右范围之内（只有这里裁，left、right 不裁）。
+   * 可能是空数组（整条边都被挡住了，或者都在屏幕外）。猫的宽度够不够站，由 core/stage 判断。
    */
   segments: { left: number; right: number }[];
 }
@@ -170,7 +184,7 @@ export interface Ledges {
   /**
    * 可以站的窗口，按前后顺序从最前到最后。只列可见的普通窗口：最小化、最大化、全屏、被系统隐藏（比如在别的虚拟桌面上）、
    * 已经关掉的窗口都不在里面。猫站的窗口不在列表里了，猫就掉下来，不用区分原因。
-   * 只算桌面层所在的那块显示器（D12）；线段裁到桌面层的左右范围之内，顶边不在桌面层上下范围之内的窗口不列。
+   * 只算桌面层所在的那块显示器（D12）；顶边不在桌面层上下范围之内的窗口不列。
    */
   windows: LedgeWindow[];
 }
@@ -294,10 +308,14 @@ export interface StageFrame {
  *   收到 cat/entrance，或者它被新的 event/start 接管时，它马上退出事件（ended: interrupted），用户触发的按 ADR-0002 立刻切。
  *   同一事件里的其他猫照常演完。
  * - 收到命令时没法参加的猫（不在桌面上、正在入场或出场、悬空或下落）不演（ended: unavailable）。
- * - 事实：至少一只猫开始演时发一次 event/started；之后命令里的每只猫各有且只有一条 event/ended（见 ipc.ts 的 Fact）。
+ * - 事实：StageCore 新建后的第一条事实是 stage/created（程序启动、桌面层重新加载各一次），core/game 靠它清掉旧的事件记录。
+ *   每次 event/start，至少一只猫开始演时发一次 event/started；之后命令里的每只猫各有且只有一条 event/ended（见 ipc.ts 的 Fact）。
+ *   桌面层要先订阅 StageCommand、再开始取事实（drainFacts），这样 stage/created 之后发来的命令都能收到。
  * - 事件放的特效、气泡在事件结束或猫退出后照样播完自己的时长。
  * - 长时间暂停（隐藏后恢复，LONG_GAP_MS）后不把落下的步骤一下子全补上。
- * - 停在 stay 这一步时不做自主行为、不理鼠标靠近，直到被打断或接管。
+ * - 停在 stay 这一步时不做自主行为、不理鼠标靠近，直到被打断或接管；不管停多久都不算演完，不发 ended。
+ * - #108 要用单元测试覆盖：停在 stay 的猫过很久（比如 8 小时，中间有长时间暂停）还在睡、不发 ended；
+ *   新建的 StageCore 第一条事实是 stage/created；目标特效已经播完时 face、moveTo 按 schemas/event.ts 的规则降级。
  * - debugReport 的 event 写出每只猫正在做哪个事件的第几步。
  *
  * 窗口模式（M4，#115，D4），只在快照的 settings.surfaceMode 为 window 时：
