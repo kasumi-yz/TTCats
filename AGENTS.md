@@ -112,6 +112,8 @@ npm run build              # 构建 Electron 应用到 app/out/
 npm run test:smoke         # 冒烟测试：用 Playwright 启动构建好的应用（先 build，需要桌面环境）
 ```
 
+新增或修改冒烟测试，要守 `docs/agents/smoke-tests.md` 的时长规矩：能快进就不干等，单项一般不超过 20 秒，整套目标 3 分钟以内。
+
 在 `app/` 目录里还可以用：`npm run dev`（开发模式启动应用）、`npm run format`（自动修格式和可修的 lint 问题）。
 
 自动检查会拦下违反硬性规则的代码：

@@ -1,58 +1,39 @@
-import { mkdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { app, dialog, globalShortcut, ipcMain, net, protocol } from 'electron';
-import type { MainToOverlay, StageCommand, StateSnapshot } from '../shared/ipc';
+import { app, dialog, ipcMain, net, protocol } from 'electron';
+import type { StateSnapshot } from '../shared/ipc';
 import { CONTENT_PROTOCOL } from '../shared/content-url';
-import { DEBUG_PANEL_SHORTCUT } from '../shared/accelerator';
-import { createAppStatus } from './app-status';
-import { createHideAllShortcut } from './hide-all-shortcut';
-import { createDoNotDisturbMenu } from './do-not-disturb-menu';
-import {
-  CURRENT_SAVE_VERSION,
-  defaultGameState,
-  GameStateSchema,
-  SAVE_MIGRATIONS,
-} from '../shared/schemas';
 import { zh } from '../shared/strings.zh-CN';
-import {
-  contentDirectory,
-  loadContent,
-  registerContentProtocol,
-  registerContentScheme,
-} from './content';
-import { showCatMenu } from './cat-menu';
-import { createAutostart, startupOptions } from './autostart';
-import { createGameCommands } from './game-commands';
+import { createAppListeners } from './app-listeners';
+import { createAppStatus } from './app-status';
+import { createAutostartFeature, startupOptions } from './autostart';
+import { registerContentProtocol, registerContentScheme } from './content';
+import { createDebugShortcut } from './debug-shortcut';
 import { createDiagnosticsExport } from './diagnostics';
+import { createDoNotDisturbMenu } from './do-not-disturb-menu';
+import { combineFeatures } from './features';
+import { createGameCommands } from './game-commands';
+import { isolateTestAppData, loadGameData } from './game-data';
 import { createGameSession } from './game-session';
+import { createGameTicker } from './game-ticker';
+import { createHideAllShortcutFeature } from './hide-all-shortcut';
 import { registerIpcRoutes } from './ipc-router';
 import { attachMainLog, createApplicationLog } from './log';
-import { configureOverlayGpu, createOverlay } from './overlay';
-import { createPanelWindows, sendToWindow } from './panel-windows';
-import { createPlatform, readSystemInfo } from './platform';
-import { createPhoto } from './photo';
-import { attachRecovery } from './recovery';
-import { SaveStore } from './save';
+import { configureOverlayGpu } from './overlay';
+import { createOverlayFeature } from './overlay/feature';
+import { createPanelWindows } from './panel-windows';
+import { readSystemInfo } from './platform';
+import { createPhotoFeature } from './photo';
 import { attachShutdown } from './shutdown';
-import { createUpdater } from './updater';
 import {
   applicationMenuSection,
   captureMenuSection,
   catMenuSection,
   createTrayMenu,
 } from './tray-menu';
+import { createUpdaterFeature } from './updater';
 
-const text = zh.integration;
-const debugShortcut = DEBUG_PANEL_SHORTCUT;
+// 入口只按顺序接线；各功能的逻辑在自己的模块里（见 README“加一个新功能”）。
 const startup = startupOptions(process.argv);
-
-// 隔离自动测试数据，正式安装包不接受此开发选项。
-if (!app.isPackaged && process.env['TTCATS_TEST_APP_DATA']) {
-  const directory = resolve(process.env['TTCATS_TEST_APP_DATA']);
-  mkdirSync(directory, { recursive: true });
-  app.setPath('appData', directory);
-  app.setPath('userData', join(directory, 'TTCats'));
-}
+isolateTestAppData();
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -67,48 +48,25 @@ if (!app.requestSingleInstanceLock()) {
       const report = (error: unknown): void => {
         log.report(String(error));
       };
-      const save = new SaveStore({
-        directory: join(app.getPath('appData'), 'TTCats'),
-        currentVersion: CURRENT_SAVE_VERSION,
-        schema: GameStateSchema,
-        defaultState: () => defaultGameState([]),
-        migrations: SAVE_MIGRATIONS,
-        now: Date.now,
-        log: report,
-      });
-      const loaded = save.load();
-      const directory =
-        !app.isPackaged && process.argv.includes('--test-content')
-          ? join(app.getAppPath(), 'test-content')
-          : contentDirectory({
-              isPackaged: app.isPackaged,
-              resourcesPath: process.resourcesPath,
-              appPath: app.getAppPath(),
-            });
-      const content = loadContent(directory, report);
-      const names = new Map(Object.entries(content.cats).map(([id, pack]) => [id, pack.cat.name]));
-      const initialState =
-        loaded.source === 'default' ? defaultGameState(Object.keys(content.cats)) : loaded.state;
+      const { save, directory, content, initialState } = loadGameData(report);
       registerContentProtocol(protocol, net, directory, content);
-      // eslint-disable-next-line prefer-const -- 窗口加载期间的回调需要读取尚未就绪的控制器。
-      let overlay: Awaited<ReturnType<typeof createOverlay>> | undefined;
-      let recovery: ReturnType<typeof attachRecovery> | undefined;
       // eslint-disable-next-line prefer-const -- 启动期间状态更新可能早于托盘创建。
       let tray: ReturnType<typeof createTrayMenu> | undefined;
       // eslint-disable-next-line prefer-const -- IPC 和窗口回调在退出监听器注册前已经接线。
       let shutdown: ReturnType<typeof attachShutdown> | undefined;
-      // eslint-disable-next-line prefer-const -- 状态发布回调在更新控制器创建前定义。
-      let updates: ReturnType<typeof createUpdater> | undefined;
       const stopping = (): boolean => shutdown?.closing === true || shutdown?.quitting === true;
-      const overlaySend = (channel: string, payload: StageCommand | MainToOverlay): void => {
-        if (overlay?.window && !session.safeMode) sendToWindow(overlay.window, channel, payload);
+      const updateTray = (): void => {
+        tray?.update();
       };
       const panels = createPanelWindows({
         log,
         report,
-        overlaySend,
-        stageDebugRequired: () => overlay?.waitingForExit === true,
+        overlaySend: (channel, payload) => {
+          overlay.send(channel, payload);
+        },
+        stageDebugRequired: () => overlay.waitingForExit(),
       });
+      // 程序状态全程序只有这一份；各功能通过 appStatus.update 改自己的字段。
       const appStatus = createAppStatus(
         {
           version: app.getVersion(),
@@ -124,27 +82,9 @@ if (!app.requestSingleInstanceLock()) {
           panels.publishAppStatus(status);
         },
       );
-      const hideAllShortcut = createHideAllShortcut({
-        toggle: () => {
-          command({ type: 'hideAll/toggle' });
-        },
-        publish: (hideAllShortcut) => {
-          appStatus.update({ hideAllShortcut });
-        },
-        report,
-      });
-      const autostart = createAutostart({ app, executable: process.execPath, log: report });
-      autostart.sync(initialState.settings.launchAtLogin);
-      const updateTray = (): void => {
-        tray?.update();
-      };
       const publish = (snapshot: StateSnapshot): void => {
-        if (!session.safeMode) autostart.sync(snapshot.settings.launchAtLogin);
         panels.publish(snapshot);
-        overlay?.updateSettings(snapshot.settings);
-        overlay?.updateHideAll(snapshot.hideAll);
-        hideAllShortcut.update(snapshot.settings.hideAllShortcut);
-        updates?.setEnabled(snapshot.settings.autoUpdate);
+        features.onSnapshot(snapshot);
         updateTray();
       };
       const session = createGameSession({
@@ -159,8 +99,10 @@ if (!app.requestSingleInstanceLock()) {
       const { command, summon } = createGameCommands({
         session,
         stopping,
-        overlayWindow: () => overlay?.window,
-        overlaySend,
+        overlayWindow: () => overlay.window(),
+        overlaySend: (channel, payload) => {
+          overlay.send(channel, payload);
+        },
         updateTray,
         report,
       });
@@ -171,54 +113,91 @@ if (!app.requestSingleInstanceLock()) {
         content,
         safeMode: () => session.safeMode,
         stopping,
-        overlayWindow: () => overlay?.window,
+        overlayWindow: () => overlay.window(),
         report,
         system: readSystemInfo,
       });
-      updates = createUpdater({
+      const overlay = createOverlayFeature({
+        settings: initialState.settings,
+        content,
+        session,
+        save,
+        log,
+        panels: () => panels,
+        command,
+        summon,
+        exportDiagnostics,
+        onDisplays: (displays, current) => {
+          appStatus.update({ displays, overlayDisplayId: current });
+        },
+        updateTray,
+        stopping,
+        closing: () => shutdown?.closing === true,
+        report,
+      });
+      const updates = createUpdaterFeature({
         packaged: app.isPackaged,
         enabled: initialState.settings.autoUpdate,
         publish: (update) => {
           appStatus.update({ update });
-          updateTray();
         },
+        updateTray,
+        stopping,
         report,
         quit: () => {
           app.quit();
         },
       });
-      appStatus.update({ update: updates.status });
-      const photo = createPhoto({
-        overlay: () => overlay,
-        allowed: () =>
-          !session.safeMode &&
-          !stopping() &&
-          session.snapshot().settings.visibleCats.some((id) => Object.hasOwn(content.cats, id)),
-        updateTray,
-        report,
-      });
+      // 登记顺序就是快照通知、托盘菜单段（猫的菜单之后）、启动和退出清理的顺序。
+      const features = combineFeatures([
+        createGameTicker({ session, stopping, report }),
+        createAutostartFeature({
+          app,
+          executable: process.execPath,
+          log: report,
+          enabled: initialState.settings.launchAtLogin,
+          safeMode: () => session.safeMode,
+        }),
+        createHideAllShortcutFeature({
+          accelerator: () => session.snapshot().settings.hideAllShortcut,
+          toggle: () => {
+            command({ type: 'hideAll/toggle' });
+          },
+          publish: (hideAllShortcut) => {
+            appStatus.update({ hideAllShortcut });
+          },
+          report,
+        }),
+        { menuSection: createDoNotDisturbMenu(session.snapshot) },
+        { menuSection: captureMenuSection },
+        createPhotoFeature({
+          overlay: overlay.controller,
+          session,
+          content,
+          stopping,
+          updateTray,
+          report,
+        }),
+        updates,
+        {
+          mainCommands: {
+            'debug/simulateIdle': (message) => {
+              report(zh.interfaces.commandNotReady(message.type));
+            },
+          },
+        },
+        overlay,
+        { mainCommands: { 'diagnostics/export': exportDiagnostics } },
+        createDebugShortcut({ openPanel: panels.openPanel, report }),
+        createAppListeners({ app, openPanel: panels.openPanel }),
+      ]);
       const detachIpc = registerIpcRoutes({
         ipc: ipcMain,
         allowedSender: panels.allowedSender,
-        overlayContents: () => overlay?.window?.webContents,
+        overlayContents: () => overlay.window()?.webContents,
         acceptFacts: () => !session.safeMode && !stopping(),
         command,
-        mainCommands: {
-          'photo/take': photo.take,
-          'diagnostics/export': exportDiagnostics,
-          'update/check': () => {
-            if (!stopping()) return updates.check();
-          },
-          'update/install': () => {
-            if (!stopping()) updates.requestInstall();
-          },
-          'debug/simulateFullscreen': (message) => {
-            if (!stopping() && !session.safeMode) overlay?.simulateFullscreen(message.active);
-          },
-          'debug/crashOverlay': () => {
-            if (!shutdown?.closing) recovery?.crash();
-          },
-        },
+        mainCommands: features.mainCommands,
         fact: (message) => {
           session.fact(message);
         },
@@ -227,68 +206,7 @@ if (!app.requestSingleInstanceLock()) {
         content,
         report,
       });
-      const overlayReady = createOverlay({
-        onReady: panels.updateDebug,
-        onExitChange: panels.updateDebug,
-        system: await createPlatform(),
-        settings: initialState.settings,
-        onError: report,
-        onDisplays: (displays, current) => {
-          appStatus.update({ displays, overlayDisplayId: current });
-        },
-        onWindow: (window) => {
-          panels.registerWindow(window);
-          window.on('show', updateTray);
-          window.on('hide', updateTray);
-          recovery = attachRecovery({
-            overlay: window,
-            save,
-            log,
-            defaultState: () => defaultGameState([...names.keys()]),
-            activeCats: () =>
-              session
-                .snapshot()
-                .settings.visibleCats.filter((id) => Object.hasOwn(content.cats, id)),
-            catName: (id) => names.get(id) ?? id,
-            exportDiagnostics,
-            faultedCat: () => undefined,
-            reload: async () => {
-              await (await overlayReady).reload();
-              panels.updateDebug();
-            },
-            applySafeMode: (result) => {
-              overlay?.enterSafeMode();
-              session.applySafeMode(result);
-              // 面板只在加载时读取内容目录；重新加载以显示停用包和中文原因。
-              panels.reload();
-            },
-            onSafeMode: () => {
-              session.suspendSaving();
-              overlay?.enterSafeMode();
-            },
-          });
-          window.webContents.on('did-finish-load', panels.updateDebug);
-        },
-        onMessage: (message) => {
-          if (session.safeMode || stopping()) return;
-          if (message.type === 'stageDebug') panels.sendDebugReport(message.report);
-          else if (
-            message.type === 'catMenu' &&
-            Object.hasOwn(content.cats, message.cat) &&
-            overlay?.window
-          )
-            showCatMenu({
-              cat: message.cat,
-              window: overlay.window,
-              summon,
-              command,
-              openPanel: panels.openPanel,
-            });
-        },
-      });
-      overlay = await overlayReady;
-      overlay.updateHideAll(session.snapshot().hideAll);
-      if (session.safeMode) overlay.enterSafeMode();
+      await overlay.open();
       tray = createTrayMenu({
         context: () => ({
           content,
@@ -301,64 +219,22 @@ if (!app.requestSingleInstanceLock()) {
             app.quit();
           },
         }),
-        sections: [
-          catMenuSection,
-          createDoNotDisturbMenu(session.snapshot),
-          captureMenuSection,
-          photo.menuSection,
-          updates.menuSection,
-          applicationMenuSection,
-        ],
+        sections: [catMenuSection, ...features.menuSections, applicationMenuSection],
         openSettings: () => {
           panels.openPanel('settings');
         },
       });
       updateTray();
-      hideAllShortcut.update(session.snapshot().settings.hideAllShortcut);
-      // 定时器只唤醒；core/game 按传入的真实时间结束勿扰、静默并推送快照。
-      const tickTimer = setInterval(() => {
-        if (stopping() || session.safeMode) return;
-        try {
-          session.tick();
-        } catch (error) {
-          report(error);
-        }
-      }, 1000);
-      if (
-        !globalShortcut.register(debugShortcut, () => {
-          panels.openPanel('debug');
-        })
-      )
-        report(text.shortcutFailed);
-      const onSecondInstance = (_event: Electron.Event, args: string[]): void => {
-        if (!startupOptions(args).startupQuiet) panels.openPanel('settings');
-      };
-      app.on('second-instance', onSecondInstance);
-      // 关闭所有面板后继续驻留托盘。
-      const onAllClosed = (): void => {};
-      app.on('window-all-closed', onAllClosed);
+      features.start();
+      // 先存档，再按顺序同步清理，等桌面层释放，最后才安装更新并退出。
       shutdown = attachShutdown({
         flush: () => {
           session.flush();
         },
         report,
         steps: [
-          () => {
-            clearInterval(tickTimer);
-          },
-          () => {
-            hideAllShortcut.dispose();
-          },
-          () => {
-            updates.dispose();
-          },
-          () => {
-            recovery?.dispose();
-          },
+          ...features.disposeSteps,
           detachIpc,
-          () => {
-            globalShortcut.unregister(debugShortcut);
-          },
           () => {
             tray.dispose();
           },
@@ -366,16 +242,10 @@ if (!app.requestSingleInstanceLock()) {
             protocol.unhandle(CONTENT_PROTOCOL);
           },
           () => {
-            app.removeListener('second-instance', onSecondInstance);
-          },
-          () => {
-            app.removeListener('window-all-closed', onAllClosed);
-          },
-          () => {
             panels.dispose();
           },
         ],
-        disposeOverlay: () => overlay.dispose(),
+        disposeOverlay: overlay.disposeWindow,
         detachMainLog,
         finishQuit: () => {
           updates.finishQuit();
@@ -386,7 +256,7 @@ if (!app.requestSingleInstanceLock()) {
     .catch((error: unknown) => {
       log.report(String(error));
       if (!startup.startupQuiet)
-        dialog.showErrorBox(zh.app.name, `${text.startupFailed}\n${String(error)}`);
+        dialog.showErrorBox(zh.app.name, `${zh.integration.startupFailed}\n${String(error)}`);
       detachMainLog();
       app.exit(1);
     });

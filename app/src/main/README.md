@@ -34,70 +34,77 @@ M2（#66）每秒以真实时间推进 GameCore.tick，按 stateChanged 存档�
 `TTCATS_TEST_APP_DATA` 是未打包应用的自动测试隔离选项，不读取或改写用户正式存档。
 测试不会把它当成面向用户的设置。
 
-## M2 主进程扩展（#53）
+## 主进程的模块划分（#53、#98）
 
-`index.ts` 保留启动顺序和模块接线。面板窗口及登记窗口的集合在 `panel-windows.ts`，
-托盘在 `tray-menu.ts`，猫的右键菜单在 `cat-menu.ts`，IPC 在 `ipc-router.ts`，
-保存失败的选择与退出状态在 `shutdown.ts`。`game-commands.ts` 负责游戏命令的桌面层转发、
-托盘刷新和召唤坐标换算；游戏会话及恢复模块仍沿用原实现。
+`index.ts` 只按顺序接线，不写功能逻辑。启动顺序：单实例锁 → 日志 → 存档和内容（`game-data.ts`）
+→ 面板窗口 → 程序状态 → 游戏会话 → 各功能 → IPC → 桌面层 → 托盘 → 各功能的启动步骤 → 退出接线。
 
-### 加托盘菜单段
+- 面板窗口及登记窗口的集合：`panel-windows.ts`；托盘：`tray-menu.ts`；猫的右键菜单：`cat-menu.ts`；
+  IPC：`ipc-router.ts`；保存失败的选择与退出状态：`shutdown.ts`。
+- `game-commands.ts`：游戏命令的桌面层转发、托盘刷新和召唤坐标换算。
+- 只有一份、由入口创建后传给需要的模块：游戏会话（`game-session.ts`）、程序状态（`app-status.ts`）、
+  每秒推进游戏的计时器（`game-ticker.ts`）。功能模块不要自己再建一份。
+- 各功能的接线：桌面层和崩溃恢复 `overlay/feature.ts`、开机启动 `autostart/`、一键隐藏快捷键
+  `hide-all-shortcut.ts`、勿扰菜单 `do-not-disturb-menu.ts`、拍照 `photo/`、自动更新 `updater/`、
+  诊断导出 `diagnostics/`、调试台快捷键 `debug-shortcut.ts`、再次启动和关窗监听 `app-listeners.ts`。
 
-新增文件放在 `app/src/main/`，导出一个 `TrayMenuSection` 函数，接收当前的
-`TrayMenuContext` 并返回 Electron 菜单项数组。上下文提供内容、设置、安全模式、
-游戏命令、召唤、打开面板和退出回调。菜单文字使用共享中文语言文件；
-安全模式下的可用性在自己的段内决定，不要修改相邻段。
+### 加一个新功能
 
-在 `index.ts` 的 `createTrayMenu({ sections: [...] })` 中把新段放在目标位置。
-每次刷新都会重新取快照，然后严格按数组顺序拼装各段；需要分隔线时由新段显式返回。
-现有顺序是猫的召唤和显示、截图显示、分隔线与设置和退出。
+1. 在自己的文件（或目录）里导出 `createXxxFeature(deps)`，返回一个 `MainFeature`（`features.ts`），
+   只填用得到的字段，末尾写 `satisfies MainFeature`：
+   - `onSnapshot(snapshot)`：快照变化后调用，在面板收到快照之后、托盘刷新之前。
+   - `menuSection`：托盘菜单段（见下）。
+   - `mainCommands`：本功能负责的 MainCommand 处理函数（见下）。
+   - `start()`：桌面层和托盘都就绪后调用，例如注册全局快捷键、启动定时器、挂 `app` 监听器。
+   - `dispose()`：退出清理。
+     需要的东西（会话、程序状态、`updateTray`、`stopping`、`report`、打开面板等）从 `deps` 传进来，
+     取值用回调（如 `() => session.safeMode`），不要在模块里缓存会变的状态。
+     只在创建时需要做一次的事（如按存档同步一次系统设置）在 `createXxxFeature` 里直接做。
+2. 在 `index.ts` 的 `combineFeatures([...])` 里加一行。数组顺序就是快照通知、菜单段、启动、
+   退出清理的顺序；放在和它相关的功能旁边，不要改别人的行。
+3. 写单元测试，并在调试台能手动触发（硬性规则 5）。
+
+不要为了凑齐字段写空函数，也不要在 `index.ts` 里写功能自己的判断。多个 PR 同时往数组里加行时，
+合并包里保留各行、按设计方案核对顺序即可。
+
+### 托盘菜单段
+
+`TrayMenuSection` 接收当前的 `TrayMenuContext`（内容、设置、安全模式、游戏命令、召唤、打开面板、退出），
+返回 Electron 菜单项数组。托盘每次刷新都重新取快照，按顺序拼：猫的召唤和显示 → 各功能的菜单段
+（勿扰、截图显示、拍照、更新……）→ 分隔线与设置、退出。需要分隔线时由自己的段显式返回。
+菜单文字用共享中文语言文件；安全模式下是否可用在自己的段里决定。
+需要快照之外的状态时，在自己的模块里通过闭包读，不要扩充 `TrayMenuContext`。
+下载状态、全屏隐藏等非快照状态变化时，调用传进来的 `updateTray` 刷新。
 游戏命令无论成功、被拒绝还是抛错，命令处理函数都会刷新托盘，避免复选框显示错误。
 
-菜单段需要快照之外的状态或功能回调时，在自己的文件导出
-`createXxxMenuSection(deps): TrayMenuSection`，通过闭包读取最新状态，
-不要为单个功能扩充 `TrayMenuContext` 或入口的公共 `context` 对象。
-把入口的 `updateTray` 作为回调传给功能模块，下载状态、全屏隐藏等非快照状态变化时调用它刷新。
-各功能只实现自己的菜单段和依赖；入口只增加模块接线及 `sections` 中的一项。
-多个 PR 同时修改这个注册数组时，后合并的一方同步最新 `main`，保留各段并按设计方案核对顺序。
-
-### 注册 MainCommand 处理函数
+### MainCommand 处理函数
 
 游戏命令仍经 `game-commands.ts` 的 `command` 交给 `core/game`，事实只接收登记桌面层的主框架，
 快照和内容查询只接收登记窗口的主框架。退出期间或安全模式下不接收事实。
 
-新功能在自己的文件实现处理函数，在 `index.ts` 的
-`registerIpcRoutes({ mainCommands: { ... } })` 中按消息的 `type` 注册。
-`MainCommandHandlers` 要求每一种 MainCommand 都有处理函数，并约束参数为对应消息。
-路由根据键分发，处理函数自行检查该功能在安全模式和退出阶段是否允许执行。
-同步异常和返回的 `Promise<void>` 拒绝由路由统一交给 `report` 写日志。
-异步处理函数必须返回该 Promise，不能启动一个脱离返回值的任务让错误无人接收。
-新增共享消息必须先走接口变更 issue/PR；消息定稿后，同步更新 `messages.ts` 的校验，
-双向类型断言会拦住漏项。不在本次整理里预先添加 M2 消息或字段。
+MainCommand 由负责它的功能在 `mainCommands` 里按消息的 `type` 提供。`combineFeatures`
+在编译期检查每种 MainCommand 恰好由一个功能负责：漏了会报 `missingMainCommands`，
+重复会报 `duplicateMainCommands`，属性类型里写着是哪个命令。
+处理函数自己检查安全模式和退出阶段是否允许执行。同步异常和返回的 `Promise<void>`
+拒绝由路由统一交给 `report` 写日志；异步处理函数必须返回该 Promise。
 
-接口先合并、功能尚未接入时，按 #52 允许的最小接线改动，为已经定稿的 MainCommand
+新增共享消息必须先走接口变更 issue/PR；消息定稿后，同步更新 `messages.ts` 的校验，
+双向类型断言会拦住漏项。接口先合并、功能尚未接入时，按 #52 为已经定稿的 MainCommand
 显式注册拒绝处理函数：调用 `report(zh.interfaces.commandNotReady(message.type))`，
-在日志说明该功能还没做好，不改变状态、不启动任务，也不把命令交给 core/game。
-接口变更 PR 要列出这些拒绝项，功能 issue 实现后替换对应处理函数。
-这用于处理已存在的消息，不是预先加入未来字段或空功能。目前更新检查和更新安装等待 #68 接入；
-拍照已由 #63 接入，诊断导出已由 #64 接入（见 `diagnostics/README.md`），全屏模拟已由 #66 接入桌面层。
+不改变状态、不启动任务。功能 issue 实现后换成真正的处理函数。
 
 已有 `debug/crashOverlay` 沿用恢复模块的独立监听器，再交给上述注册函数，
 保持原来的崩溃调试接收规则。其余命令通过完整 schema 校验后分发，
 拒绝消息的日志继续包含消息类型和字段路径。`registerIpcRoutes` 返回清理函数，
 退出时移除命令、事实及查询的所有接线。
 
-### 加启动和退出步骤
+### 退出顺序
 
-在 `index.ts` 的 `app.whenReady().then(...)` 中调用新模块的启动函数，
-放在它需要的资源就绪之后、使用它的模块之前。异步初始化在这里 `await`。
-保持现有单实例锁、日志、存档、内容、游戏会话、桌面层、托盘的相对顺序；
-设置面板仍按需打开，Ctrl+Shift+F10 仍打开调试台。
-
-需要停止的定时器或监听器，由启动函数返回清理函数，加入
-`attachShutdown({ steps: [...] })` 的对应位置。这些同步清理步骤按数组顺序执行，
-只有存档成功或用户选择不保存退出后才开始；随后等待桌面层释放，最后释放主日志并退出。
-异步窗口释放集中在 `disposeOverlay` 回调中。不要在步骤里另建 `before-quit` 监听器，
-也不要吞掉异常。没有实际功能之前不注册空启动步骤或空退出步骤。
+`attachShutdown` 先存档（失败可重试或不保存直接退出），再同步执行清理步骤：
+各功能的 `dispose`（按登记顺序）→ 移除 IPC → 托盘 → 内容协议 → 面板窗口；
+然后等桌面层窗口释放（`overlay/feature.ts` 的 `disposeWindow`），释放主日志，
+最后交给自动更新的 `finishQuit`：有下载好的更新才安装，否则正常退出。
+`dispose` 里不要另建 `before-quit` 监听器，也不要吞掉异常。
 
 ## M2 防打扰接线（#66）
 
