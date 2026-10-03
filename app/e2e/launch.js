@@ -93,9 +93,18 @@ Menu.prototype.popup = function (options) {
   });
 };
 const register = globalShortcut.register.bind(globalShortcut);
+const isRegistered = globalShortcut.isRegistered.bind(globalShortcut);
+const unregister = globalShortcut.unregister.bind(globalShortcut);
+// 本机并行会话可以为冒烟分配独立快捷键；CI 默认仍验证正式快捷键。
+const smokeAccelerator = (accelerator) =>
+  accelerator === 'CommandOrControl+Shift+F10'
+    ? (process.env.TTCATS_SMOKE_DEBUG_SHORTCUT ?? accelerator)
+    : accelerator;
+globalShortcut.isRegistered = (accelerator) => isRegistered(smokeAccelerator(accelerator));
+globalShortcut.unregister = (accelerator) => unregister(smokeAccelerator(accelerator));
 globalShortcut.register = (accelerator, callback) => {
   globalThis.smoke.shortcuts.set(accelerator, callback);
-  return register(accelerator, callback);
+  return register(smokeAccelerator(accelerator), callback);
 };
 dialog.showMessageBox = async (options) => {
   globalThis.smoke.dialogs.push(options);

@@ -17,6 +17,7 @@ import {
   registerContentScheme,
 } from './content';
 import { showCatMenu } from './cat-menu';
+import { createAutostart, startupOptions } from './autostart';
 import { createGameCommands } from './game-commands';
 import { createGameSession } from './game-session';
 import { registerIpcRoutes } from './ipc-router';
@@ -37,6 +38,7 @@ import {
 
 const text = zh.integration;
 const debugShortcut = 'CommandOrControl+Shift+F10';
+const startup = startupOptions(process.argv);
 
 // 隔离自动测试数据，正式安装包不接受此开发选项。
 if (!app.isPackaged && process.env['TTCATS_TEST_APP_DATA']) {
@@ -94,10 +96,13 @@ if (!app.requestSingleInstanceLock()) {
         if (overlay?.window && !session.safeMode) sendToWindow(overlay.window, channel, payload);
       };
       const panels = createPanelWindows({ log, report, overlaySend });
+      const autostart = createAutostart({ app, executable: process.execPath, log: report });
+      autostart.sync(initialState.settings.launchAtLogin);
       const updateTray = (): void => {
         tray?.update();
       };
       const publish = (snapshot: StateSnapshot): void => {
+        if (!session.safeMode) autostart.sync(snapshot.settings.launchAtLogin);
         panels.publish(snapshot);
         overlay?.updateSettings(snapshot.settings);
         updateTray();
@@ -109,6 +114,7 @@ if (!app.requestSingleInstanceLock()) {
         now: Date.now,
         publish,
         log: report,
+        startupQuiet: startup.startupQuiet,
       });
       const { command, summon } = createGameCommands({
         session,
@@ -238,19 +244,26 @@ if (!app.requestSingleInstanceLock()) {
         })
       )
         report(text.shortcutFailed);
-      const onSecondInstance = (): void => {
-        panels.openPanel('settings');
+      const onSecondInstance = (_event: Electron.Event, args: string[]): void => {
+        if (!startupOptions(args).startupQuiet) panels.openPanel('settings');
       };
       app.on('second-instance', onSecondInstance);
       // 关闭所有面板后继续驻留托盘。
       const onAllClosed = (): void => {};
       app.on('window-all-closed', onAllClosed);
+      // 定时器只唤醒；core/game 按传入的真实时间结束静默并推送快照。
+      const gameTimer = setInterval(() => {
+        if (!stopping()) session.tick();
+      }, 1000);
       shutdown = attachShutdown({
         flush: () => {
           session.flush();
         },
         report,
         steps: [
+          () => {
+            clearInterval(gameTimer);
+          },
           () => {
             recovery?.dispose();
           },
@@ -277,11 +290,12 @@ if (!app.requestSingleInstanceLock()) {
         disposeOverlay: () => overlay.dispose(),
         detachMainLog,
       });
-      if (process.argv.includes('--settings')) panels.openPanel('settings');
+      if (startup.openSettings) panels.openPanel('settings');
     })
     .catch((error: unknown) => {
       log.report(String(error));
-      dialog.showErrorBox(zh.app.name, `${text.startupFailed}\n${String(error)}`);
+      if (!startup.startupQuiet)
+        dialog.showErrorBox(zh.app.name, `${text.startupFailed}\n${String(error)}`);
       detachMainLog();
       app.exit(1);
     });

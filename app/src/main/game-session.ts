@@ -14,11 +14,18 @@ export function createGameSession(options: {
   now: () => number;
   publish: (snapshot: StateSnapshot) => void;
   log: (message: string) => void;
+  startupQuiet?: boolean;
 }) {
   const { content, save, now, publish, log } = options;
   // 安静时段按本地时间算；core/game 不读时区（硬性规则 1）。
   const utcOffsetMinutes = (at: number): number => -new Date(at).getTimezoneOffset();
-  let game = createGameCore({ content, state: options.state, now: now(), utcOffsetMinutes });
+  let game = createGameCore({
+    content,
+    state: options.state,
+    now: now(),
+    utcOffsetMinutes,
+    startupQuiet: options.startupQuiet,
+  });
   let revision = 0;
   let safeMode = false;
   const snapshot = (): StateSnapshot => ({ ...game.snapshot(now()), revision: ++revision });
@@ -44,6 +51,9 @@ export function createGameSession(options: {
     },
     fact(fact: Fact): GameOutput {
       return accept(game.handleFact(fact, now()));
+    },
+    tick(): void {
+      if (!safeMode) accept(game.tick(now()));
     },
     applySafeMode(result: SafeModeState): void {
       safeMode = true;
