@@ -517,4 +517,14 @@ export const zh = {
       `照片已保存到 ${file}，但复制到剪贴板失败：${reason}`,
     noticeFailed: (reason: string) => `拍照失败通知无法显示：${reason}`,
   },
+  m2Wiring: {
+    all: '全部',
+    doNotDisturb: '勿扰',
+    durations: { '30m': '30 分钟', '1h': '1 小时', '2h': '2 小时', untilOff: '直到我关掉' },
+    until: (end: string) => `勿扰中，${end} 结束`,
+    untilOff: '勿扰中，直到我关掉',
+    end: '结束勿扰',
+    shortcutFailed: (accelerator: string) =>
+      `一键隐藏快捷键「${accelerator}」注册失败，可能已被其他程序占用。`,
+  },
 };

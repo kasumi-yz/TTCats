@@ -27,13 +27,14 @@ export function createPanelWindows(options: {
   log: FileLog;
   report: (error: unknown) => void;
   overlaySend: (channel: string, payload: MainToOverlay) => void;
+  stageDebugRequired: () => boolean;
 }) {
   const windows = new Set<BrowserWindow>();
   const panels = new Map<string, BrowserWindow>();
   const updateDebug = (): void => {
     options.overlaySend(IPC_CHANNELS.mainToOverlay, {
       type: 'stageDebug',
-      enabled: panels.has('debug'),
+      enabled: panels.has('debug') || options.stageDebugRequired(),
     });
   };
   const registerWindow = (window: BrowserWindow): void => {

@@ -46,6 +46,44 @@ function setup() {
 }
 
 describe('主进程游戏会话', () => {
+  it('启动清除过期勿扰并写回 off，时钟回拨重建也不会复活，未变化启动不轮换备份', () => {
+    const { content, state, save, disk } = setup();
+    state.doNotDisturb = { mode: 'timed', until: Date.now() - 1 };
+    save.requestSave(state);
+    save.flush();
+    const create = (state: ReturnType<typeof disk>, now: number) =>
+      createGameSession({ content, state, save, now: () => now, publish: vi.fn(), log: vi.fn() });
+    create(save.load().state, Date.now()).flush();
+    expect(disk().doNotDisturb).toEqual({ mode: 'off' });
+    const files = readdirSync(dirname(save.file));
+    const original = readFileSync(save.file, 'utf8');
+    const restarted = create(save.load().state, Date.now() - 60_000);
+    expect(restarted.snapshot().doNotDisturb).toEqual({ mode: 'off' });
+    restarted.flush();
+    expect(readFileSync(save.file, 'utf8')).toBe(original);
+    expect(readdirSync(dirname(save.file))).toEqual(files);
+  });
+
+  it('tick 用真实时间结束勿扰并保存；安静时段只推快照，不挤掉备份', () => {
+    const { session, disk, save, publish } = setup();
+    session.command({ type: 'doNotDisturb/start', duration: '30m' });
+    session.flush();
+    vi.setSystemTime(Date.now() + 30 * 60_000);
+    session.tick();
+    session.flush();
+    expect(disk().doNotDisturb).toEqual({ mode: 'off' });
+    const original = readFileSync(save.file, 'utf8');
+    const files = readdirSync(dirname(save.file));
+    vi.setSystemTime(new Date(2026, 9, 3, 12));
+    session.tick();
+    publish.mockClear();
+    vi.setSystemTime(new Date(2026, 9, 3, 23, 1));
+    expect(session.tick()).toMatchObject({ stateChanged: false, snapshotChanged: true });
+    expect(publish).toHaveBeenCalledOnce();
+    session.flush();
+    expect(readFileSync(save.file, 'utf8')).toBe(original);
+    expect(readdirSync(dirname(save.file))).toEqual(files);
+  });
   it('无变化退出不轮换备份，保留上一份正常存档供安全模式回退', () => {
     const { session, save, disk } = setup();
     session.command({ type: 'settings/update', patch: { scale: 1.2 } });
