@@ -60,6 +60,7 @@ function catalog(): ContentCatalog {
       },
     },
     disabled: [{ cat: 'broken-cat', problems: ['猫咪包「broken-cat」缺少站姿片段'] }],
+    events: {},
   };
 }
 function snapshot(revision = 1): StateSnapshot {
@@ -71,6 +72,7 @@ function snapshot(revision = 1): StateSnapshot {
     hideAll: false,
     silencedBy: [],
     clockOffsetMs: 0,
+    events: { lastTriggeredAt: {}, firstLaunchHandledOn: null },
   };
 }
 function appStatus(revision = 1, patch: Partial<AppStatus> = {}): AppStatus {
@@ -81,6 +83,7 @@ function appStatus(revision = 1, patch: Partial<AppStatus> = {}): AppStatus {
     hideAllShortcut: { accelerator: DEFAULT_HIDE_ALL_SHORTCUT, registered: true },
     displays: [display(1, 'DELL U2720Q', true)],
     overlayDisplayId: 1,
+    ledgeLines: false,
     ...patch,
   };
 }
@@ -323,6 +326,8 @@ describe('面板通过主进程管理猫和设置', () => {
           behavior: '等待召唤',
           x: 100.123456,
           y: 200.654321,
+          event: null,
+          surface: { type: 'floor' },
         },
       ],
     });
@@ -363,7 +368,7 @@ describe('面板通过主进程管理猫和设置', () => {
   });
 
   it('无猫咪包时禁止单猫命令，读取失败时显示中文原因', async () => {
-    const fake = fakeBridge({ cats: {}, disabled: [] });
+    const fake = fakeBridge({ cats: {}, disabled: [], events: {} });
     const view = render(<App bridge={fake.bridge} search="?panel=debug" />);
     await screen.findByText(text.noCats);
     expect(screen.getByRole<HTMLButtonElement>('button', { name: text.sleep }).disabled).toBe(true);

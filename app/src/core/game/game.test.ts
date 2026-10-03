@@ -15,6 +15,7 @@ import { createGameCore } from './index';
 const now = 1_800_000_000_000;
 // 北京时间
 const utcOffsetMinutes = () => 480;
+const random = () => 0.5;
 
 function catalog(): ContentCatalog {
   return {
@@ -64,11 +65,12 @@ function catalog(): ContentCatalog {
       ]),
     ),
     disabled: [{ cat: 'test-disabled', problems: ['缺少必需片段'] }],
+    events: {},
   };
 }
 
 function core() {
-  return createGameCore({ content: catalog(), now, utcOffsetMinutes });
+  return createGameCore({ content: catalog(), now, utcOffsetMinutes, random });
 }
 
 describe('core/game 的 M1 存档状态规则', () => {
@@ -77,14 +79,19 @@ describe('core/game 的 M1 存档状态规则', () => {
     expect(game.exportState()).toEqual(defaultGameState(['test-a', 'test-b']));
     expect(GameStateSchema.safeParse(game.exportState()).success).toBe(true);
     expect(
-      createGameCore({ content: { cats: {}, disabled: [] }, now, utcOffsetMinutes }).exportState(),
+      createGameCore({
+        content: { cats: {}, disabled: [], events: {} },
+        now,
+        utcOffsetMinutes,
+        random,
+      }).exportState(),
     ).toEqual(defaultGameState([]));
   });
 
   it('停用和缺失的猫仍保留在存档和快照中，召唤时不会发给桌面层', () => {
     const state = defaultGameState(['test-a', 'test-disabled', 'test-removed']);
     state.settings.scale = 1.5;
-    const game = createGameCore({ content: catalog(), state, now, utcOffsetMinutes });
+    const game = createGameCore({ content: catalog(), state, now, utcOffsetMinutes, random });
     expect(game.exportState()).toEqual(state);
     expect(game.snapshot(now).settings).toEqual(state.settings);
     expect(game.handleCommand({ type: 'cat/summon' }, now)).toEqual({
@@ -112,6 +119,9 @@ describe('core/game 的 M1 存档状态规则', () => {
     launchAtLogin: false,
     autoUpdate: false,
     display: { id: 7, label: 'TEST', width: 2560, height: 1440 },
+    surfaceMode: 'window',
+    sedentaryReminder: false,
+    catDates: { 'test-a': { birthday: '2020-02-29', homeDate: null } },
   } satisfies Settings;
 
   it.each(Object.keys(SettingsSchema.shape) as (keyof Settings)[])(
@@ -334,6 +344,7 @@ describe('core/game 的 M1 存档状态规则', () => {
       hideAll: false,
       silencedBy: [],
       clockOffsetMs: 0,
+      events: { lastTriggeredAt: {}, firstLaunchHandledOn: null },
     });
     expect(game.snapshot(now).revision).toBe(2);
     game.handleCommand({ type: 'settings/update', patch: { scale: 1.5 } }, now);
@@ -385,7 +396,7 @@ describe('core/game 的 M1 存档状态规则', () => {
 
   it('调用方不能通过初始存档、设置补丁、快照或导出状态偷偷修改核心状态', () => {
     const state = defaultGameState(['test-a']);
-    const game = createGameCore({ content: catalog(), state, now, utcOffsetMinutes });
+    const game = createGameCore({ content: catalog(), state, now, utcOffsetMinutes, random });
     state.settings.visibleCats.push('test-b');
     state.settings.scale = 2;
     expect(game.exportState().settings).toEqual(defaultSettings(['test-a']));
@@ -454,6 +465,7 @@ describe('一键隐藏 HideAll 与召唤 Summon', () => {
       state: game.exportState(),
       now,
       utcOffsetMinutes,
+      random,
     });
     expect(restarted.snapshot(now).hideAll).toBe(false);
     expect(game.handleCommand({ type: 'hideAll/toggle' }, now)).toEqual({
@@ -522,5 +534,38 @@ describe('一键隐藏 HideAll 与召唤 Summon', () => {
     });
     expect(game.snapshot(now).hideAll).toBe(false);
     expect(game.exportState().settings.visibleCats).toEqual([]);
+  });
+});
+
+describe('M3、M4 的接口（#106）', () => {
+  it('调试台放事件特效：原样转给桌面层，不改存档', () => {
+    const command: GameCommand & StageCommand = {
+      type: 'debug/effect',
+      cat: 'test-a',
+      effect: 'bug',
+    };
+    expect(core().handleCommand(command, now)).toEqual({
+      stageCommands: [command],
+      stateChanged: false,
+      snapshotChanged: false,
+      problems: [],
+    });
+  });
+
+  it('存档里的事件记录原样保留在快照和导出的状态里，并且不共享可变引用', () => {
+    const state = defaultGameState(['test-a']);
+    state.events = {
+      lastTriggeredAt: { parkour: now - 60_000 },
+      firstLaunchHandledOn: '2027-02-06',
+    };
+    state.settings.catDates = { 'test-a': { birthday: '2024-10-30', homeDate: null } };
+    const game = createGameCore({ content: catalog(), state, now, utcOffsetMinutes, random });
+    expect(game.exportState()).toEqual(state);
+    expect(game.snapshot(now).events).toEqual(state.events);
+    game.exportState().events.lastTriggeredAt.parkour = 0;
+    const exported = game.exportState();
+    const override = exported.settings.catDates['test-a'];
+    if (override) override.birthday = null;
+    expect(game.exportState()).toEqual(state);
   });
 });

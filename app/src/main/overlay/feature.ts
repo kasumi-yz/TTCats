@@ -11,6 +11,7 @@ import { sendToWindow, type createPanelWindows } from '../panel-windows';
 import { createPlatform } from '../platform';
 import { attachRecovery } from '../recovery';
 import type { SaveStore } from '../save';
+import { zh } from '../../shared/strings.zh-CN';
 import { createOverlay } from './index';
 
 /**
@@ -119,6 +120,10 @@ export function createOverlayFeature(options: {
       },
       'debug/crashOverlay': () => {
         if (!options.closing()) recovery?.crash();
+      },
+      // 窗口顶边的调试线由 #116 接线。
+      'debug/ledgeLines': (message) => {
+        options.report(zh.interfaces.commandNotReady(message.type));
       },
     },
     dispose(): void {

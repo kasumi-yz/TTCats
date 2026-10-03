@@ -24,6 +24,7 @@ void app.whenReady().then(async () => {
     hideAll: false,
     silencedBy: [],
     clockOffsetMs: 0,
+    events: { lastTriggeredAt: {}, firstLaunchHandledOn: null },
   };
   const facts: Fact[] = [];
   const messages: unknown[] = [];
