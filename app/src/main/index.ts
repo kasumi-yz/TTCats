@@ -3,6 +3,10 @@ import { join, resolve } from 'node:path';
 import { app, dialog, globalShortcut, ipcMain, net, protocol } from 'electron';
 import type { MainToOverlay, StageCommand, StateSnapshot } from '../shared/ipc';
 import { CONTENT_PROTOCOL } from '../shared/content-url';
+import { DEBUG_PANEL_SHORTCUT } from '../shared/accelerator';
+import { createAppStatus } from './app-status';
+import { createHideAllShortcut } from './hide-all-shortcut';
+import { createDoNotDisturbMenu } from './do-not-disturb-menu';
 import {
   CURRENT_SAVE_VERSION,
   defaultGameState,
@@ -36,7 +40,7 @@ import {
 } from './tray-menu';
 
 const text = zh.integration;
-const debugShortcut = 'CommandOrControl+Shift+F10';
+const debugShortcut = DEBUG_PANEL_SHORTCUT;
 
 // 隔离自动测试数据，正式安装包不接受此开发选项。
 if (!app.isPackaged && process.env['TTCATS_TEST_APP_DATA']) {
@@ -93,13 +97,44 @@ if (!app.requestSingleInstanceLock()) {
       const overlaySend = (channel: string, payload: StageCommand | MainToOverlay): void => {
         if (overlay?.window && !session.safeMode) sendToWindow(overlay.window, channel, payload);
       };
-      const panels = createPanelWindows({ log, report, overlaySend });
+      const panels = createPanelWindows({
+        log,
+        report,
+        overlaySend,
+        stageDebugRequired: () => overlay?.waitingForExit === true,
+      });
+      const appStatus = createAppStatus(
+        {
+          version: app.getVersion(),
+          update: { state: 'unsupported' },
+          hideAllShortcut: {
+            accelerator: initialState.settings.hideAllShortcut,
+            registered: false,
+          },
+          displays: [],
+          overlayDisplayId: null,
+        },
+        (status) => {
+          panels.publishAppStatus(status);
+        },
+      );
+      const hideAllShortcut = createHideAllShortcut({
+        toggle: () => {
+          command({ type: 'hideAll/toggle' });
+        },
+        publish: (hideAllShortcut) => {
+          appStatus.update({ hideAllShortcut });
+        },
+        report,
+      });
       const updateTray = (): void => {
         tray?.update();
       };
       const publish = (snapshot: StateSnapshot): void => {
         panels.publish(snapshot);
         overlay?.updateSettings(snapshot.settings);
+        overlay?.updateHideAll(snapshot.hideAll);
+        hideAllShortcut.update(snapshot.settings.hideAllShortcut);
         updateTray();
       };
       const session = createGameSession({
@@ -145,7 +180,7 @@ if (!app.requestSingleInstanceLock()) {
             report(zh.interfaces.commandNotReady(message.type));
           },
           'debug/simulateFullscreen': (message) => {
-            report(zh.interfaces.commandNotReady(message.type));
+            if (!stopping() && !session.safeMode) overlay?.simulateFullscreen(message.active);
           },
           'debug/crashOverlay': () => {
             if (!shutdown?.closing) recovery?.crash();
@@ -155,11 +190,13 @@ if (!app.requestSingleInstanceLock()) {
           session.fact(message);
         },
         snapshot: session.snapshot,
+        appStatus: appStatus.current,
         content,
         report,
       });
       const overlayReady = createOverlay({
         onReady: panels.updateDebug,
+        onExitChange: panels.updateDebug,
         system: await createPlatform(),
         settings: initialState.settings,
         onError: report,
@@ -213,6 +250,7 @@ if (!app.requestSingleInstanceLock()) {
         },
       });
       overlay = await overlayReady;
+      overlay.updateHideAll(session.snapshot().hideAll);
       if (session.safeMode) overlay.enterSafeMode();
       tray = createTrayMenu({
         context: () => ({
@@ -226,12 +264,27 @@ if (!app.requestSingleInstanceLock()) {
             app.quit();
           },
         }),
-        sections: [catMenuSection, captureMenuSection, photo.menuSection, applicationMenuSection],
+        sections: [
+          catMenuSection,
+          createDoNotDisturbMenu(session.snapshot),
+          captureMenuSection,
+          photo.menuSection,
+          applicationMenuSection,
+        ],
         openSettings: () => {
           panels.openPanel('settings');
         },
       });
       updateTray();
+      hideAllShortcut.update(session.snapshot().settings.hideAllShortcut);
+      const tickTimer = setInterval(() => {
+        if (stopping() || session.safeMode) return;
+        try {
+          session.tick();
+        } catch (error) {
+          report(error);
+        }
+      }, 1000);
       if (
         !globalShortcut.register(debugShortcut, () => {
           panels.openPanel('debug');
@@ -251,6 +304,12 @@ if (!app.requestSingleInstanceLock()) {
         },
         report,
         steps: [
+          () => {
+            clearInterval(tickTimer);
+          },
+          () => {
+            hideAllShortcut.dispose();
+          },
           () => {
             recovery?.dispose();
           },

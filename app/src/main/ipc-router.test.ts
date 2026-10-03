@@ -5,6 +5,7 @@ import { catalog, defined, snapshot, testCat } from '../core/stage/test-fixtures
 import { IPC_CHANNELS } from '../shared/ipc';
 import { zh } from '../shared/strings.zh-CN';
 import { registerIpcRoutes } from './ipc-router';
+import { createAppStatus } from './app-status';
 
 vi.mock('electron', () => ({}));
 
@@ -56,6 +57,16 @@ function setup() {
     },
     fact,
     snapshot: getSnapshot,
+    appStatus: createAppStatus(
+      {
+        version: '0.2.0',
+        update: { state: 'unsupported' },
+        hideAllShortcut: { accelerator: 'Ctrl+Alt+H', registered: true },
+        displays: [],
+        overlayDisplayId: null,
+      },
+      vi.fn(),
+    ).current,
     content,
     report,
   });
@@ -158,7 +169,11 @@ describe('主进程 IPC 路由', () => {
       ipc.emit(IPC_CHANNELS.command, sender, { type: 'cat/sleep', cat: 'cat' });
       ipc.emit(IPC_CHANNELS.command, sender, { type: 'debug/crashOverlay' });
       ipc.emit(IPC_CHANNELS.fact, sender, { type: 'cat/poked', cat: 'cat', at: 0 });
-      for (const channel of [IPC_CHANNELS.getSnapshot, IPC_CHANNELS.getContent])
+      for (const channel of [
+        IPC_CHANNELS.getSnapshot,
+        IPC_CHANNELS.getContent,
+        IPC_CHANNELS.getAppStatus,
+      ])
         expect(() => ipc.invoke(channel, sender)).toThrow(zh.integration.unknownSender);
       expect(command).not.toHaveBeenCalled();
       expect(crash).not.toHaveBeenCalled();
@@ -184,6 +199,10 @@ describe('主进程 IPC 路由', () => {
     expect(ipc.invoke(IPC_CHANNELS.getSnapshot, event(panel))).toEqual(snapshot(['cat']));
     expect(getSnapshot).toHaveBeenCalledOnce();
     expect(ipc.invoke(IPC_CHANNELS.getContent, event(panel))).toBe(content);
+    expect(ipc.invoke(IPC_CHANNELS.getAppStatus, event(panel))).toMatchObject({
+      version: '0.2.0',
+      hideAllShortcut: { registered: true },
+    });
   });
 
   it('格式错误先拒绝，日志包含消息类型和字段路径', () => {

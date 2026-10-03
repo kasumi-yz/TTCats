@@ -112,6 +112,114 @@ describe('桌面层重建队列', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
+  it('最后一只猫要先走出去，收到空画面报告再隐藏；重新显示恢复绘制', async () => {
+    const settings = defaultSettings(['test']);
+    const overlay = await createOverlay({
+      system,
+      settings,
+      load: () => Promise.resolve(),
+      onError: vi.fn(),
+    });
+    const w = mockWindow();
+    try {
+      overlay.updateSettings({ ...settings, visibleCats: [] });
+      w.hide.mockClear();
+      w.showInactive.mockClear();
+      const send = (cats: unknown[]) =>
+        mock.ipc.get(IPC_CHANNELS.overlayToMain)?.(
+          { sender: w.webContents, senderFrame: w.webContents.mainFrame },
+          { type: 'stageDebug', report: { at: Date.now(), cats } },
+        );
+      send([{ cat: 'test' }]);
+      expect(w.hide).not.toHaveBeenCalled();
+      send([]);
+      expect(w.hide).toHaveBeenCalledOnce();
+      expect(w.webContents.send).toHaveBeenLastCalledWith(IPC_CHANNELS.mainToOverlay, {
+        type: 'paused',
+        paused: true,
+      });
+      overlay.updateSettings(settings);
+      expect(w.showInactive).toHaveBeenCalledOnce();
+    } finally {
+      await overlay.dispose();
+    }
+  });
+  it('全屏结束先恢复显示再入场，模拟结束回到系统判断，隐藏期间不会误恢复', async () => {
+    vi.useFakeTimers();
+    let fullscreen = false;
+    const overlay = await createOverlay({
+      system: { ...system, isFullscreen: () => fullscreen },
+      settings: defaultSettings(['test']),
+      load: () => Promise.resolve(),
+      onError: vi.fn(),
+    });
+    const w = mockWindow();
+    try {
+      w.webContents.send.mockClear();
+      overlay.simulateFullscreen(true);
+      expect(w.hide).toHaveBeenCalled();
+      fullscreen = true;
+      overlay.simulateFullscreen(false);
+      expect(w.webContents.send).not.toHaveBeenCalledWith(IPC_CHANNELS.stageCommand, {
+        type: 'cat/entrance',
+      });
+      fullscreen = false;
+      await vi.advanceTimersByTimeAsync(500);
+      const messages = w.webContents.send.mock.calls;
+      expect(messages.at(-2)).toEqual([
+        IPC_CHANNELS.mainToOverlay,
+        { type: 'paused', paused: false },
+      ]);
+      expect(messages.at(-1)).toEqual([IPC_CHANNELS.stageCommand, { type: 'cat/entrance' }]);
+      expect(w.showInactive).toHaveBeenCalled();
+      overlay.updateHideAll(true);
+      w.webContents.send.mockClear();
+      overlay.simulateFullscreen(true);
+      overlay.simulateFullscreen(false);
+      expect(w.webContents.send).not.toHaveBeenCalledWith(IPC_CHANNELS.stageCommand, {
+        type: 'cat/entrance',
+      });
+      overlay.updateHideAll(false);
+      expect(w.webContents.send).toHaveBeenLastCalledWith(IPC_CHANNELS.mainToOverlay, {
+        type: 'paused',
+        paused: false,
+      });
+    } finally {
+      await overlay.dispose();
+    }
+  });
+
+  it('一键隐藏立即隐藏、暂停并释放鼠标；设置刷新和重载都不能解除它', async () => {
+    vi.useFakeTimers();
+    const settings = defaultSettings(['test']);
+    const overlay = await createOverlay({
+      system,
+      settings,
+      load: () => Promise.resolve(),
+      onError: vi.fn(),
+    });
+    const w = mockWindow();
+    try {
+      mock.ipc.get(IPC_CHANNELS.overlayToMain)?.(
+        { sender: w.webContents, senderFrame: w.webContents.mainFrame },
+        { type: 'hover', onCat: true },
+      );
+      overlay.updateHideAll(true);
+      expect(w.webContents.send).toHaveBeenCalledWith(IPC_CHANNELS.mainToOverlay, {
+        type: 'paused',
+        paused: true,
+      });
+      expect(w.setIgnoreMouseEvents).toHaveBeenLastCalledWith(true, { forward: true });
+      w.showInactive.mockClear();
+      overlay.updateSettings({ ...settings, scale: 1.2 });
+      await overlay.reload();
+      expect(w.showInactive).not.toHaveBeenCalled();
+      overlay.updateHideAll(false);
+      expect(w.showInactive).toHaveBeenCalledOnce();
+    } finally {
+      await overlay.dispose();
+    }
+  });
   it('穿透点击转成桌面层坐标且只发一次，不切换穿透、不抢焦点', async () => {
     vi.useFakeTimers();
     mock.bounds = { x: -1200, y: 100, width: 1200, height: 800 };

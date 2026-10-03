@@ -43,7 +43,9 @@ export async function createOverlayView(
   ];
   const app = new Application();
   try {
-    audio.applySnapshot(await bridge.getSnapshot());
+    const current = await bridge.getSnapshot();
+    stage.applySnapshot(current, Date.now());
+    audio.applySnapshot(current);
     await app.init({
       resizeTo: window,
       backgroundAlpha: 0,

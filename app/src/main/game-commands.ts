@@ -27,14 +27,14 @@ export function createGameCommands(options: {
       updateTray();
     }
   };
-  const summon = (cat: string): void => {
+  const summon = (cat?: string): void => {
     const window = options.overlayWindow();
     if (session.safeMode || !window) return;
     const cursor = screen.getCursorScreenPoint();
     const bounds = window.getBounds();
     command({
       type: 'cat/summon',
-      cat,
+      ...(cat === undefined ? {} : { cat }),
       to: { x: cursor.x - bounds.x, y: cursor.y - bounds.y },
     });
   };

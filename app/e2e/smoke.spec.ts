@@ -10,7 +10,7 @@ import {
   type Locator,
 } from '@playwright/test';
 import type { ContentCatalog } from '../src/shared/core-api';
-import type { StageCommand, StageDebugReport, StateSnapshot } from '../src/shared/ipc';
+import type { AppStatus, StageCommand, StageDebugReport, StateSnapshot } from '../src/shared/ipc';
 import { IPC_CHANNELS } from '../src/shared/ipc';
 import { CURRENT_SAVE_VERSION, defaultGameState, defaultSettings } from '../src/shared/schemas';
 import { zh } from '../src/shared/strings.zh-CN';
@@ -24,6 +24,7 @@ interface Smoke {
   saveBlocked: boolean;
   saveDialogResolvers: ((response: number) => void)[];
   shortcuts: Map<string, () => void>;
+  blockedShortcut: string | null;
   fullscreen: boolean;
   crashes: number;
   slowRequests: number;
@@ -97,7 +98,11 @@ async function setRange(locator: Locator, value: number): Promise<void> {
 async function overlayVisible(app: ElectronApplication): Promise<boolean> {
   return app.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows().some(
-      (window) => window.webContents.getURL().includes('/overlay/') && window.isVisible(),
+      (window) =>
+        !window.isDestroyed() &&
+        !window.webContents.isDestroyed() &&
+        window.webContents.getURL().includes('/overlay/') &&
+        window.isVisible(),
     ),
   );
 }
@@ -117,6 +122,213 @@ async function menuClick(app: ElectronApplication, id: string): Promise<void> {
     item.click({}, BrowserWindow.getFocusedWindow() ?? undefined, undefined);
   }, id);
 }
+
+test('M2 接线：入场出场、召唤全部、勿扰到期、快捷键及全屏恢复', async () => {
+  test.setTimeout(300_000);
+  const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-m2-wiring-'));
+  // 用正式支持的 200% 大小缩短合成慢走片段的路程时间，不跳过真实动画。
+  mkdirSync(join(directory, 'TTCats'));
+  const state = defaultGameState(ids);
+  state.settings.scale = 2;
+  writeFileSync(
+    join(directory, 'TTCats/save.json'),
+    JSON.stringify({ saveVersion: CURRENT_SAVE_VERSION, savedAt: Date.now(), state }),
+  );
+  let app = await launch(directory);
+  try {
+    const settings = await pageFor(app, 'panel=settings');
+    let overlay = await pageFor(app, '/overlay/');
+    const debug = await openDebug(app);
+    await expect.poll(async () => (await report(debug))?.cats.length).toBe(3);
+    await overlay.evaluate(
+      'window.smokeCommands = []; window.smokePause = []; window.ttcats.onStageCommand(c => window.smokeCommands.push(c)); window.ttcats.onOverlay(m => { if(m.type === "paused") window.smokePause.push(m.paused); });',
+    );
+    const commands = () => overlay.evaluate<StageCommand[]>('window.smokeCommands');
+    const clearCommands = () => overlay.evaluate('window.smokeCommands = []');
+    const behaviors = async () => (await report(debug))?.cats.map((c) => c.behavior);
+    await debug.getByRole('button', { name: zh.panels.entranceAll, exact: true }).click();
+    await expect.poll(behaviors).toEqual(ids.map(() => zh.stageLifecycle.entrance));
+    const starting = (await report(debug))?.cats;
+    const width = await overlay.evaluate<number>('innerWidth');
+    expect(starting?.some((c) => c.x < 0 || c.x > width)).toBe(true);
+    await expect
+      .poll(async () => (await behaviors())?.includes(zh.stageLifecycle.entrance), {
+        // 合成走路片段只有 30 px/s；较小的猫横穿屏幕可能超过一分钟。
+        timeout: 120_000,
+      })
+      .toBe(false);
+    await menuClick(app, 'visible:test-close');
+    await expect
+      .poll(async () => (await report(debug))?.cats.find((c) => c.cat === 'test-close')?.behavior)
+      .toBe(zh.stageLifecycle.exit);
+    await expect
+      .poll(async () => (await report(debug))?.cats.some((c) => c.cat === 'test-close'), {
+        timeout: 120_000,
+      })
+      .toBe(false);
+    await menuClick(app, 'visible:test-close');
+    await expect
+      .poll(async () => (await report(debug))?.cats.find((c) => c.cat === 'test-close')?.behavior)
+      .toBe(zh.stageLifecycle.entrance);
+    await menuClick(app, 'summon:all');
+    await expect
+      .poll(commands)
+      .toContainEqual({ type: 'cat/summon', cats: ids, to: expect.any(Object) });
+
+    await menuClick(app, 'doNotDisturb:30m');
+    await expect.poll(async () => (await snapshot(settings)).doNotDisturb.mode).toBe('timed');
+    await expect
+      .poll(behaviors, { timeout: 120_000 })
+      .toEqual(ids.map(() => zh.stageLifecycle.doNotDisturbSleep));
+    await debug.getByRole('spinbutton', { name: zh.panels.advanceMinutes, exact: true }).fill('30');
+    await debug.getByRole('button', { name: zh.panels.advanceClock, exact: true }).click();
+    await expect.poll(async () => (await snapshot(settings)).doNotDisturb.mode).toBe('off');
+    await expect
+      .poll(async () => (await behaviors())?.includes(zh.stageLifecycle.doNotDisturbSleep))
+      .toBe(false);
+
+    const invokeShortcut = async () => {
+      const key = (await snapshot(settings)).settings.hideAllShortcut;
+      await app.evaluate(({ globalShortcut }, accelerator) => {
+        if (!globalShortcut.isRegistered(accelerator)) throw new Error('一键隐藏未注册');
+        const callback = (globalThis as unknown as { smoke: Smoke }).smoke.shortcuts.get(
+          accelerator,
+        );
+        if (!callback) throw new Error('缺少快捷键回调');
+        callback();
+      }, key);
+    };
+    const originalShortcut = (await snapshot(settings)).settings.hideAllShortcut;
+    await invokeShortcut();
+    await expect.poll(() => overlayVisible(app)).toBe(false);
+    expect((await snapshot(settings)).hideAll).toBe(true);
+    await clearCommands();
+    await invokeShortcut();
+    await expect.poll(() => overlayVisible(app)).toBe(true);
+    await expect.poll(commands).toContainEqual({ type: 'cat/entrance' });
+    await settings.evaluate(
+      'window.ttcats.sendCommand({ type: "settings/update", patch: { hideAllShortcut: "Ctrl+Alt+F9" } })',
+    );
+    await expect
+      .poll(() => settings.evaluate<AppStatus>('window.ttcats.getAppStatus()'))
+      .toMatchObject({ hideAllShortcut: { accelerator: 'Ctrl+Alt+F9', registered: true } });
+    expect(
+      await app.evaluate(
+        ({ globalShortcut }, key) => globalShortcut.isRegistered(key),
+        originalShortcut,
+      ),
+    ).toBe(false);
+    await invokeShortcut();
+    await expect.poll(() => overlayVisible(app)).toBe(false);
+    await invokeShortcut();
+    await expect.poll(() => overlayVisible(app)).toBe(true);
+    await app.evaluate(() => {
+      (globalThis as unknown as { smoke: Smoke }).smoke.blockedShortcut = 'Ctrl+Alt+F8';
+    });
+    await settings.evaluate(
+      'window.ttcats.sendCommand({ type: "settings/update", patch: { hideAllShortcut: "Ctrl+Alt+F8" } })',
+    );
+    await expect
+      .poll(() => settings.evaluate<AppStatus>('window.ttcats.getAppStatus()'))
+      .toMatchObject({ hideAllShortcut: { accelerator: 'Ctrl+Alt+F8', registered: false } });
+    expect(readFileSync(join(directory, 'TTCats/logs/main.log'), 'utf8')).toContain(
+      zh.m2Wiring.shortcutFailed('Ctrl+Alt+F8'),
+    );
+    await settings.evaluate(
+      'window.ttcats.sendCommand({ type: "settings/update", patch: { hideAllShortcut: "Ctrl+Alt+F9" } })',
+    );
+    await expect
+      .poll(() => settings.evaluate<AppStatus>('window.ttcats.getAppStatus()'))
+      .toMatchObject({ hideAllShortcut: { registered: true } });
+
+    for (const simulated of [true, false]) {
+      await clearCommands();
+      if (simulated)
+        await debug.getByRole('button', { name: zh.panels.fullscreenStart, exact: true }).click();
+      else await setFullscreen(app, true);
+      await expect.poll(() => overlayVisible(app)).toBe(false);
+      if (simulated)
+        await debug.getByRole('button', { name: zh.panels.fullscreenEnd, exact: true }).click();
+      else await setFullscreen(app, false);
+      await expect.poll(() => overlayVisible(app)).toBe(true);
+      await expect.poll(commands).toEqual([{ type: 'cat/entrance' }]);
+      await expect.poll(behaviors).toEqual(ids.map(() => zh.stageLifecycle.entrance));
+    }
+    await menuClick(app, 'doNotDisturb:untilOff');
+    await invokeShortcut();
+    await expect.poll(() => overlayVisible(app)).toBe(false);
+    await app.close();
+    app = await launch(directory);
+    const restored = await pageFor(app, 'panel=settings');
+    overlay = await pageFor(app, '/overlay/');
+    expect(await snapshot(restored)).toMatchObject({
+      doNotDisturb: { mode: 'untilOff' },
+      hideAll: false,
+      clockOffsetMs: 0,
+    });
+    await expect.poll(() => overlayVisible(app)).toBe(true);
+    const recoveredDebug = await openDebug(app);
+    await recoveredDebug
+      .getByRole('button', { name: zh.panels.doNotDisturbEnd, exact: true })
+      .click();
+    await expect.poll(async () => (await snapshot(restored)).doNotDisturb.mode).toBe('off');
+    await recoveredDebug.getByRole('button', { name: zh.panels.crash, exact: true }).click();
+    await expect
+      .poll(() => app.evaluate(() => (globalThis as unknown as { smoke: Smoke }).smoke.crashes))
+      .toBe(1);
+    await recoveredDebug.evaluate('window.smokeReport = undefined');
+    await expect
+      .poll(async () => (await report(recoveredDebug))?.cats.map((c) => c.behavior), {
+        timeout: 30_000,
+      })
+      .toEqual(ids.map(() => zh.stageLifecycle.entrance));
+  } finally {
+    await app.close();
+  }
+});
+
+test('最后一只猫：调试台关闭后仍走完出场，再暂停桌面层', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-last-exit-'));
+  mkdirSync(join(directory, 'TTCats'));
+  const state = defaultGameState(['test-active']);
+  state.settings.scale = 2;
+  writeFileSync(
+    join(directory, 'TTCats/save.json'),
+    JSON.stringify({ saveVersion: CURRENT_SAVE_VERSION, savedAt: Date.now(), state }),
+  );
+  const app = await launch(directory);
+  try {
+    await pageFor(app, 'panel=settings');
+    const overlay = await pageFor(app, '/overlay/');
+    const width = await overlay.evaluate<number>('innerWidth');
+    const debug = await openDebug(app);
+    await expect
+      .poll(
+        async () => {
+          const cat = (await report(debug))?.cats[0];
+          return cat !== undefined && cat.x >= 200 && cat.x <= width - 200;
+        },
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    await overlay.evaluate(
+      'window.smokePause = []; window.ttcats.onOverlay(m => { if(m.type === "paused") window.smokePause.push(m.paused); });',
+    );
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()
+        .find((w) => w.webContents.getURL().includes('panel=debug'))
+        ?.close(),
+    );
+    await menuClick(app, 'visible:test-active');
+    expect(await overlayVisible(app)).toBe(true);
+    await expect.poll(() => overlayVisible(app), { timeout: 30_000 }).toBe(false);
+    expect(await overlay.evaluate<boolean[]>('window.smokePause')).toContain(true);
+    await menuClick(app, 'visible:test-active');
+    await expect.poll(() => overlayVisible(app)).toBe(true);
+  } finally {
+    await app.close();
+  }
+});
 
 test('正式入口：双窗口桥、三只测试猫、真实托盘与退出保存', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-save-'));
@@ -893,6 +1105,11 @@ test('声音：真实解码、调试命令、呼噜停止与空闲挂起', async
   try {
     const overlay = await pageFor(app, '/overlay/');
     const debug = await openDebug(app);
+    // M2 已接入真实安静时段；声音解码测试不能随执行时的钟点变成静音测试。
+    await debug.evaluate(
+      'window.ttcats.sendCommand({ type: "settings/update", patch: { quietHoursStart: "00:00", quietHoursEnd: "00:00" } })',
+    );
+    await expect.poll(async () => (await snapshot(debug)).silencedBy).toEqual([]);
     const audible = () =>
       app.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows().some(
