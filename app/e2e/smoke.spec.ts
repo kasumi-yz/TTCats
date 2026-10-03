@@ -44,7 +44,11 @@ interface Smoke {
 const ids = ['test-active', 'test-calm', 'test-close'];
 test.describe.configure({ mode: 'default' });
 test.setTimeout(120_000);
-async function launch(directory: string, slow = false): Promise<ElectronApplication> {
+async function launch(
+  directory: string,
+  slow = false,
+  args: string[] = [],
+): Promise<ElectronApplication> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined) env[key] = value;
@@ -55,7 +59,7 @@ async function launch(directory: string, slow = false): Promise<ElectronApplicat
   if (slow) env['TTCATS_SMOKE_SLOW_OVERLAY'] = '1';
   else delete env['TTCATS_SMOKE_SLOW_OVERLAY'];
   return electron.launch({
-    args: [resolve(import.meta.dirname, 'launch.js'), '--test-content', '--settings'],
+    args: [resolve(import.meta.dirname, 'launch.js'), '--test-content', '--settings', ...args],
     env,
   });
 }
@@ -75,6 +79,16 @@ async function catalog(page: Page): Promise<ContentCatalog> {
   return page.evaluate<ContentCatalog>('window.ttcats.getContent()');
 }
 async function openDebug(app: ElectronApplication): Promise<Page> {
+  // 桌面层先加载完成，随后主进程才注册快捷键；等正式启动步骤结束。
+  await expect
+    .poll(
+      () =>
+        app.evaluate(({ globalShortcut }) =>
+          globalShortcut.isRegistered('CommandOrControl+Shift+F10'),
+        ),
+      { timeout: 30_000 },
+    )
+    .toBe(true);
   await app.evaluate(({ globalShortcut }) => {
     if (!globalShortcut.isRegistered('CommandOrControl+Shift+F10'))
       throw new Error('原生调试快捷键注册失败');
@@ -384,6 +398,43 @@ test('最后一只猫：调试台关闭后仍走完出场，再暂停桌面层',
     expect(await overlay.evaluate<boolean[]>('window.smokePause')).toContain(true);
     await menuClick(app, 'visible:test-active');
     await expect.poll(() => overlayVisible(app)).toBe(true);
+  } finally {
+    await app.close();
+  }
+});
+
+test('开机启动：无面板、不抢焦点，静默可快进结束且可在调试台重现', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-autostart-'));
+  const app = await launch(directory, false, ['--autostart']);
+  try {
+    const overlay = await pageFor(app, '/overlay/');
+    await expect.poll(() => overlayVisible(app)).toBe(true);
+    expect(app.windows()).toHaveLength(1);
+    expect(
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getFocusedWindow()?.id ?? null),
+    ).toBeNull();
+    expect((await snapshot(overlay)).silencedBy).toContain('startupQuiet');
+    expect(
+      await app.evaluate(() => (globalThis as unknown as { smoke: Smoke }).smoke.dialogs),
+    ).toEqual([]);
+    // 第二次自动启动不能让已运行的实例弹出设置面板。
+    await app.evaluate(({ app }) => {
+      app.emit('second-instance', {}, ['TTCats.exe', '--autostart'], '', {});
+    });
+    expect(app.windows()).toHaveLength(1);
+    await overlay.evaluate('window.ttcats.sendCommand({type:"debug/advanceClock",minutes:1})');
+    await expect
+      .poll(async () => (await snapshot(overlay)).silencedBy)
+      .not.toContain('startupQuiet');
+    const debug = await openDebug(app);
+    await overlay.evaluate(
+      'window.ttcats.onSnapshot(value => { window.smokeQuiet = value.silencedBy; })',
+    );
+    await debug.getByRole('button', { name: zh.panels.startupQuiet, exact: true }).click();
+    const delivered = () => overlay.evaluate<string[] | undefined>('window.smokeQuiet');
+    await expect.poll(delivered).toContain('startupQuiet');
+    // 这里验证真实时钟与正式定时器，不只验证快进命令。
+    await expect.poll(delivered, { timeout: 70_000 }).not.toContain('startupQuiet');
   } finally {
     await app.close();
   }

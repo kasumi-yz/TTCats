@@ -467,6 +467,11 @@ export const zh = {
       `版本 ${from} 的存档状态格式不对（应该是带 settings 的对象），无法迁移。`,
     commandNotReady: (type: string) => `命令「${type}」对应的功能还没做好，已忽略。`,
   },
+  autostart: {
+    development: '开发模式不注册开机启动项。',
+    disabledByWindows: 'Windows 已禁用 TTCats 的开机启动，保留系统选择。',
+    failed: (reason: string) => `开机启动项同步失败：${reason}`,
+  },
   diagnostics: {
     dialogTitle: '导出诊断信息',
     fileName: (stamp: string) => `TTCats-诊断-${stamp}.zip`,
