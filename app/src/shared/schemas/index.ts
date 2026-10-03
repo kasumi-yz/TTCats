@@ -8,12 +8,14 @@ export * from './settings';
 export * from './do-not-disturb';
 export * from './save';
 export * from './candidate-manifest';
+export * from './review-result';
 export * from './validate';
 
 import { CandidateManifestSchema } from './candidate-manifest';
 import { CatSchema } from './cat';
 import { ClipSchema } from './clip';
 import { EventSchema } from './event';
+import { ReviewResultSchema } from './review-result';
 
 /**
  * 要导出成 JSON Schema 的内容格式（npm run gen:schemas → 仓库根目录的 schemas/）。
@@ -24,4 +26,5 @@ export const EXPORTED_SCHEMAS = {
   clip: ClipSchema,
   event: EventSchema,
   'candidate-manifest': CandidateManifestSchema,
+  'review-result': ReviewResultSchema,
 } as const;
