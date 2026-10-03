@@ -1,6 +1,6 @@
 {
   "name": "ttcats",
-  "version": "0.0.0",
+  "version": "0.2.0",
   "private": true,
   "description": "TTCats 桌面宠物",
   "main": "./out/main/index.js",
@@ -21,7 +21,9 @@
     "perf": "tsx scripts/perf.ts",
     "perf:app": "tsx scripts/perf-app.ts",
     "interaction-test": "tsx scripts/interaction-test.ts",
-    "start:test-pack": "electron-vite build && tsx scripts/start-test-pack.ts"
+    "start:test-pack": "electron-vite build && tsx scripts/start-test-pack.ts",
+    "dist": "npm run build && electron-builder --win nsis --publish never && npm run check:package",
+    "check:package": "tsx scripts/check-package-content.ts"
   },
   "dependencies": {
     "fflate": "^0.8.3",
@@ -32,6 +34,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@electron/asar": "^3.4.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
     "@testing-library/dom": "^10.4.2",
@@ -41,7 +44,8 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.2.0",
-    "electron": "^44.5.1",
+    "electron": "44.5.1",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",

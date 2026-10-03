@@ -65,3 +65,12 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run test:smoke
+      - run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TTCats-Windows-installer
+          path: app/dist/TTCats-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 7

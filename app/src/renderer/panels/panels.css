@@ -65,6 +65,11 @@ legend {
   grid-column: 1 / -1;
   width: 100%;
 }
+.field button,
+.field p {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
 input {
   accent-color: #39664e;
 }
@@ -95,6 +100,7 @@ select:focus-visible {
 }
 .buttons {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 8px;
   margin: 16px 0;
@@ -119,6 +125,74 @@ dt {
 dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.tabs [role='tab'][aria-selected='true'] {
+  background: #39664e;
+  border-color: #39664e;
+  color: #fff;
+}
+.times,
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: end;
+}
+.time,
+.inline label {
+  display: grid;
+  gap: 6px;
+}
+input[type='time'],
+input[type='number'] {
+  font: inherit;
+  border: 1px solid #bfcfc3;
+  border-radius: 6px;
+  padding: 7px 10px;
+}
+kbd {
+  font: inherit;
+  font-weight: 600;
+  border: 1px solid #bfcfc3;
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 2px 8px;
+  background: #f8faf7;
+}
+.recording {
+  border-color: #39664e;
+  background: #e8f0e8;
+}
+.error {
+  color: #934332;
+  margin: 0;
+}
+.field p {
+  margin: 0;
+}
+progress {
+  width: 100%;
+  accent-color: #39664e;
+}
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.footer p {
+  flex: 1 1 240px;
+  margin: 0;
+}
+ul {
+  margin: 0;
+  padding-left: 18px;
 }
 @media (max-width: 400px) {
   .panel {

@@ -1,4 +1,11 @@
-import { appendFileSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
@@ -298,8 +305,10 @@ test('正式调试台：命令抵达桌面层、三猫画面报告、双窗口�
     await debug.getByRole('button', { name: zh.panels.simulations.drop, exact: true }).click();
     await expect.poll(async () => (await current())?.clip).not.toBe('dangle');
     await debug.getByRole('button', { name: zh.panels.hide, exact: true }).click();
+    await expect.poll(async () => (await current())?.behavior).toBe(zh.stageLifecycle.exit);
+    // M2 隐藏要先落地、走到屏幕外，不能沿用 M1 立刻消失的 5 秒期限。
     await expect
-      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat))
+      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat), { timeout: 60_000 })
       .not.toContain('test-calm');
     await debug.getByRole('button', { name: zh.panels.show, exact: true }).click();
     await expect
@@ -365,6 +374,8 @@ test('正式调试台：命令抵达桌面层、三猫画面报告、双窗口�
 });
 
 test('旁边连续点击：正式输入采样链路保持穿透，调试命令能让开并在勿扰时原地接着睡', async () => {
+  // 等出场、入场，以及靠边的猫让开时横穿屏幕，都按真实时间走。
+  test.setTimeout(240_000);
   const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-nearby-'));
   const app = await launch(directory);
   try {
@@ -466,8 +477,9 @@ test('旁边连续点击：正式输入采样链路保持穿透，调试命令�
     await debug.evaluate(
       'window.ttcats.sendCommand({type:"settings/update",patch:{visibleCats:["test-calm"]}})',
     );
+    // 被隐藏的猫要先走出屏幕才移除（#59）。
     await expect
-      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat))
+      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat), { timeout: 60_000 })
       .toEqual(['test-calm']);
     // 勿扰命令和到期计时由 #58 实现；这里在快照边界提供勿扰状态，验证 #60 的响应。
     const dndSnapshot: StateSnapshot = {
@@ -485,12 +497,17 @@ test('旁边连续点击：正式输入采样链路保持穿透，调试命令�
       },
       { channel: IPC_CHANNELS.snapshot, state: dndSnapshot },
     );
+    // 先等它入场、走到勿扰角落睡下，再验证让开后不回角落。
+    await expect
+      .poll(async () => (await report(debug))?.cats[0]?.clip, { timeout: 60_000 })
+      .toBe('sleep');
     await debug.evaluate(
       'window.ttcats.sendCommand({type:"debug/simulate",cat:"test-calm",interaction:"nearbyClicks"})',
     );
     await expect.poll(async () => (await report(debug))?.cats[0]?.behavior).toBe('走开');
+    // 角落靠边时只能往另一头走，慢猫横穿屏幕要几十秒。
     await expect
-      .poll(async () => (await report(debug))?.cats[0]?.clip, { timeout: 20000 })
+      .poll(async () => (await report(debug))?.cats[0]?.clip, { timeout: 90_000 })
       .toBe('sleep');
     const sleepingX = (await report(debug))?.cats[0]?.x;
     await new Promise((resolve) => setTimeout(resolve, 7000));
@@ -810,6 +827,168 @@ for (const discard of [false, true]) {
     }
   });
 }
+
+test('拍照：真实桌面含猫和窗口、原始分辨率、剪贴板、隐身恢复和焦点', async () => {
+  const testInfo = test.info();
+  const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-photo-'));
+  const app = await launch(directory);
+  let probeApp: ElectronApplication | undefined;
+  try {
+    const overlay = await pageFor(app, '/overlay/');
+    const debug = await openDebug(app);
+    await expect.poll(() => overlayVisible(app)).toBe(true);
+    await expect.poll(async () => (await report(debug))?.cats.length).toBe(3);
+    // 猫从屏幕外慢慢走进来（#59），至少等一只完全进入屏幕再拍。
+    const width = await app.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows().find((w) =>
+        w.webContents.getURL().includes('/overlay/'),
+      );
+      if (!window) throw new Error('找不到桌面层');
+      return window.getBounds().width;
+    });
+    await expect
+      .poll(
+        async () =>
+          (await report(debug))?.cats.some((cat) => cat.x > width * 0.15 && cat.x < width * 0.85),
+        { timeout: 60_000 },
+      )
+      .toBe(true);
+    await app.evaluate(({ BrowserWindow }) => {
+      for (const window of BrowserWindow.getAllWindows())
+        if (!window.webContents.getURL().includes('/overlay/')) window.hide();
+    });
+    const env: Record<string, string> = {};
+    for (const [key, value] of Object.entries(process.env))
+      if (value !== undefined) env[key] = value;
+    delete env['ELECTRON_RUN_AS_NODE'];
+    probeApp = await electron.launch({
+      args: [resolve(import.meta.dirname, 'interaction-probe.js')],
+      env,
+    });
+    const probe = await probeApp.firstWindow();
+    await probe.locator('#input').fill('before');
+    await probeApp.evaluate(({ app, BrowserWindow, screen }) => {
+      app.focus({ steal: true });
+      const window = BrowserWindow.getAllWindows()[0];
+      window?.setBounds(screen.getPrimaryDisplay().workArea);
+      window?.moveTop();
+      window?.focus();
+    });
+    const enabled = () =>
+      app.evaluate(
+        () =>
+          (globalThis as unknown as { smoke: Smoke }).smoke.menus.at(-1)?.getMenuItemById('photo')
+            ?.enabled,
+      );
+    for (const showInScreenCapture of [true, false]) {
+      await debug.evaluate((show) => {
+        (
+          globalThis as unknown as { ttcats: { sendCommand: (command: unknown) => void } }
+        ).ttcats.sendCommand({ type: 'settings/update', patch: { showInScreenCapture: show } });
+      }, showInScreenCapture);
+      await expect
+        .poll(async () => (await snapshot(debug)).settings.showInScreenCapture)
+        .toBe(showInScreenCapture);
+      await expect.poll(enabled).toBe(true);
+      const focused = await probeApp.evaluate(
+        ({ BrowserWindow }) => BrowserWindow.getFocusedWindow()?.id,
+      );
+      expect(focused).toBeDefined();
+      await app.evaluate(({ clipboard }) => {
+        clipboard.clear();
+      });
+      if (showInScreenCapture) await menuClick(app, 'photo');
+      else await debug.evaluate('window.ttcats.sendCommand({type:"photo/take"})');
+      await expect(overlay.locator('[data-photo]')).toBeAttached();
+      await expect(overlay.locator('[data-photo]')).toHaveCSS('pointer-events', 'none');
+      expect(
+        await probeApp.evaluate(({ BrowserWindow }) => BrowserWindow.getFocusedWindow()?.id),
+      ).toBe(focused);
+      // 连续命令不能在动画期间产生第二张。
+      await debug.evaluate('window.ttcats.sendCommand({type:"photo/take"})');
+      await expect(overlay.locator('[data-photo]')).toHaveCount(0);
+      await expect.poll(enabled).toBe(true);
+      const files = readdirSync(join(directory, 'pictures/TTCats'));
+      expect(files.length).toBe(showInScreenCapture ? 1 : 2);
+      const file = join(directory, 'pictures/TTCats', files.at(-1) ?? '');
+      const result = await app.evaluate(
+        async ({ BrowserWindow, clipboard, nativeImage, screen }, file) => {
+          const overlay = BrowserWindow.getAllWindows().find((w) =>
+            w.webContents.getURL().includes('/overlay/'),
+          );
+          if (!overlay) throw new Error('找不到桌面层');
+          const display = screen.getDisplayMatching(overlay.getBounds());
+          const image = nativeImage.createFromPath(file);
+          const bitmap = image.toBitmap();
+          let catPixels = 0;
+          let backgroundPixels = 0;
+          for (let i = 0; i < bitmap.length; i += 4) {
+            const b = bitmap[i] ?? 0,
+              g = bitmap[i + 1] ?? 0,
+              r = bitmap[i + 2] ?? 0;
+            if (r > 220 && g > 155 && g < 205 && b > 55 && b < 110) catPixels++;
+            if (r === 77 && g === 111 && b === 143) backgroundPixels++;
+          }
+          const items = await clipboard.read();
+          const item = items.find((item) => item.types.includes('image/png'));
+          const png = item
+            ? Buffer.from(await (await item.getType('image/png')).arrayBuffer())
+            : Buffer.alloc(0);
+          const copied = nativeImage.createFromBuffer(png);
+          return {
+            size: image.getSize(),
+            expected: {
+              width: Math.round(display.size.width * display.scaleFactor),
+              height: Math.round(display.size.height * display.scaleFactor),
+            },
+            catPixels,
+            backgroundPixels,
+            protected: overlay.isContentProtected(),
+            focusable: overlay.isFocusable(),
+            clipboardMatches: !copied.isEmpty() && image.toBitmap().equals(copied.toBitmap()),
+          };
+        },
+        file,
+      );
+      expect(result.size).toEqual(result.expected);
+      expect(result.protected).toBe(!showInScreenCapture);
+      expect(result.focusable).toBe(false);
+      expect(result.clipboardMatches).toBe(true);
+      expect(result.catPixels).toBeGreaterThan(100);
+      // 桌面可能有其他用户窗口；仍要求大片探针原色，排除闪光覆盖整屏。
+      expect(result.backgroundPixels).toBeGreaterThan(result.size.width * result.size.height * 0.2);
+      await testInfo.attach(`photo-${String(showInScreenCapture)}.png`, {
+        path: file,
+        contentType: 'image/png',
+      });
+      await testInfo.attach(`photo-${String(showInScreenCapture)}.json`, {
+        body: JSON.stringify(result, null, 2),
+        contentType: 'application/json',
+      });
+      await probe.locator('#input').press('End');
+      await probe.locator('#input').press('a');
+      await expect(probe.locator('#input')).toHaveValue(
+        showInScreenCapture ? 'beforea' : 'beforeaa',
+      );
+    }
+    await setFullscreen(app, true);
+    await expect.poll(enabled).toBe(false);
+    await setFullscreen(app, false);
+    await expect.poll(enabled).toBe(true);
+    for (const cat of ids)
+      await debug.evaluate((cat) => {
+        (
+          globalThis as unknown as { ttcats: { sendCommand: (command: unknown) => void } }
+        ).ttcats.sendCommand({ type: 'cat/setVisible', cat, visible: false });
+      }, cat);
+    await expect.poll(enabled).toBe(false);
+    await debug.evaluate('window.ttcats.sendCommand({type:"photo/take"})');
+    expect(readdirSync(join(directory, 'pictures/TTCats'))).toHaveLength(2);
+  } finally {
+    await probeApp?.close();
+    await app.close();
+  }
+});
 
 test('声音：真实解码、调试命令、呼噜停止与空闲挂起', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-audio-'));
