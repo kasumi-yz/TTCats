@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { captionButtonsMatch, titlebarButtons } from './window-geometry';
+import { captionButtonsMatch, hitTestButtons, titlebarButtons } from './window-geometry';
 import { windowsInZOrder } from './windows';
 
 const outer = { left: 2260, top: 750, right: 2847, bottom: 1125 };
@@ -7,6 +7,27 @@ const reference = { left: 2619, top: 750, right: 2839, bottom: 795 };
 const empty = { left: 0, top: 0, right: 0, bottom: 0 };
 
 describe('标题栏按钮的独立核对', () => {
+  it('自绘标题栏的宽高不能沿用系统默认值，二分结果与独立矩形逐边比较', () => {
+    const outer = { left: 180, top: 360, right: 1380, bottom: 960 };
+    const hint = { left: 1150, top: 360, right: 1370, bottom: 404 };
+    const actual = { left: 1165, top: 362, right: 1370, bottom: 420 };
+    let calls = 0;
+    const hit = (x: number, y: number): number => {
+      calls++;
+      if (x < actual.left || x >= actual.right || y < actual.top || y >= actual.bottom) return 1;
+      return x < 1300 ? 8 : 20;
+    };
+    const result = hitTestButtons(outer, hint, hit);
+    expect(result).toEqual(actual);
+    expect(captionButtonsMatch(hint, actual)).toBe(false);
+    expect(captionButtonsMatch(result, actual)).toBe(true);
+    expect(calls).toBeLessThan(50);
+    expect(hitTestButtons(outer, hint, () => null)).toBeNull();
+    expect(hitTestButtons(outer, hint, () => 1)).toBeNull();
+    let timedCalls = 0;
+    expect(hitTestButtons(outer, hint, () => (++timedCalls === 1 ? 20 : null))).toBeNull();
+    expect(timedCalls).toBe(2);
+  });
   it('150% 下老程序的物理宽高只用一次，不能重复放大', () => {
     const rectangles = [
       empty,

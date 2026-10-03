@@ -45,7 +45,7 @@ export interface WindowInfo {
   className: string;
   bounds: WindowRect;
   buttons: WindowRect | null;
-  buttonsSource: 'titlebar' | 'dwm' | 'fallback' | 'none';
+  buttonsSource: 'titlebar' | 'dwm' | 'hit-test' | 'fallback' | 'none';
   dpiAwareness: 'unaware' | 'system' | 'per-monitor';
   windowDpi: number;
   visible: boolean;

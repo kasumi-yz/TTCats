@@ -20,6 +20,9 @@ const state = vi.hoisted(() => ({
   context: vi.fn<(context: number | bigint) => number | bigint>(),
   dwmFailure: false,
   titlebarAvailable: true,
+  titlebarWidth: 220,
+  hitTestAvailable: false,
+  hits: vi.fn<(x: number, y: number) => number>(),
 }));
 
 vi.mock('koffi', () => ({
@@ -104,6 +107,21 @@ vi.mock('koffi', () => ({
             flags[0] = 2;
             return true;
           };
+        if (signature.includes('SendMessageTimeoutW') && !signature.includes('LedgeTitlebarInfo'))
+          return (
+            _id: bigint,
+            _message: number,
+            _parameter: number,
+            coordinates: number,
+            _flags: number,
+            _timeout: number,
+            result: number[],
+          ) => {
+            const x = (coordinates << 16) >> 16,
+              y = coordinates >> 16;
+            result[0] = state.hitTestAvailable ? state.hits(x, y) : 1;
+            return 1;
+          };
         if (signature.includes('SendMessageTimeoutW'))
           return (
             id: bigint,
@@ -114,7 +132,7 @@ vi.mock('koffi', () => ({
             if (!state.titlebarAvailable) return 0;
             const w = target(id);
             info.rgrect[2] = {
-              left: w.bounds.right - 220,
+              left: w.bounds.right - state.titlebarWidth,
               top: w.bounds.top,
               right: w.bounds.right,
               bottom: w.bounds.top + 45,
@@ -149,6 +167,9 @@ beforeEach(() => {
   state.context.mockReset().mockReturnValue(-4);
   state.dwmFailure = false;
   state.titlebarAvailable = true;
+  state.titlebarWidth = 220;
+  state.hitTestAvailable = false;
+  state.hits.mockReset();
 });
 afterEach(() => vi.unstubAllGlobals());
 const monitorBounds = { left: 0, top: 0, right: 2880, bottom: 1800 };
@@ -167,10 +188,22 @@ describe('正式 Windows 窗口读取', () => {
       bounds: state.windows[0]?.bounds,
       windowDpi: 144,
       dpiAwareness: 'per-monitor',
-      buttonsSource: 'dwm',
+      buttonsSource: 'titlebar',
       buttons: { left: 1280, right: 1500, top: 300, bottom: 345 },
     });
     expect(state.context.mock.calls).toEqual([[-4], [-4]]);
+  });
+  it('Per-Monitor 窗口也优先绝对坐标，避免记事本 DWM 多扣左端空白', () => {
+    state.titlebarWidth = 212;
+    expect(readWindows(monitors)[0]).toMatchObject({
+      buttonsSource: 'titlebar',
+      buttons: { left: 1288, right: 1500, top: 300, bottom: 345 },
+    });
+    state.titlebarAvailable = false;
+    expect(readWindows(monitors)[0]).toMatchObject({
+      buttonsSource: 'dwm',
+      buttons: { left: 1280, right: 1500, top: 300, bottom: 345 },
+    });
   });
   it('老程序使用标题栏绝对屏幕坐标，220 像素不能变成 330 像素', () => {
     firstWindow().awareness = 0;
@@ -187,6 +220,25 @@ describe('正式 Windows 窗口读取', () => {
       occludes: true,
       reason: 'buttons-unavailable',
     });
+  });
+  it('自绘按钮按实际命中区校正，移动只平移缓存，调整大小立即重新核对', () => {
+    firstWindow().id = 77;
+    state.hitTestAvailable = true;
+    state.hits.mockImplementation((x, y) =>
+      y >= 302 && y < 360 && x >= 1295 && x < 1490 ? (x < 1430 ? 8 : 20) : 1,
+    );
+    expect(readWindows(monitors)[0]).toMatchObject({
+      buttonsSource: 'hit-test',
+      buttons: { left: 1295, top: 302, right: 1490, bottom: 360 },
+    });
+    state.hits.mockClear();
+    const w = firstWindow();
+    w.bounds = { left: 320, top: 300, right: 1520, bottom: 900 };
+    expect(readWindows(monitors)[0]?.buttons?.left).toBe(1315);
+    expect(state.hits).not.toHaveBeenCalled();
+    w.bounds.right = 1600;
+    readWindows(monitors);
+    expect(state.hits).toHaveBeenCalled();
   });
   it.each(['minimized', 'cloaked', 'visible'] as const)('%s 状态禁止站立及遮挡', (field) => {
     firstWindow()[field] = field !== 'visible';

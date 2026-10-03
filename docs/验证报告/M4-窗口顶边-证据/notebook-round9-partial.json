@@ -1,0 +1,283 @@
+{
+  "status": "incomplete",
+  "machine": "Zephyr",
+  "label": "2880x1800-150pct",
+  "evidence": [
+    {
+      "name": "记事本",
+      "window": {
+        "id": "1774988",
+        "pid": 26312,
+        "className": "Notepad",
+        "bounds": {
+          "left": 187,
+          "top": 360,
+          "right": 1373,
+          "bottom": 953
+        },
+        "buttons": {
+          "left": 1160,
+          "top": 361,
+          "right": 1372,
+          "bottom": 405
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "reference": {
+        "method": "按窗口句柄捕获的实际按钮截图与独立 WM_NCHITTEST 命中区域",
+        "bounds": {
+          "left": 1160,
+          "right": 1372,
+          "top": 361,
+          "bottom": 405
+        },
+        "screenshot": "notebook-round9-notepad-buttons.png",
+        "capture": {
+          "outer": {
+            "left": 180,
+            "right": 1380,
+            "bottom": 960,
+            "top": 360
+          },
+          "width": 244,
+          "height": 47,
+          "crop": {
+            "left": 1136,
+            "right": 1380,
+            "bottom": 407,
+            "top": 360
+          }
+        }
+      },
+      "movementToUpdateMs": [
+        31.44340000000011,
+        47.17659999999978,
+        45.74080000000049,
+        45.70849999999973,
+        46.03690000000006
+      ],
+      "occlusion": {
+        "zOrderVerified": true,
+        "blocker": {
+          "left": 541,
+          "top": 240,
+          "right": 823,
+          "bottom": 531
+        },
+        "ledges": [
+          {
+            "id": "1774988",
+            "left": 204.66666666666666,
+            "right": 360.6666666666667,
+            "y": 260
+          },
+          {
+            "id": "1774988",
+            "left": 548.6666666666666,
+            "right": 853.3333333333334,
+            "y": 260
+          }
+        ]
+      }
+    },
+    {
+      "name": "浏览器",
+      "window": {
+        "id": "198178",
+        "pid": 25732,
+        "className": "Chrome_WidgetWin_1",
+        "bounds": {
+          "left": 189,
+          "top": 360,
+          "right": 1371,
+          "bottom": 951
+        },
+        "buttons": {
+          "left": 1165,
+          "top": 362,
+          "right": 1370,
+          "bottom": 420
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "reference": {
+        "method": "UI Automation",
+        "buttons": [
+          {
+            "left": 1164,
+            "right": 1232,
+            "bottom": 421,
+            "top": 362,
+            "kind": "minimize"
+          },
+          {
+            "left": 1232,
+            "right": 1302,
+            "bottom": 421,
+            "top": 362,
+            "kind": "maximize"
+          },
+          {
+            "left": 1301,
+            "right": 1371,
+            "bottom": 421,
+            "top": 362,
+            "kind": "close"
+          }
+        ],
+        "bounds": {
+          "left": 1164,
+          "right": 1371,
+          "top": 362,
+          "bottom": 421
+        }
+      },
+      "movementToUpdateMs": [
+        49.193999999999505,
+        52.691100000000006,
+        46.99419999999918,
+        61.65970000000016,
+        51.282499999999345
+      ],
+      "occlusion": {
+        "zOrderVerified": true,
+        "blocker": {
+          "left": 543,
+          "top": 240,
+          "right": 825,
+          "bottom": 531
+        },
+        "ledges": [
+          {
+            "id": "198178",
+            "left": 206,
+            "right": 362,
+            "y": 260
+          },
+          {
+            "id": "198178",
+            "left": 550,
+            "right": 856.6666666666666,
+            "y": 260
+          }
+        ]
+      }
+    },
+    {
+      "name": "资源管理器",
+      "window": {
+        "id": "528670",
+        "pid": 16584,
+        "className": "CabinetWClass",
+        "bounds": {
+          "left": 189,
+          "top": 360,
+          "right": 1371,
+          "bottom": 951
+        },
+        "buttons": {
+          "left": 1158,
+          "top": 361,
+          "right": 1370,
+          "bottom": 405
+        },
+        "buttonsSource": "titlebar",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "reference": {
+        "method": "UI Automation",
+        "buttons": [
+          {
+            "left": 1299,
+            "right": 1370,
+            "bottom": 405,
+            "top": 361,
+            "kind": "close"
+          },
+          {
+            "left": 1229,
+            "right": 1299,
+            "bottom": 405,
+            "top": 361,
+            "kind": "maximize"
+          },
+          {
+            "left": 1158,
+            "right": 1229,
+            "bottom": 405,
+            "top": 361,
+            "kind": "minimize"
+          }
+        ],
+        "bounds": {
+          "left": 1158,
+          "right": 1370,
+          "top": 361,
+          "bottom": 405
+        }
+      },
+      "movementToUpdateMs": [
+        56.49150000000009,
+        46.92200000000048,
+        46.12280000000101,
+        46.83140000000094,
+        45.66359999999986
+      ],
+      "occlusion": {
+        "zOrderVerified": true,
+        "blocker": {
+          "left": 543,
+          "top": 240,
+          "right": 825,
+          "bottom": 531
+        },
+        "ledges": [
+          {
+            "id": "528670",
+            "left": 206,
+            "right": 362,
+            "y": 260
+          },
+          {
+            "id": "528670",
+            "left": 550,
+            "right": 852,
+            "y": 260
+          }
+        ]
+      }
+    }
+  ],
+  "completedAppChecks": "资源管理器",
+  "phases": [],
+  "provenance": "Zephyr 第九轮部分记录；旧程序失败，未测 CPU，修复后未重测，不是完整验收"
+}

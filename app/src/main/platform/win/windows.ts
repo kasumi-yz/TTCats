@@ -1,6 +1,6 @@
 import koffi from 'koffi';
 import type { WindowInfo, WindowMonitor, WindowRect } from '../types';
-import { titlebarButtons, validRect } from './window-geometry';
+import { hitTestButtons, titlebarButtons, validRect } from './window-geometry';
 
 const SHELL = ['Progman', 'WorkerW', 'Shell_TrayWnd', 'Shell_SecondaryTrayWnd'];
 const emptyRect = (): WindowRect => ({ left: 0, top: 0, right: 0, bottom: 0 });
@@ -82,10 +82,22 @@ function createBindings() {
       timeout: number,
       result: (number | bigint)[],
     ) => number | bigint,
+    hit: user.func(
+      'intptr_t __stdcall SendMessageTimeoutW(intptr_t window, uint message, uintptr_t parameter, intptr_t coordinates, uint flags, uint timeout, _Out_ intptr_t *result)',
+    ) as (
+      window: bigint,
+      message: number,
+      parameter: number,
+      coordinates: number,
+      flags: number,
+      timeout: number,
+      result: (number | bigint)[],
+    ) => number | bigint,
   };
 }
 
 let native: ReturnType<typeof createBindings> | undefined;
+const captionCache = new Map<bigint, { key: string; at: number; relative: WindowRect }>();
 
 /** 独立 Z 序来源，不假设 EnumWindows 的回调顺序。变化中的链只重试三次，不能死循环。 */
 export function windowsInZOrder(api: {
@@ -135,6 +147,7 @@ export function readWindows(
   if (BigInt(previous) === 0n) throw new Error('无法切换窗口查询线程到物理像素坐标。');
   let failure: unknown;
   const result: WindowInfo[] = [];
+  const sampledAt = performance.now();
   try {
     const dwmRect = (id: bigint, attribute: number): WindowRect | null => {
       const buffer = Buffer.alloc(16);
@@ -232,8 +245,8 @@ export function readWindows(
       let buttons: WindowRect | null = null;
       let buttonsSource: WindowInfo['buttonsSource'] = 'none';
       if (!reason) {
-        // 老程序不使用 M0 的 DWM 混合单位公式。读取系统标题栏的绝对屏幕坐标。
-        if (dpiAwareness !== 'per-monitor') {
+        // 系统标题栏直接给绝对物理坐标。WinUI 记事本的 DWM 预留与实际命中区不同。
+        {
           const info = {
             cbSize: koffi.sizeof('LedgeTitlebarInfo'),
             rcTitleBar: emptyRect(),
@@ -254,6 +267,57 @@ export function readWindows(
               bottom: outer.top + relative.bottom,
             };
             buttonsSource = 'dwm';
+          }
+        }
+        if (buttons && dpiAwareness === 'per-monitor') {
+          const key = JSON.stringify([
+            pid[0],
+            className,
+            windowDpi,
+            monitor.scaleFactor,
+            outer.right - outer.left,
+            outer.bottom - outer.top,
+            buttons.left - outer.left,
+            buttons.top - outer.top,
+            buttons.right - outer.left,
+            buttons.bottom - outer.top,
+          ]);
+          const cached = captionCache.get(id);
+          let actual: WindowRect | null;
+          if (cached?.key === key && sampledAt - cached.at < 1000) {
+            const r = cached.relative;
+            actual = {
+              left: outer.left + r.left,
+              top: outer.top + r.top,
+              right: outer.left + r.right,
+              bottom: outer.top + r.bottom,
+            };
+          } else {
+            actual = hitTestButtons(outer, buttons, (x, y) => {
+              const value = [0];
+              if (
+                BigInt(
+                  api.hit(id, 0x84, 0, ((y & 0xffff) << 16) | (x & 0xffff), 0x22, 8, value),
+                ) === 0n
+              )
+                return null;
+              return Number(value[0]);
+            });
+            if (actual)
+              captionCache.set(id, {
+                key,
+                at: sampledAt,
+                relative: {
+                  left: actual.left - outer.left,
+                  top: actual.top - outer.top,
+                  right: actual.right - outer.left,
+                  bottom: actual.bottom - outer.top,
+                },
+              });
+          }
+          if (actual) {
+            buttons = actual;
+            buttonsSource = 'hit-test';
           }
         }
         if (!buttons && dpiAwareness !== 'per-monitor') reason = 'buttons-unavailable';
@@ -287,6 +351,8 @@ export function readWindows(
         reason,
       });
     }
+    const eligible = new Set(result.filter((w) => w.eligible).map((w) => BigInt(w.id)));
+    for (const id of captionCache.keys()) if (!eligible.has(id)) captionCache.delete(id);
   } catch (error) {
     failure = error;
   }

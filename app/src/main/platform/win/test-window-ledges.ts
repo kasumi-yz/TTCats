@@ -109,6 +109,10 @@ export function createWindowLedgeTest() {
   const visible = user.func('bool __stdcall IsWindowVisible(intptr_t window)') as (
     window: bigint,
   ) => boolean;
+  const style = user.func('intptr_t __stdcall GetWindowLongPtrW(intptr_t window, int index)') as (
+    window: bigint,
+    index: number,
+  ) => number | bigint;
   const hitTest = user.func(
     'intptr_t __stdcall SendMessageTimeoutW(intptr_t window, uint message, uintptr_t wParam, intptr_t lParam, uint flags, uint timeout, _Out_ intptr_t *result)',
   ) as (
@@ -156,6 +160,7 @@ export function createWindowLedgeTest() {
     prepare(id: string) {
       const hwnd = BigInt(id);
       const wasVisible = visible(hwnd);
+      const wasTopmost = Boolean(Number(style(hwnd, -20)) & 8);
       const placement = {
         length: koffi.sizeof('LedgeTestPlacement'),
         flags: 0,
@@ -172,7 +177,7 @@ export function createWindowLedgeTest() {
             throw new Error(`无法移动窗口 ${id}。`);
         },
         raise(): void {
-          if (!position(hwnd, 0, 0, 0, 0, 0, 0x13))
+          if (!position(hwnd, -1, 0, 0, 0, 0, 0x13))
             throw new Error(`无法调整窗口 ${id} 的前后顺序。`);
         },
         minimize(): void {
@@ -187,6 +192,8 @@ export function createWindowLedgeTest() {
         restore(): void {
           if (!setPlacement(hwnd, placement))
             throw new Error(`无法恢复窗口 ${id} 的原位置和状态。`);
+          if (!position(hwnd, wasTopmost ? -1 : -2, 0, 0, 0, 0, 0x13))
+            throw new Error(`无法恢复窗口 ${id} 的置顶状态。`);
           if (!wasVisible) show(hwnd, 0);
         },
       };
