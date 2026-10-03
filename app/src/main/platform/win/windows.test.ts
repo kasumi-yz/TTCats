@@ -240,6 +240,20 @@ describe('正式 Windows 窗口读取', () => {
     readWindows(monitors);
     expect(state.hits).toHaveBeenCalled();
   });
+  it('DPI 不感知的标准窗口也校正横向范围，不能把系统标题栏较宽的矩形当作实际按钮', () => {
+    const w = firstWindow();
+    w.id = 78;
+    w.awareness = 0;
+    state.hitTestAvailable = true;
+    state.hits.mockImplementation((x, y) =>
+      y >= 312 && y < 345 && x >= 1344 && x < 1499 ? (x < 1440 ? 8 : 20) : 1,
+    );
+    expect(readWindows(monitors)[0]).toMatchObject({
+      dpiAwareness: 'unaware',
+      buttonsSource: 'hit-test',
+      buttons: { left: 1344, top: 312, right: 1499, bottom: 345 },
+    });
+  });
   it.each(['minimized', 'cloaked', 'visible'] as const)('%s 状态禁止站立及遮挡', (field) => {
     firstWindow()[field] = field !== 'visible';
     expect(readWindows(monitors)[0]).toMatchObject({ eligible: false, occludes: false });

@@ -41,8 +41,6 @@ export function captionButtonsMatch(
   return (
     Math.abs(actual.left - reference.left) <= tolerance &&
     Math.abs(actual.right - reference.right) <= tolerance &&
-    Math.abs(actual.top - reference.top) <= tolerance &&
-    Math.abs(actual.bottom - reference.bottom) <= tolerance &&
     Math.abs(actual.right - actual.left - (reference.right - reference.left)) <= tolerance
   );
 }

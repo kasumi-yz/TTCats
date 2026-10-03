@@ -7,7 +7,7 @@ const reference = { left: 2619, top: 750, right: 2839, bottom: 795 };
 const empty = { left: 0, top: 0, right: 0, bottom: 0 };
 
 describe('标题栏按钮的独立核对', () => {
-  it('自绘标题栏的宽高不能沿用系统默认值，二分结果与独立矩形逐边比较', () => {
+  it('自绘标题栏的范围不能沿用系统默认值，二分结果核对影响可站顶边的左右边缘', () => {
     const outer = { left: 180, top: 360, right: 1380, bottom: 960 };
     const hint = { left: 1150, top: 360, right: 1370, bottom: 404 };
     const actual = { left: 1165, top: 362, right: 1370, bottom: 420 };
@@ -47,6 +47,13 @@ describe('标题栏按钮的独立核对', () => {
     expect(captionButtonsMatch({ ...reference, right: 2844 }, reference)).toBe(false);
     expect(captionButtonsMatch({ ...reference, left: 2614 }, reference)).toBe(false);
     expect(captionButtonsMatch(null, reference)).toBe(false);
+  });
+  it('顶边只扣按钮的横向范围，老程序边框造成上下差异不改变可站位置', () => {
+    const actual = { left: 879, top: 158, right: 932, bottom: 203 };
+    const hit = { left: 877, top: 168, right: 930, bottom: 201 };
+    expect(captionButtonsMatch(actual, hit)).toBe(true);
+    expect(captionButtonsMatch({ ...actual, left: 880 }, hit)).toBe(false);
+    expect(captionButtonsMatch({ ...actual, right: 933 }, hit)).toBe(false);
   });
   it('只保留可见按钮，禁用但可见的按钮也不能让猫站上去', () => {
     const rectangles = [empty, empty, reference, empty, empty, empty];

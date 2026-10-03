@@ -4,8 +4,9 @@ param(
     [Parameter(Mandatory=$true)][int]$Top,
     [Parameter(Mandatory=$true)][int]$Right,
     [Parameter(Mandatory=$true)][int]$Bottom,
-    [Parameter(Mandatory=$true)][string]$OutputPath,
-    [switch]$FromScreen)
+    [Parameter(Mandatory=$true)][int]$MonitorDpi,
+    [string]$OutputPath,
+    [switch]$PlanOnly)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 Add-Type -AssemblyName System.Drawing
@@ -21,6 +22,9 @@ public static class CaptionCapture {
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr window, IntPtr dc, uint flags);
     [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(Point point);
     [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr window, uint flags);
+    [DllImport("user32.dll")] public static extern IntPtr GetWindowDpiAwarenessContext(IntPtr window);
+    [DllImport("user32.dll")] public static extern int GetAwarenessFromDpiAwarenessContext(IntPtr context);
+    [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr window);
 }
 '@
 $previous = [CaptionCapture]::SetThreadDpiAwarenessContext([IntPtr]::new(-4))
@@ -35,10 +39,27 @@ try {
     $width = $rect.Right - $rect.Left
     $height = $rect.Bottom - $rect.Top
     if ($width -le 0 -or $height -le 0 -or $width -gt 10000 -or $height -gt 10000) { throw '截图目标尺寸无效。' }
+    $awareness = [CaptionCapture]::GetAwarenessFromDpiAwarenessContext([CaptionCapture]::GetWindowDpiAwarenessContext($window))
+    $windowDpi = [CaptionCapture]::GetDpiForWindow($window)
+    if ($awareness -lt 0 -or $windowDpi -eq 0) { throw '无法确定目标窗口的 DPI，不能猜截图方式。' }
+    # 老程序按 96 DPI 绘图，PrintWindow 不会替物理尺寸位图放大内容，非纯色也可能错位。
+    $fromScreen = $awareness -ne 2 -or $windowDpi -ne $MonitorDpi
+    if ($PlanOnly) {
+        $center=[CaptionCapture+Point]::new()
+        $center.X=[int](($Left+$Right)/2);$center.Y=[int](($Top+$Bottom)/2)
+        ConvertTo-Json -Compress -InputObject @{
+            outer=@{left=$rect.Left;top=$rect.Top;right=$rect.Right;bottom=$rect.Bottom}
+            windowDpi=$windowDpi;awareness=$awareness
+            method=$(if($fromScreen){'screen'}else{'PrintWindow'})
+            regionVisible=([CaptionCapture]::GetAncestor([CaptionCapture]::WindowFromPoint($center),2) -eq $window)
+        }
+        return
+    }
+    if (!$OutputPath) { throw '实际截图必须提供输出路径。' }
     # 不经过 Electron 缩略图缩放；整个目标仅存在内存，磁盘只写按钮区域。
     $bitmap = [Drawing.Bitmap]::new($width, $height, [Drawing.Imaging.PixelFormat]::Format24bppRgb)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
-    if ($FromScreen) {
+    if ($fromScreen) {
         foreach ($taskPoint in @(@(($Left+1),($Top+1)),@(($Right-2),($Top+1)),@(($Left+1),($Bottom-2)),@(($Right-2),($Bottom-2)),@([int](($Left+$Right)/2),[int](($Top+$Bottom)/2)))) {
             $point=[CaptionCapture+Point]::new()
             $point.X=$taskPoint[0];$point.Y=$taskPoint[1]
@@ -63,7 +84,7 @@ try {
         outer = @{ left=$rect.Left; top=$rect.Top; right=$rect.Right; bottom=$rect.Bottom }
         crop = @{ left=$cropLeft; top=$cropTop; right=$cropRight; bottom=$cropBottom }
         width=$caption.Width; height=$caption.Height
-        method=$(if($FromScreen){'物理屏幕'}else{'PrintWindow'})
+        method=$(if($fromScreen){'screen'}else{'PrintWindow'})
     }
 } finally {
     if ($caption) { $caption.Dispose() }

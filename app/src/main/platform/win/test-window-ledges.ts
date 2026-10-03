@@ -11,15 +11,20 @@ export function captionHitBounds(
   const codes = [8, 9, 20, 21];
   const row = outer.top + Math.round(20 * scale);
   const positions = new Map<number, number[]>();
+  const returnedCodes = new Map<number, number>();
   for (let x = outer.left; x < outer.right; x++) {
     const code = hit(x, row);
+    returnedCodes.set(code, (returnedCodes.get(code) ?? 0) + 1);
     if (codes.includes(code)) {
       const xs = positions.get(code) ?? [];
       xs.push(x);
       positions.set(code, xs);
     }
   }
-  if (!positions.has(20)) throw new Error('系统命中测试没有找到关闭按钮，不能据此核对截图。');
+  if (!positions.has(20))
+    throw new Error(
+      `系统命中测试没有找到关闭按钮，不能据此核对截图。返回值：${JSON.stringify([...returnedCodes])}`,
+    );
   const rectangles: WindowRect[] = [];
   for (const [code, xs] of positions) {
     const left = Math.min(...xs),
@@ -40,23 +45,34 @@ export function captionHitBounds(
   };
 }
 
+let typesRegistered = false;
+
 export function createWindowLedgeTest() {
   const user = koffi.load('user32.dll');
-  const point = koffi.struct('LedgeTestPoint', { x: 'long', y: 'long' });
-  const rect = koffi.struct('LedgeTestRect', {
-    left: 'long',
-    top: 'long',
-    right: 'long',
-    bottom: 'long',
-  });
-  koffi.struct('LedgeTestPlacement', {
-    length: 'uint32',
-    flags: 'uint32',
-    showCmd: 'uint32',
-    ptMinPosition: point,
-    ptMaxPosition: point,
-    rcNormalPosition: rect,
-  });
+  if (!typesRegistered) {
+    const point = koffi.struct('LedgeTestPoint', { x: 'long', y: 'long' });
+    const rect = koffi.struct('LedgeTestRect', {
+      left: 'long',
+      top: 'long',
+      right: 'long',
+      bottom: 'long',
+    });
+    koffi.struct('LedgeTestPlacement', {
+      length: 'uint32',
+      flags: 'uint32',
+      showCmd: 'uint32',
+      ptMinPosition: point,
+      ptMaxPosition: point,
+      rcNormalPosition: rect,
+    });
+    koffi.struct('LedgeTestTitlebar', {
+      cbSize: 'uint32',
+      rcTitleBar: rect,
+      rgstate: koffi.array('uint32', 6),
+      rgrect: koffi.array(rect, 6),
+    });
+    typesRegistered = true;
+  }
   const context = user.func(
     'intptr_t __stdcall SetThreadDpiAwarenessContext(intptr_t context)',
   ) as (context: number | bigint) => number | bigint;
@@ -124,17 +140,48 @@ export function createWindowLedgeTest() {
     timeout: number,
     result: (number | bigint)[],
   ) => number | bigint;
+  const titlebar = user.func(
+    'intptr_t __stdcall SendMessageTimeoutW(intptr_t window, uint message, uintptr_t wParam, _Inout_ LedgeTestTitlebar *info, uint flags, uint timeout, _Out_ intptr_t *result)',
+  ) as (
+    window: bigint,
+    message: number,
+    parameter: number,
+    info: object,
+    flags: number,
+    timeout: number,
+    result: (number | bigint)[],
+  ) => number | bigint;
   const fixtures: bigint[] = [];
   const previous = context(-4);
   if (BigInt(previous) === 0n) throw new Error('无法设置真机核对的物理坐标。');
   return {
-    fixture(title: string, unaware = false, exStyle = 0): string {
+    fixture(
+      title: string,
+      unaware = false,
+      exStyle = 0,
+      initial = { left: 100, top: 100, width: 600, height: 400 },
+    ): string {
       const old = context(unaware ? -1 : -4);
       if (BigInt(old) === 0n) throw new Error('无法设置测试窗口的 DPI 感知方式。');
       let id = 0n,
         failure: unknown;
       try {
-        id = BigInt(create(exStyle, 'STATIC', title, 0xcf0000, 100, 100, 600, 400, 0, 0, 0, 0));
+        id = BigInt(
+          create(
+            exStyle,
+            'STATIC',
+            title,
+            0xcf0000,
+            initial.left,
+            initial.top,
+            initial.width,
+            initial.height,
+            0,
+            0,
+            0,
+            0,
+          ),
+        );
         if (id === 0n) throw new Error(`无法创建 ${title} 测试窗口。`);
         fixtures.push(id);
       } catch (error) {
@@ -202,6 +249,21 @@ export function createWindowLedgeTest() {
       const bounds = { left: 0, top: 0, right: 0, bottom: 0 };
       if (!outer(BigInt(id), bounds)) throw new Error(`无法读取窗口 ${id} 的外框。`);
       return bounds;
+    },
+    titlebar(id: string) {
+      const info = {
+        cbSize: koffi.sizeof('LedgeTestTitlebar'),
+        rcTitleBar: { left: 0, top: 0, right: 0, bottom: 0 },
+        rgstate: Array<number>(6).fill(0),
+        rgrect: Array.from({ length: 6 }, () => ({ left: 0, top: 0, right: 0, bottom: 0 })),
+      };
+      if (BigInt(titlebar(BigInt(id), 0x33f, 0, info, 0x22, 8, [0])) === 0n)
+        throw new Error('窗口没有及时回应标题栏信息查询。');
+      return info;
+    },
+    capabilities(id: string) {
+      const value = Number(style(BigInt(id), -16));
+      return { canMinimize: Boolean(value & 0x20000), canMaximize: Boolean(value & 0x10000) };
     },
     captionBounds(id: string, scale: number): WindowRect {
       const bounds = { left: 0, top: 0, right: 0, bottom: 0 };

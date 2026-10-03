@@ -269,7 +269,7 @@ export function readWindows(
             buttonsSource = 'dwm';
           }
         }
-        if (buttons && dpiAwareness === 'per-monitor') {
+        if (buttons) {
           const key = JSON.stringify([
             pid[0],
             className,
