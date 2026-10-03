@@ -1,0 +1,20 @@
+{
+  "id": "sleep-to-sit",
+  "revision": 2,
+  "author": "Codex",
+  "userRequest": "睡姿起来的时候应该有一个伸懒腰的动作，其他的都可以通过",
+  "createdAt": "2026-10-03T09:29:23.660417+00:00",
+  "changeReason": "用户明确要求醒来坐起前有伸懒腰，覆盖原视频动作提示词约束；保留旧提示词及结果。",
+  "originalPromptSha256": "0e6c5f957f791225eed2f6ad0cfe30e5cc03897f863451d6453ec62d0781db3c",
+  "prompt": "A static, locked-off camera films a real cat from the side against a plain studio backdrop of one flat teal color. The framing never changes: no zoom, no pan, no camera shake, no cuts. The cat is a golden shaded British cat with a plush coat, a narrow ivory collar and a dark-tipped tail, facing right. The cat wakes from sleep and performs one clearly visible, natural sleepy stretch before sitting. It slowly opens its eyes, reaches both front paws forward along the floor, straightens its forelegs and lengthens its back, lowering its chest and head between its outstretched front legs while gently raising its hips. Its hind paws stay planted in the same spot. It holds the full forward stretch briefly, then relaxes, folds its hind legs, draws its front paws back and sits upright on the spot. The stretch is distinct and easy to see, not just lifting the head. One smooth, unhurried stretch followed by sitting, taking about four seconds; then it sits still. Its tail moves softly and naturally. Photorealistic, real-time natural speed, the same soft even lighting throughout, and the backdrop stays perfectly flat and empty. Only this one cat is in the frame. Quiet room tone.",
+  "sha256": "5b7fa6a14da42c3fdba52abb2b72303568a53b8a6a55d1ba94ea34ecdc2721ed",
+  "seconds": 5,
+  "seeds": [
+    6,
+    42,
+    1234,
+    2026
+  ],
+  "first": "D:\\TTCats-素材库\\work\\issue-76\\poses\\pose-sleep.png",
+  "last": "D:\\TTCats-素材库\\work\\issue-7\\poses\\pose-sit.png"
+}
