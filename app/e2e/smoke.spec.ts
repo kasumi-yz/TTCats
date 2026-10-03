@@ -56,6 +56,8 @@ async function launch(
   env['TTCATS_TEST_APP_DATA'] = directory;
   delete env['ELECTRON_RUN_AS_NODE'];
   delete env['ELECTRON_RENDERER_URL'];
+  // 冒烟里的测试猫走快 4 倍，见 launch.js。
+  env['TTCATS_SMOKE_WALK_SPEEDUP'] = '4';
   if (slow) env['TTCATS_SMOKE_SLOW_OVERLAY'] = '1';
   else delete env['TTCATS_SMOKE_SLOW_OVERLAY'];
   return electron.launch({
@@ -168,9 +170,8 @@ async function menuClick(app: ElectronApplication, id: string): Promise<void> {
 }
 
 test('M2 接线：入场出场、召唤全部、勿扰到期、快捷键及全屏恢复', async () => {
-  test.setTimeout(300_000);
   const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-m2-wiring-'));
-  // 用正式支持的 200% 大小缩短合成慢走片段的路程时间，不跳过真实动画。
+  // 用正式支持的 200% 大小，再加上冒烟里走快的测试猫，缩短路程时间，不跳过真实动画。
   mkdirSync(join(directory, 'TTCats'));
   const state = defaultGameState(ids);
   state.settings.scale = 2;
@@ -197,8 +198,7 @@ test('M2 接线：入场出场、召唤全部、勿扰到期、快捷键及全�
     expect(starting?.some((c) => c.x < 0 || c.x > width)).toBe(true);
     await expect
       .poll(async () => (await behaviors())?.includes(zh.stageLifecycle.entrance), {
-        // 合成走路片段只有 30 px/s；较小的猫横穿屏幕可能超过一分钟。
-        timeout: 120_000,
+        timeout: 30_000,
       })
       .toBe(false);
     await menuClick(app, 'visible:test-close');
@@ -207,7 +207,7 @@ test('M2 接线：入场出场、召唤全部、勿扰到期、快捷键及全�
       .toBe(zh.stageLifecycle.exit);
     await expect
       .poll(async () => (await report(debug))?.cats.some((c) => c.cat === 'test-close'), {
-        timeout: 120_000,
+        timeout: 30_000,
       })
       .toBe(false);
     await menuClick(app, 'visible:test-close');
@@ -222,7 +222,7 @@ test('M2 接线：入场出场、召唤全部、勿扰到期、快捷键及全�
     await menuClick(app, 'doNotDisturb:30m');
     await expect.poll(async () => (await snapshot(settings)).doNotDisturb.mode).toBe('timed');
     await expect
-      .poll(behaviors, { timeout: 120_000 })
+      .poll(behaviors, { timeout: 30_000 })
       .toEqual(ids.map(() => zh.stageLifecycle.doNotDisturbSleep));
     await debug.getByRole('spinbutton', { name: zh.panels.advanceMinutes, exact: true }).fill('30');
     await debug.getByRole('button', { name: zh.panels.advanceClock, exact: true }).click();
@@ -433,8 +433,11 @@ test('开机启动：无面板、不抢焦点，静默可快进结束且可在�
     await debug.getByRole('button', { name: zh.panels.startupQuiet, exact: true }).click();
     const delivered = () => overlay.evaluate<string[] | undefined>('window.smokeQuiet');
     await expect.poll(delivered).toContain('startupQuiet');
-    // 这里验证真实时钟与正式定时器，不只验证快进命令。
-    await expect.poll(delivered, { timeout: 70_000 }).not.toContain('startupQuiet');
+    // 重现的静默同样能用调试台的快进按钮结束，并推送到桌面层。不按真实时间等 1 分钟：
+    // 「没有操作时程序按真实时间自己推进」由「定时推进」那项验证。
+    await debug.getByRole('spinbutton', { name: zh.panels.advanceMinutes, exact: true }).fill('1');
+    await debug.getByRole('button', { name: zh.panels.advanceClock, exact: true }).click();
+    await expect.poll(delivered).not.toContain('startupQuiet');
   } finally {
     await app.close();
   }
@@ -617,7 +620,7 @@ test('正式调试台：命令抵达桌面层、三猫画面报告、双窗口�
     await expect.poll(async () => (await current())?.behavior).toBe(zh.stageLifecycle.exit);
     // M2 隐藏要先落地、走到屏幕外，不能沿用 M1 立刻消失的 5 秒期限。
     await expect
-      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat), { timeout: 60_000 })
+      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat), { timeout: 20_000 })
       .not.toContain('test-calm');
     await debug.getByRole('button', { name: zh.panels.show, exact: true }).click();
     await expect
@@ -683,8 +686,6 @@ test('正式调试台：命令抵达桌面层、三猫画面报告、双窗口�
 });
 
 test('旁边连续点击：正式输入采样链路保持穿透，调试命令能让开并在勿扰时原地接着睡', async () => {
-  // 等出场、入场，以及靠边的猫让开时横穿屏幕，都按真实时间走。
-  test.setTimeout(240_000);
   const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-nearby-'));
   const app = await launch(directory);
   try {
@@ -788,7 +789,7 @@ test('旁边连续点击：正式输入采样链路保持穿透，调试命令�
     );
     // 被隐藏的猫要先走出屏幕才移除（#59）。
     await expect
-      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat), { timeout: 60_000 })
+      .poll(async () => (await report(debug))?.cats.map((cat) => cat.cat), { timeout: 20_000 })
       .toEqual(['test-calm']);
     // 勿扰命令和到期计时由 #58 实现；这里在快照边界提供勿扰状态，验证 #60 的响应。
     const dndSnapshot: StateSnapshot = {
@@ -808,15 +809,15 @@ test('旁边连续点击：正式输入采样链路保持穿透，调试命令�
     );
     // 先等它入场、走到勿扰角落睡下，再验证让开后不回角落。
     await expect
-      .poll(async () => (await report(debug))?.cats[0]?.clip, { timeout: 60_000 })
+      .poll(async () => (await report(debug))?.cats[0]?.clip, { timeout: 20_000 })
       .toBe('sleep');
     await debug.evaluate(
       'window.ttcats.sendCommand({type:"debug/simulate",cat:"test-calm",interaction:"nearbyClicks"})',
     );
     await expect.poll(async () => (await report(debug))?.cats[0]?.behavior).toBe('走开');
-    // 角落靠边时只能往另一头走，慢猫横穿屏幕要几十秒。
+    // 角落靠边时只能往另一头走，让开的路程比较长。
     await expect
-      .poll(async () => (await report(debug))?.cats[0]?.clip, { timeout: 90_000 })
+      .poll(async () => (await report(debug))?.cats[0]?.clip, { timeout: 30_000 })
       .toBe('sleep');
     const sleepingX = (await report(debug))?.cats[0]?.x;
     await new Promise((resolve) => setTimeout(resolve, 7000));
@@ -1159,7 +1160,7 @@ test('拍照：真实桌面含猫和窗口、原始分辨率、剪贴板、隐�
       .poll(
         async () =>
           (await report(debug))?.cats.some((cat) => cat.x > width * 0.15 && cat.x < width * 0.85),
-        { timeout: 60_000 },
+        { timeout: 20_000 },
       )
       .toBe(true);
     await app.evaluate(({ BrowserWindow }) => {

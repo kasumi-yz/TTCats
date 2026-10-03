@@ -49,6 +49,19 @@ fs.openSync = function (path, ...args) {
   }
   return openSync.call(this, path, ...args);
 };
+// 冒烟只关心入场、出场、让开等流程，不关心测试猫走多慢。在读文件边界把测试猫
+// 走路、奔跑片段的 speed 放大，免得按真实时间等 30 px/s 的猫横穿屏幕。
+// 只在冒烟里生效：test-content 本身不变，交互测试和性能测试仍用原速度。
+const speedup = Number(process.env.TTCATS_SMOKE_WALK_SPEEDUP ?? '1');
+const clipJson = /[\\/]test-content[\\/]cats[\\/][^\\/]+[\\/]clips[\\/][^\\/]+\.json$/;
+const readFile = fs.readFileSync;
+fs.readFileSync = function (path, ...args) {
+  const data = readFile.call(this, path, ...args);
+  if (speedup === 1 || typeof data !== 'string' || !clipJson.test(String(path))) return data;
+  const clip = JSON.parse(data);
+  if (!(clip.speed > 0)) return data;
+  return JSON.stringify({ ...clip, speed: clip.speed * speedup });
+};
 syncBuiltinESMExports();
 app.on('browser-window-created', (_event, window) => {
   window.webContents.on('render-process-gone', () => {
