@@ -1,0 +1,3440 @@
+{
+  "status": "failed",
+  "kind": "full",
+  "machine": "Zephyr",
+  "capturedAt": "2026-10-03T16:15:28.581Z",
+  "label": "2880x1800-150pct",
+  "displays": [
+    {
+      "id": 3742356399,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "workArea": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1728
+      },
+      "scaleFactor": 1.5,
+      "primary": true
+    }
+  ],
+  "samplingPlan": {
+    "strategy": "定时读取；设定延时不代表实际采样间隔",
+    "activeDelayMs": 33,
+    "idleDelayMs": 1000,
+    "warmupMs": 1000,
+    "cpuDurationMs": 30000,
+    "movementSamples": 20,
+    "movementSettleMs": 80,
+    "movementTimeoutMs": 500,
+    "latencyMethod": "移动命令前到 onUpdate 回调到达的单调时钟差；不轮询，不含 IPC 或屏幕呈现"
+  },
+  "versions": {
+    "node": "24.21.0",
+    "acorn": "8.18.0",
+    "ada": "4.0.0",
+    "amaro": "1.1.11",
+    "ares": "1.34.8",
+    "brotli": "1.2.0",
+    "cldr": "48.0",
+    "icu": "78.2",
+    "llhttp": "9.4.3",
+    "merve": "1.2.2",
+    "modules": "149",
+    "napi": "10",
+    "nbytes": "0.1.4",
+    "ncrypto": "0.0.1",
+    "nghttp2": "1.70.0",
+    "nghttp3": "",
+    "ngtcp2": "",
+    "openssl": "0.0.0",
+    "simdjson": "4.6.7",
+    "simdutf": "7.7.0",
+    "sqlite": "3.53.4",
+    "tz": "2025c",
+    "undici": "7.29.1",
+    "unicode": "17.0",
+    "uv": "1.52.1",
+    "uvwasi": "0.0.23",
+    "v8": "15.2.124.28-electron.0",
+    "zlib": "1.3.2.1-motley",
+    "zstd": "1.6.0",
+    "electron": "44.5.1",
+    "chrome": "152.0.7977.130"
+  },
+  "checks": [
+    {
+      "name": "独占检查",
+      "status": "passed"
+    },
+    {
+      "name": "读取四类目标",
+      "status": "passed"
+    },
+    {
+      "name": "CPU 测试窗口",
+      "status": "passed"
+    },
+    {
+      "name": "CPU floor",
+      "status": "passed"
+    },
+    {
+      "name": "CPU idle",
+      "status": "passed"
+    },
+    {
+      "name": "CPU occupied",
+      "status": "passed"
+    },
+    {
+      "name": "关闭 CPU 测试窗口",
+      "status": "passed"
+    },
+    {
+      "name": "创建独立 Legacy 回归窗口",
+      "status": "passed"
+    },
+    {
+      "name": "读取独立 Legacy 回归窗口",
+      "status": "passed"
+    },
+    {
+      "name": "创建遮挡窗口",
+      "status": "passed"
+    },
+    {
+      "name": "透明窗口不遮挡",
+      "status": "passed"
+    },
+    {
+      "name": "关闭窗口通知",
+      "status": "passed"
+    },
+    {
+      "name": "结束时独占检查",
+      "status": "passed"
+    },
+    {
+      "name": "清理独立 Legacy 进程",
+      "status": "passed"
+    },
+    {
+      "name": "清理测试窗口及上下文",
+      "status": "passed"
+    }
+  ],
+  "apps": [
+    {
+      "name": "记事本",
+      "original": {
+        "id": "55908626",
+        "pid": 23764,
+        "className": "Notepad",
+        "bounds": {
+          "left": 1128,
+          "top": 287,
+          "right": 2713,
+          "bottom": 1548
+        },
+        "buttons": {
+          "left": 2500,
+          "right": 2712,
+          "top": 288,
+          "bottom": 332
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed"
+        },
+        {
+          "name": "保存并准备窗口",
+          "status": "passed"
+        },
+        {
+          "name": "按钮参考及实际图像",
+          "status": "passed"
+        },
+        {
+          "name": "20 次移动回调延迟",
+          "status": "passed"
+        },
+        {
+          "name": "局部遮挡",
+          "status": "passed"
+        },
+        {
+          "name": "跨出左边界后继续移动",
+          "status": "passed"
+        },
+        {
+          "name": "最小化",
+          "status": "passed"
+        },
+        {
+          "name": "最大化",
+          "status": "passed"
+        },
+        {
+          "name": "恢复窗口",
+          "status": "passed"
+        }
+      ],
+      "caption": {
+        "predicted": {
+          "left": 1160,
+          "top": 361,
+          "right": 1372,
+          "bottom": 405
+        },
+        "formalWindow": {
+          "id": "55908626",
+          "pid": 23764,
+          "className": "Notepad",
+          "bounds": {
+            "left": 187,
+            "top": 360,
+            "right": 1373,
+            "bottom": 953
+          },
+          "buttons": {
+            "left": 1160,
+            "top": 361,
+            "right": 1372,
+            "bottom": 405
+          },
+          "buttonsSource": "hit-test",
+          "dpiAwareness": "per-monitor",
+          "windowDpi": 144,
+          "visible": true,
+          "minimized": false,
+          "maximized": false,
+          "fullscreen": false,
+          "cloaked": false,
+          "occludes": true,
+          "eligible": true,
+          "reason": ""
+        },
+        "titlebar": {
+          "cbSize": 140,
+          "rcTitleBar": {
+            "left": 189,
+            "top": 363,
+            "right": 1371,
+            "bottom": 360
+          },
+          "rgstate": {
+            "0": 1048576,
+            "1": 32768,
+            "2": 0,
+            "3": 0,
+            "4": 32768,
+            "5": 0
+          },
+          "rgrect": [
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 1160,
+              "top": 361,
+              "right": 1231,
+              "bottom": 405
+            },
+            {
+              "left": 1231,
+              "top": 361,
+              "right": 1301,
+              "bottom": 405
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 1301,
+              "top": 361,
+              "right": 1372,
+              "bottom": 405
+            }
+          ]
+        },
+        "titlebarPrediction": {
+          "left": 1160,
+          "top": 361,
+          "right": 1372,
+          "bottom": 405
+        },
+        "predictionSource": "readWindows",
+        "uia": {
+          "canMaximize": true,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": true,
+          "errors": [
+            "UI Automation 没有找到唯一的 minimize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 maximize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+          ],
+          "valid": false,
+          "buttons": []
+        },
+        "uiaError": [
+          "UI Automation 没有找到唯一的 minimize 标题栏按钮（数量 0）。",
+          "UI Automation 没有找到唯一的 maximize 标题栏按钮（数量 0）。",
+          "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+        ],
+        "hitInputCoordinates": "physical",
+        "hitBounds": {
+          "left": 1160,
+          "right": 1372,
+          "top": 361,
+          "bottom": 405
+        },
+        "comparisons": [
+          {
+            "source": "WM_NCHITTEST 扫描",
+            "bounds": {
+              "left": 1160,
+              "right": 1372,
+              "top": 361,
+              "bottom": 405
+            },
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": 0
+          }
+        ],
+        "captureMethod": "PrintWindow",
+        "screenshot": "caption-2880x1800-150pct-55908626-1791044230346.png",
+        "capture": {
+          "outer": {
+            "left": 180,
+            "right": 1380,
+            "bottom": 960,
+            "top": 360
+          },
+          "width": 237,
+          "height": 47,
+          "crop": {
+            "left": 1136,
+            "right": 1373,
+            "bottom": 407,
+            "top": 360
+          },
+          "method": "PrintWindow"
+        },
+        "publicImage": {
+          "file": "notebook-round10-notepad-buttons.png",
+          "sha256": "e99b873b0603c10693816027e0a5d4a4bab282d8b3f7a28767c5dbc1eb03b16c",
+          "note": "未经编辑的原始按钮裁剪图像，已逐张视觉核对。"
+        }
+      },
+      "movementToUpdateMs": [
+        45.2505000000092,
+        47.683700000008685,
+        13.41579999998794,
+        41.51070000001346,
+        45.968800000002375,
+        47.4887999999919,
+        48.54300000000512,
+        46.67059999999765,
+        23.781300000002375,
+        13.074600000007194,
+        16.94550000000163,
+        13.247100000007777,
+        47.71459999999206,
+        45.32129999999597,
+        48.65810000000056,
+        47.17829999999958,
+        54.401800000006915,
+        10.339099999997416,
+        46.42420000000857,
+        10.974499999996624
+      ],
+      "movementErrors": [],
+      "observedSampleIntervalsMs": [
+        45.37859999999637,
+        45.635699999998906,
+        47.3981000000058,
+        47.77610000000277,
+        47.057300000000396,
+        48.93889999999374,
+        43.95879999999306,
+        44.08520000000135,
+        47.32600000000093,
+        45.55030000000261,
+        48.228000000002794,
+        46.06489999999758,
+        46.00660000000789,
+        46.10409999999683,
+        47.551699999996345,
+        46.36019999999553,
+        47.125800000008894,
+        48.59509999999136,
+        45.33490000000165,
+        48.38430000000517,
+        46.720900000000256,
+        52.79739999999583,
+        53.86410000000615,
+        47.43979999999283,
+        49.22639999999956,
+        49.617700000002515,
+        48.967499999998836,
+        55.78560000000289,
+        49.03369999999995,
+        45.60610000000452,
+        46.48979999999574,
+        47.76669999999285,
+        45.76940000000468,
+        45.35439999999653,
+        45.37540000000445,
+        46.82170000000042,
+        46.00109999999404,
+        48.72200000000885,
+        44.837100000004284,
+        45.79909999998927,
+        47.22389999999723,
+        44.094900000010966,
+        55.33550000000105,
+        54.44689999999537,
+        47.67919999999867,
+        47.79799999999523,
+        45.12030000000959,
+        48.7445000000007,
+        46.473099999988335,
+        47.469900000010966,
+        48.51019999998971,
+        44.46570000000065,
+        47.17140000000654
+      ],
+      "window": {
+        "id": "55908626",
+        "pid": 23764,
+        "className": "Notepad",
+        "bounds": {
+          "left": 187,
+          "top": 360,
+          "right": 1373,
+          "bottom": 953
+        },
+        "buttons": {
+          "left": 1160,
+          "right": 1372,
+          "top": 361,
+          "bottom": 405
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "capabilities": {
+        "canMinimize": true,
+        "canMaximize": true
+      },
+      "occlusion": {
+        "zOrderVerified": true,
+        "blocker": {
+          "left": 451,
+          "top": 240,
+          "right": 733,
+          "bottom": 531
+        },
+        "ledge": {
+          "id": "55908626",
+          "left": 144.66666666666666,
+          "right": 935.3333333333334,
+          "top": 260,
+          "segments": [
+            {
+              "left": 144.66666666666666,
+              "right": 300.6666666666667
+            },
+            {
+              "left": 488.6666666666667,
+              "right": 793.3333333333334
+            }
+          ]
+        }
+      },
+      "crossing": [
+        {
+          "at": 1791044233848,
+          "windows": [
+            {
+              "id": "55908626",
+              "left": -95.33333333333333,
+              "right": 695.3333333333334,
+              "top": 260,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 553.3333333333334
+                }
+              ]
+            },
+            {
+              "id": "528670",
+              "left": 622.6666666666666,
+              "right": 1816.6666666666667,
+              "top": 63.333333333333336,
+              "segments": [
+                {
+                  "left": 622.6666666666666,
+                  "right": 1674.6666666666667
+                }
+              ]
+            },
+            {
+              "id": "12783350",
+              "left": 187.33333333333334,
+              "right": 772.6666666666666,
+              "top": 360,
+              "segments": []
+            },
+            {
+              "id": "6496016",
+              "left": -5.333333333333333,
+              "right": 1274.6666666666667,
+              "top": 64,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "198178",
+              "left": 192.66666666666666,
+              "right": 1920.6666666666667,
+              "top": 137.33333333333334,
+              "segments": []
+            },
+            {
+              "id": "528166",
+              "left": 500,
+              "right": 1420,
+              "top": 236,
+              "segments": []
+            },
+            {
+              "id": "527118",
+              "left": 420,
+              "right": 1500,
+              "top": 216,
+              "segments": []
+            }
+          ]
+        },
+        {
+          "at": 1791044234019,
+          "windows": [
+            {
+              "id": "55908626",
+              "left": -195.33333333333334,
+              "right": 595.3333333333334,
+              "top": 260,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 453.3333333333333
+                }
+              ]
+            },
+            {
+              "id": "528670",
+              "left": 622.6666666666666,
+              "right": 1816.6666666666667,
+              "top": 63.333333333333336,
+              "segments": [
+                {
+                  "left": 622.6666666666666,
+                  "right": 1674.6666666666667
+                }
+              ]
+            },
+            {
+              "id": "12783350",
+              "left": 187.33333333333334,
+              "right": 772.6666666666666,
+              "top": 360,
+              "segments": [
+                {
+                  "left": 595.3333333333334,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "6496016",
+              "left": -5.333333333333333,
+              "right": 1274.6666666666667,
+              "top": 64,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "198178",
+              "left": 192.66666666666666,
+              "right": 1920.6666666666667,
+              "top": 137.33333333333334,
+              "segments": []
+            },
+            {
+              "id": "528166",
+              "left": 500,
+              "right": 1420,
+              "top": 236,
+              "segments": []
+            },
+            {
+              "id": "527118",
+              "left": 420,
+              "right": 1500,
+              "top": 216,
+              "segments": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "浏览器",
+      "original": {
+        "id": "198178",
+        "pid": 25732,
+        "className": "Chrome_WidgetWin_1",
+        "bounds": {
+          "left": 289,
+          "top": 206,
+          "right": 2881,
+          "bottom": 1752
+        },
+        "buttons": {
+          "left": 2675,
+          "right": 2880,
+          "top": 208,
+          "bottom": 266
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed"
+        },
+        {
+          "name": "保存并准备窗口",
+          "status": "passed"
+        },
+        {
+          "name": "按钮参考及实际图像",
+          "status": "passed"
+        },
+        {
+          "name": "20 次移动回调延迟",
+          "status": "passed"
+        },
+        {
+          "name": "局部遮挡",
+          "status": "passed"
+        },
+        {
+          "name": "跨出左边界后继续移动",
+          "status": "passed"
+        },
+        {
+          "name": "最小化",
+          "status": "passed"
+        },
+        {
+          "name": "最大化",
+          "status": "passed"
+        },
+        {
+          "name": "恢复窗口",
+          "status": "passed"
+        }
+      ],
+      "caption": {
+        "predicted": {
+          "left": 1165,
+          "top": 362,
+          "right": 1370,
+          "bottom": 420
+        },
+        "formalWindow": {
+          "id": "198178",
+          "pid": 25732,
+          "className": "Chrome_WidgetWin_1",
+          "bounds": {
+            "left": 189,
+            "top": 360,
+            "right": 1371,
+            "bottom": 951
+          },
+          "buttons": {
+            "left": 1165,
+            "top": 362,
+            "right": 1370,
+            "bottom": 420
+          },
+          "buttonsSource": "hit-test",
+          "dpiAwareness": "per-monitor",
+          "windowDpi": 144,
+          "visible": true,
+          "minimized": false,
+          "maximized": false,
+          "fullscreen": false,
+          "cloaked": false,
+          "occludes": true,
+          "eligible": true,
+          "reason": ""
+        },
+        "titlebar": {
+          "cbSize": 140,
+          "rcTitleBar": {
+            "left": 191,
+            "top": 363,
+            "right": 1369,
+            "bottom": 360
+          },
+          "rgstate": {
+            "0": 1048576,
+            "1": 32768,
+            "2": 0,
+            "3": 0,
+            "4": 32768,
+            "5": 0
+          },
+          "rgrect": [
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            }
+          ]
+        },
+        "titlebarPrediction": null,
+        "predictionSource": "readWindows",
+        "uia": {
+          "canMaximize": true,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": true,
+          "errors": [],
+          "valid": true,
+          "buttons": [
+            {
+              "left": 1164,
+              "bottom": 421,
+              "top": 362,
+              "right": 1232,
+              "kind": "minimize",
+              "frameworkId": "Chrome"
+            },
+            {
+              "left": 1232,
+              "bottom": 421,
+              "top": 362,
+              "right": 1302,
+              "kind": "maximize",
+              "frameworkId": "Chrome"
+            },
+            {
+              "left": 1301,
+              "bottom": 421,
+              "top": 362,
+              "right": 1371,
+              "kind": "close",
+              "frameworkId": "Chrome"
+            }
+          ]
+        },
+        "hitInputCoordinates": "physical",
+        "hitBounds": {
+          "left": 1165,
+          "right": 1370,
+          "top": 362,
+          "bottom": 420
+        },
+        "comparisons": [
+          {
+            "source": "UI Automation",
+            "bounds": {
+              "left": 1164,
+              "right": 1371,
+              "top": 362,
+              "bottom": 421
+            },
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": -1
+          },
+          {
+            "source": "WM_NCHITTEST 扫描",
+            "bounds": {
+              "left": 1165,
+              "right": 1370,
+              "top": 362,
+              "bottom": 420
+            },
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": 0
+          }
+        ],
+        "captureMethod": "PrintWindow",
+        "screenshot": "caption-2880x1800-150pct-198178-1791044236141.png",
+        "capture": {
+          "outer": {
+            "left": 180,
+            "right": 1380,
+            "bottom": 960,
+            "top": 360
+          },
+          "width": 231,
+          "height": 63,
+          "crop": {
+            "left": 1140,
+            "right": 1371,
+            "bottom": 423,
+            "top": 360
+          },
+          "method": "PrintWindow"
+        },
+        "publicImage": {
+          "file": "notebook-round10-browser-buttons.png",
+          "sha256": "3de255ab2863bab3225478f73373899f63b15be146badadbde66910146078ad9",
+          "note": "未经编辑的原始按钮裁剪图像，已逐张视觉核对。"
+        }
+      },
+      "movementToUpdateMs": [
+        49.97060000000056,
+        48.1875,
+        46.99649999999383,
+        24.829200000007404,
+        10.579700000002049,
+        44.34320000000298,
+        45.492599999997765,
+        10.840199999991455,
+        44.20130000000063,
+        45.857300000003306,
+        11.87960000000021,
+        58.340299999996205,
+        46.431400000001304,
+        11.716700000004494,
+        46.507500000006985,
+        12.306199999991804,
+        50.70669999999518,
+        11.925900000002002,
+        45.89130000000296,
+        13.973299999997835
+      ],
+      "movementErrors": [],
+      "observedSampleIntervalsMs": [
+        49.98609999999462,
+        45.51790000000619,
+        46.73709999999846,
+        48.22819999999774,
+        45.19409999999334,
+        46.38760000000184,
+        47.035900000002584,
+        53.38839999999618,
+        55.459700000006706,
+        46.19509999999718,
+        47.36960000000545,
+        46.03409999998985,
+        47.13950000000477,
+        44.393700000000536,
+        46.01290000000154,
+        47.840199999991455,
+        45.53510000000824,
+        49.08169999999518,
+        48.124400000000605,
+        45.14310000000114,
+        52.95320000000356,
+        44.24289999999746,
+        45.56720000000496,
+        46.53589999998803,
+        45.89900000000489,
+        48.83520000000135,
+        47.94220000000496,
+        45.174299999998766,
+        53.57809999999881,
+        58.379000000000815,
+        44.65129999999772,
+        45.67119999999704,
+        46.469899999996414,
+        46.84530000000086,
+        48.23570000000473,
+        44.564400000002934,
+        46.20040000000154,
+        46.54789999999048,
+        47.685900000011316,
+        48.44569999999658,
+        45.018599999995786,
+        47.931299999996554,
+        50.74790000000212,
+        58.77610000000277,
+        47.10529999999562,
+        45.38280000000668,
+        44.838999999992666,
+        45.94100000000617,
+        46.423399999999674,
+        50.064199999993434,
+        59.49000000000524
+      ],
+      "window": {
+        "id": "198178",
+        "pid": 25732,
+        "className": "Chrome_WidgetWin_1",
+        "bounds": {
+          "left": 189,
+          "top": 360,
+          "right": 1371,
+          "bottom": 951
+        },
+        "buttons": {
+          "left": 1165,
+          "right": 1370,
+          "top": 362,
+          "bottom": 420
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "capabilities": {
+        "canMinimize": true,
+        "canMaximize": true
+      },
+      "occlusion": {
+        "zOrderVerified": true,
+        "blocker": {
+          "left": 453,
+          "top": 240,
+          "right": 735,
+          "bottom": 531
+        },
+        "ledge": {
+          "id": "198178",
+          "left": 146,
+          "right": 934,
+          "top": 260,
+          "segments": [
+            {
+              "left": 146,
+              "right": 302
+            },
+            {
+              "left": 490,
+              "right": 796.6666666666666
+            }
+          ]
+        }
+      },
+      "crossing": [
+        {
+          "at": 1791044239650,
+          "windows": [
+            {
+              "id": "198178",
+              "left": -94,
+              "right": 694,
+              "top": 260,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 556.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "55908626",
+              "left": 752,
+              "right": 1808.6666666666667,
+              "top": 191.33333333333334,
+              "segments": [
+                {
+                  "left": 752,
+                  "right": 1666.6666666666667
+                }
+              ]
+            },
+            {
+              "id": "528670",
+              "left": 622.6666666666666,
+              "right": 1816.6666666666667,
+              "top": 63.333333333333336,
+              "segments": [
+                {
+                  "left": 622.6666666666666,
+                  "right": 1674.6666666666667
+                }
+              ]
+            },
+            {
+              "id": "12783350",
+              "left": 187.33333333333334,
+              "right": 772.6666666666666,
+              "top": 360,
+              "segments": []
+            },
+            {
+              "id": "6496016",
+              "left": -5.333333333333333,
+              "right": 1274.6666666666667,
+              "top": 64,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "528166",
+              "left": 500,
+              "right": 1420,
+              "top": 236,
+              "segments": []
+            },
+            {
+              "id": "527118",
+              "left": 420,
+              "right": 1500,
+              "top": 216,
+              "segments": []
+            }
+          ]
+        },
+        {
+          "at": 1791044239821,
+          "windows": [
+            {
+              "id": "198178",
+              "left": -194,
+              "right": 594,
+              "top": 260,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 456.6666666666667
+                }
+              ]
+            },
+            {
+              "id": "55908626",
+              "left": 752,
+              "right": 1808.6666666666667,
+              "top": 191.33333333333334,
+              "segments": [
+                {
+                  "left": 752,
+                  "right": 1666.6666666666667
+                }
+              ]
+            },
+            {
+              "id": "528670",
+              "left": 622.6666666666666,
+              "right": 1816.6666666666667,
+              "top": 63.333333333333336,
+              "segments": [
+                {
+                  "left": 622.6666666666666,
+                  "right": 1674.6666666666667
+                }
+              ]
+            },
+            {
+              "id": "12783350",
+              "left": 187.33333333333334,
+              "right": 772.6666666666666,
+              "top": 360,
+              "segments": [
+                {
+                  "left": 594,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "6496016",
+              "left": -5.333333333333333,
+              "right": 1274.6666666666667,
+              "top": 64,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "528166",
+              "left": 500,
+              "right": 1420,
+              "top": 236,
+              "segments": []
+            },
+            {
+              "id": "527118",
+              "left": 420,
+              "right": 1500,
+              "top": 216,
+              "segments": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "资源管理器",
+      "original": {
+        "id": "528670",
+        "pid": 16584,
+        "className": "CabinetWClass",
+        "bounds": {
+          "left": 934,
+          "top": 95,
+          "right": 2725,
+          "bottom": 1251
+        },
+        "buttons": {
+          "left": 2512,
+          "top": 96,
+          "right": 2724,
+          "bottom": 140
+        },
+        "buttonsSource": "titlebar",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed"
+        },
+        {
+          "name": "保存并准备窗口",
+          "status": "passed"
+        },
+        {
+          "name": "按钮参考及实际图像",
+          "status": "failed",
+          "error": {
+            "message": "资源管理器按钮核对失败。",
+            "errors": [
+              {
+                "message": "UIA 和命中扫描均无有效参考。"
+              }
+            ]
+          }
+        },
+        {
+          "name": "20 次移动回调延迟",
+          "status": "passed"
+        },
+        {
+          "name": "局部遮挡",
+          "status": "passed"
+        },
+        {
+          "name": "跨出左边界后继续移动",
+          "status": "passed"
+        },
+        {
+          "name": "最小化",
+          "status": "passed"
+        },
+        {
+          "name": "最大化",
+          "status": "passed"
+        },
+        {
+          "name": "恢复窗口",
+          "status": "passed"
+        }
+      ],
+      "caption": {
+        "predicted": {
+          "left": 1158,
+          "top": 361,
+          "right": 1370,
+          "bottom": 405
+        },
+        "formalWindow": {
+          "id": "528670",
+          "pid": 16584,
+          "className": "CabinetWClass",
+          "bounds": {
+            "left": 189,
+            "top": 360,
+            "right": 1371,
+            "bottom": 951
+          },
+          "buttons": {
+            "left": 1158,
+            "top": 361,
+            "right": 1370,
+            "bottom": 405
+          },
+          "buttonsSource": "titlebar",
+          "dpiAwareness": "per-monitor",
+          "windowDpi": 144,
+          "visible": true,
+          "minimized": false,
+          "maximized": false,
+          "fullscreen": false,
+          "cloaked": false,
+          "occludes": true,
+          "eligible": true,
+          "reason": ""
+        },
+        "titlebar": {
+          "cbSize": 140,
+          "rcTitleBar": {
+            "left": 191,
+            "top": 363,
+            "right": 1369,
+            "bottom": 360
+          },
+          "rgstate": {
+            "0": 1048576,
+            "1": 32768,
+            "2": 0,
+            "3": 0,
+            "4": 32768,
+            "5": 0
+          },
+          "rgrect": [
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 1158,
+              "top": 361,
+              "right": 1229,
+              "bottom": 405
+            },
+            {
+              "left": 1229,
+              "top": 361,
+              "right": 1299,
+              "bottom": 405
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 1299,
+              "top": 361,
+              "right": 1370,
+              "bottom": 405
+            }
+          ]
+        },
+        "titlebarPrediction": {
+          "left": 1158,
+          "top": 361,
+          "right": 1370,
+          "bottom": 405
+        },
+        "predictionSource": "readWindows",
+        "uia": {
+          "canMaximize": true,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": true,
+          "errors": [
+            "UI Automation 没有找到唯一的 minimize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 maximize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+          ],
+          "valid": false,
+          "buttons": []
+        },
+        "uiaError": [
+          "UI Automation 没有找到唯一的 minimize 标题栏按钮（数量 0）。",
+          "UI Automation 没有找到唯一的 maximize 标题栏按钮（数量 0）。",
+          "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+        ],
+        "hitError": {
+          "message": "系统命中测试没有找到关闭按钮，不能据此核对截图。返回值：[[10,11],[1,1178],[11,11]]"
+        },
+        "comparisons": [],
+        "captureMethod": "PrintWindow",
+        "screenshot": "caption-2880x1800-150pct-528670-1791044241786.png",
+        "capture": {
+          "outer": {
+            "left": 180,
+            "right": 1380,
+            "bottom": 960,
+            "top": 360
+          },
+          "width": 237,
+          "height": 47,
+          "crop": {
+            "left": 1134,
+            "right": 1371,
+            "bottom": 407,
+            "top": 360
+          },
+          "method": "PrintWindow"
+        },
+        "publicImage": {
+          "file": "notebook-round10-explorer-buttons.png",
+          "sha256": "e99b873b0603c10693816027e0a5d4a4bab282d8b3f7a28767c5dbc1eb03b16c",
+          "note": "未经编辑的原始按钮裁剪图像，已逐张视觉核对。"
+        }
+      },
+      "movementToUpdateMs": [
+        50.7103999999963,
+        13.77039999999397,
+        11.167900000000373,
+        45.99779999999737,
+        12.001300000003539,
+        47.86149999999907,
+        47.14800000000105,
+        46.12170000000333,
+        51.82420000000275,
+        11.38530000000901,
+        46.151800000006915,
+        45.86280000000261,
+        12.331299999990733,
+        43.34649999999965,
+        48.41719999999623,
+        48.241399999998976,
+        54.27119999998831,
+        12.644100000004983,
+        12.538100000005215,
+        48.8012000000017
+      ],
+      "movementErrors": [],
+      "observedSampleIntervalsMs": [
+        50.73760000000766,
+        47.87239999999292,
+        49.796200000011595,
+        57.524399999994785,
+        48.35950000000594,
+        44.04619999999704,
+        45.45699999999488,
+        46.04559999999765,
+        47.16350000000966,
+        47.59339999999793,
+        42.32600000000093,
+        47.86499999999069,
+        47.9146000000037,
+        45.55909999999858,
+        46.15460000000894,
+        47.202599999989616,
+        46.23270000000775,
+        45.44189999999071,
+        46.18300000000454,
+        45.63969999999972,
+        43.809699999997974,
+        51.86819999999716,
+        55.46110000000044,
+        50.157400000010966,
+        45.220000000001164,
+        47.39459999999963,
+        46.20899999998801,
+        46.44640000000072,
+        46.03740000000107,
+        45.91240000000107,
+        47.24869999999646,
+        48.614500000010594,
+        42.73040000000037,
+        45.740399999995134,
+        48.408500000005006,
+        43.8521999999939,
+        48.26499999999942,
+        48.46120000000519,
+        43.578899999993155,
+        46.36140000000887,
+        48.28029999999853,
+        46.149399999994785,
+        46.90559999999823,
+        54.325599999996484,
+        52.53870000000461,
+        50.18039999999746,
+        57.42160000000149,
+        48.28949999999895,
+        42.7045000000071,
+        46.921999999991385,
+        48.85590000000957,
+        47.01089999999385
+      ],
+      "window": {
+        "id": "528670",
+        "pid": 16584,
+        "className": "CabinetWClass",
+        "bounds": {
+          "left": 189,
+          "top": 360,
+          "right": 1371,
+          "bottom": 951
+        },
+        "buttons": {
+          "left": 1158,
+          "top": 361,
+          "right": 1370,
+          "bottom": 405
+        },
+        "buttonsSource": "titlebar",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "capabilities": {
+        "canMinimize": true,
+        "canMaximize": true
+      },
+      "occlusion": {
+        "zOrderVerified": true,
+        "blocker": {
+          "left": 453,
+          "top": 240,
+          "right": 735,
+          "bottom": 531
+        },
+        "ledge": {
+          "id": "528670",
+          "left": 146,
+          "right": 934,
+          "top": 260,
+          "segments": [
+            {
+              "left": 146,
+              "right": 192.66666666666666
+            }
+          ]
+        }
+      },
+      "crossing": [
+        {
+          "at": 1791044245319,
+          "windows": [
+            {
+              "id": "198178",
+              "left": 192.66666666666666,
+              "right": 1920.6666666666667,
+              "top": 137.33333333333334,
+              "segments": [
+                {
+                  "left": 192.66666666666666,
+                  "right": 1783.3333333333333
+                }
+              ]
+            },
+            {
+              "id": "55908626",
+              "left": 752,
+              "right": 1808.6666666666667,
+              "top": 191.33333333333334,
+              "segments": []
+            },
+            {
+              "id": "528670",
+              "left": -94,
+              "right": 694,
+              "top": 260,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 192.66666666666666
+                }
+              ]
+            },
+            {
+              "id": "12783350",
+              "left": 187.33333333333334,
+              "right": 772.6666666666666,
+              "top": 360,
+              "segments": []
+            },
+            {
+              "id": "6496016",
+              "left": -5.333333333333333,
+              "right": 1274.6666666666667,
+              "top": 64,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 1114.6666666666667
+                }
+              ]
+            },
+            {
+              "id": "528166",
+              "left": 500,
+              "right": 1420,
+              "top": 236,
+              "segments": []
+            },
+            {
+              "id": "527118",
+              "left": 420,
+              "right": 1500,
+              "top": 216,
+              "segments": []
+            }
+          ]
+        },
+        {
+          "at": 1791044245490,
+          "windows": [
+            {
+              "id": "198178",
+              "left": 192.66666666666666,
+              "right": 1920.6666666666667,
+              "top": 137.33333333333334,
+              "segments": [
+                {
+                  "left": 192.66666666666666,
+                  "right": 1783.3333333333333
+                }
+              ]
+            },
+            {
+              "id": "55908626",
+              "left": 752,
+              "right": 1808.6666666666667,
+              "top": 191.33333333333334,
+              "segments": []
+            },
+            {
+              "id": "528670",
+              "left": -194,
+              "right": 594,
+              "top": 260,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 192.66666666666666
+                }
+              ]
+            },
+            {
+              "id": "12783350",
+              "left": 187.33333333333334,
+              "right": 772.6666666666666,
+              "top": 360,
+              "segments": []
+            },
+            {
+              "id": "6496016",
+              "left": -5.333333333333333,
+              "right": 1274.6666666666667,
+              "top": 64,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 1114.6666666666667
+                }
+              ]
+            },
+            {
+              "id": "528166",
+              "left": 500,
+              "right": 1420,
+              "top": 236,
+              "segments": []
+            },
+            {
+              "id": "527118",
+              "left": 420,
+              "right": 1500,
+              "top": 216,
+              "segments": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DPI 不感知老程序",
+      "original": {
+        "id": "11997304",
+        "pid": 32524,
+        "className": "#32770",
+        "bounds": {
+          "left": 167,
+          "top": 156,
+          "right": 931,
+          "bottom": 814
+        },
+        "buttons": null,
+        "buttonsSource": "none",
+        "dpiAwareness": "unaware",
+        "windowDpi": 96,
+        "visible": false,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": false,
+        "eligible": false,
+        "reason": "invisible"
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed"
+        },
+        {
+          "name": "保存并准备窗口",
+          "status": "passed"
+        },
+        {
+          "name": "按钮参考及实际图像",
+          "status": "passed"
+        },
+        {
+          "name": "20 次移动回调延迟",
+          "status": "passed"
+        },
+        {
+          "name": "局部遮挡",
+          "status": "passed"
+        },
+        {
+          "name": "跨出左边界后继续移动",
+          "status": "passed"
+        },
+        {
+          "name": "最小化",
+          "status": "passed"
+        },
+        {
+          "name": "最大化",
+          "status": "passed"
+        },
+        {
+          "name": "恢复窗口",
+          "status": "passed"
+        }
+      ],
+      "caption": {
+        "predicted": {
+          "left": 1315,
+          "top": 372,
+          "right": 1368,
+          "bottom": 405
+        },
+        "formalWindow": {
+          "id": "11997304",
+          "pid": 32524,
+          "className": "#32770",
+          "bounds": {
+            "left": 191,
+            "top": 360,
+            "right": 1369,
+            "bottom": 949
+          },
+          "buttons": {
+            "left": 1315,
+            "top": 372,
+            "right": 1368,
+            "bottom": 405
+          },
+          "buttonsSource": "hit-test",
+          "dpiAwareness": "unaware",
+          "windowDpi": 96,
+          "visible": true,
+          "minimized": false,
+          "maximized": false,
+          "fullscreen": false,
+          "cloaked": false,
+          "occludes": true,
+          "eligible": true,
+          "reason": ""
+        },
+        "titlebar": {
+          "cbSize": 140,
+          "rcTitleBar": {
+            "left": 216,
+            "top": 365,
+            "right": 1368,
+            "bottom": 407
+          },
+          "rgstate": {
+            "0": 1048576,
+            "1": 32768,
+            "2": 32768,
+            "3": 32768,
+            "4": 32768,
+            "5": 0
+          },
+          "rgrect": [
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 1317,
+              "top": 362,
+              "right": 1370,
+              "bottom": 407
+            }
+          ]
+        },
+        "titlebarPrediction": {
+          "left": 1317,
+          "top": 362,
+          "right": 1370,
+          "bottom": 407
+        },
+        "predictionSource": "readWindows",
+        "uia": {
+          "canMaximize": false,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": false,
+          "errors": [
+            "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+          ],
+          "valid": false,
+          "buttons": []
+        },
+        "uiaError": [
+          "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+        ],
+        "hitInputCoordinates": "physical",
+        "hitBounds": {
+          "left": 1315,
+          "right": 1368,
+          "top": 372,
+          "bottom": 405
+        },
+        "comparisons": [
+          {
+            "source": "WM_NCHITTEST 扫描",
+            "bounds": {
+              "left": 1315,
+              "right": 1368,
+              "top": 372,
+              "bottom": 405
+            },
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": 0
+          }
+        ],
+        "captureMethod": "screen",
+        "screenshot": "caption-2880x1800-150pct-11997304-1791044247152.png",
+        "capture": {
+          "outer": {
+            "left": 180,
+            "right": 1380,
+            "bottom": 960,
+            "top": 360
+          },
+          "width": 78,
+          "height": 37,
+          "crop": {
+            "left": 1291,
+            "right": 1369,
+            "bottom": 407,
+            "top": 370
+          },
+          "method": "screen"
+        },
+        "minimizeCheck": "不适用：窗口没有最小化按钮",
+        "maximizeCheck": "不适用：窗口没有最大化按钮",
+        "publicImage": {
+          "file": "notebook-round10-iexpress-buttons.png",
+          "sha256": "f472bfad924251f9437586656f6ea5770d06775e9dc74dd1e20c58983fe83ea5",
+          "note": "未经编辑的原始按钮裁剪图像，已逐张视觉核对。"
+        }
+      },
+      "movementToUpdateMs": [
+        47.25659999999334,
+        11.010299999994459,
+        14.008699999991222,
+        10.281400000007125,
+        10.245799999989686,
+        23.795899999997346,
+        12.736200000013923,
+        46.07710000000952,
+        47.60889999999199,
+        68.85589999999502,
+        15.04439999999886,
+        12.673200000004726,
+        64.72930000000633,
+        25.006500000003143,
+        11.005499999999302,
+        47.681400000001304,
+        11.052999999999884,
+        54.2609999999986,
+        13.584600000001956,
+        12.82149999999092
+      ],
+      "movementErrors": [],
+      "observedSampleIntervalsMs": [
+        47.28269999999611,
+        46.972099999999045,
+        47.81570000000647,
+        47.081200000000536,
+        48.556299999996554,
+        55.66920000000391,
+        47.675499999997555,
+        47.10599999999977,
+        46.037899999995716,
+        51.770100000008824,
+        54.172099999996135,
+        48.52880000000005,
+        50.2954000000027,
+        44.760499999989406,
+        47.43510000000242,
+        46.130300000004354,
+        44.7161999999953,
+        46.682400000005146,
+        47.6530999999959,
+        45.63880000000063,
+        71.65649999999732,
+        68.902700000006,
+        48.197000000000116,
+        49.72980000000098,
+        57.72589999999036,
+        48.4264000000112,
+        45.54899999999907,
+        49.80490000000282,
+        64.77679999999236,
+        60.94199999999546,
+        54.35500000001048,
+        47.54630000000179,
+        48.80189999999129,
+        45.74130000000878,
+        45.46999999998661,
+        47.728900000001886,
+        47.534800000008545,
+        47.584499999997206,
+        46.1131999999925,
+        45.88550000000396,
+        54.30539999999746,
+        54.80600000001141,
+        48.76119999999355,
+        57.46709999999439,
+        49.26929999999993,
+        46.62650000001304,
+        44.34799999999814
+      ],
+      "window": {
+        "id": "11997304",
+        "pid": 32524,
+        "className": "#32770",
+        "bounds": {
+          "left": 191,
+          "top": 360,
+          "right": 1369,
+          "bottom": 949
+        },
+        "buttons": {
+          "left": 1315,
+          "right": 1368,
+          "top": 372,
+          "bottom": 405
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "unaware",
+        "windowDpi": 96,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "capabilities": {
+        "canMinimize": false,
+        "canMaximize": false
+      },
+      "occlusion": {
+        "zOrderVerified": true,
+        "blocker": {
+          "left": 455,
+          "top": 240,
+          "right": 737,
+          "bottom": 531
+        },
+        "ledge": {
+          "id": "11997304",
+          "left": 147.33333333333334,
+          "right": 932.6666666666666,
+          "top": 260,
+          "segments": [
+            {
+              "left": 147.33333333333334,
+              "right": 303.3333333333333
+            },
+            {
+              "left": 491.3333333333333,
+              "right": 896.6666666666666
+            }
+          ]
+        }
+      },
+      "crossing": [
+        {
+          "at": 1791044250498,
+          "windows": [
+            {
+              "id": "11997304",
+              "left": -92.66666666666667,
+              "right": 692.6666666666666,
+              "top": 260,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 656.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "528670",
+              "left": 622.6666666666666,
+              "right": 1816.6666666666667,
+              "top": 63.333333333333336,
+              "segments": [
+                {
+                  "left": 622.6666666666666,
+                  "right": 1674.6666666666667
+                }
+              ]
+            },
+            {
+              "id": "198178",
+              "left": 192.66666666666666,
+              "right": 1920.6666666666667,
+              "top": 137.33333333333334,
+              "segments": [
+                {
+                  "left": 192.66666666666666,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "55908626",
+              "left": 752,
+              "right": 1808.6666666666667,
+              "top": 191.33333333333334,
+              "segments": []
+            },
+            {
+              "id": "12783350",
+              "left": 187.33333333333334,
+              "right": 772.6666666666666,
+              "top": 360,
+              "segments": []
+            },
+            {
+              "id": "6496016",
+              "left": -5.333333333333333,
+              "right": 1274.6666666666667,
+              "top": 64,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "528166",
+              "left": 500,
+              "right": 1420,
+              "top": 236,
+              "segments": []
+            },
+            {
+              "id": "527118",
+              "left": 420,
+              "right": 1500,
+              "top": 216,
+              "segments": []
+            }
+          ]
+        },
+        {
+          "at": 1791044250669,
+          "windows": [
+            {
+              "id": "11997304",
+              "left": -192.66666666666666,
+              "right": 592.6666666666666,
+              "top": 260,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 556.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "528670",
+              "left": 622.6666666666666,
+              "right": 1816.6666666666667,
+              "top": 63.333333333333336,
+              "segments": [
+                {
+                  "left": 622.6666666666666,
+                  "right": 1674.6666666666667
+                }
+              ]
+            },
+            {
+              "id": "198178",
+              "left": 192.66666666666666,
+              "right": 1920.6666666666667,
+              "top": 137.33333333333334,
+              "segments": [
+                {
+                  "left": 192.66666666666666,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "55908626",
+              "left": 752,
+              "right": 1808.6666666666667,
+              "top": 191.33333333333334,
+              "segments": []
+            },
+            {
+              "id": "12783350",
+              "left": 187.33333333333334,
+              "right": 772.6666666666666,
+              "top": 360,
+              "segments": []
+            },
+            {
+              "id": "6496016",
+              "left": -5.333333333333333,
+              "right": 1274.6666666666667,
+              "top": 64,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "528166",
+              "left": 500,
+              "right": 1420,
+              "top": 236,
+              "segments": []
+            },
+            {
+              "id": "527118",
+              "left": 420,
+              "right": 1500,
+              "top": 216,
+              "segments": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "独立 Legacy 回归窗口",
+      "original": {
+        "id": "12783350",
+        "pid": 31132,
+        "className": "TTCatsLegacyFixture",
+        "bounds": {
+          "left": 281,
+          "top": 540,
+          "right": 1159,
+          "bottom": 1129
+        },
+        "buttons": {
+          "left": 1003,
+          "right": 1158,
+          "top": 552,
+          "bottom": 585
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "unaware",
+        "windowDpi": 96,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed"
+        },
+        {
+          "name": "保存并准备窗口",
+          "status": "passed"
+        },
+        {
+          "name": "按钮参考及实际图像",
+          "status": "failed",
+          "error": {
+            "message": "独立 Legacy 回归窗口按钮核对失败。",
+            "errors": [
+              {
+                "message": "Command failed: powershell -NoProfile -File <工作树>\\app\\scripts\\capture-window-caption.ps1 -WindowHandle 12783350 -Left 1189 -Top 370 -Right 1369 -Bottom 407 -MonitorDpi 144 -OutputPath <工作树>\\app\\out\\window-ledges\\caption-2880x1800-150pct-12783350-1791044251963.png\n按钮区域被其他窗口遮挡，不能捕获物理屏幕证据。\r\nAt <工作树>\\app\\scripts\\capture-window-caption.ps1:66 char:107\r\n+ ... FromPoint($point),2) -ne $window) { throw '按钮区域被其他窗口遮挡，不能捕获物理屏幕证据。' }\r\n+                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : OperationStopped: (按钮区域被其他窗口遮挡，不能捕获物理屏幕证据。:String) [], RuntimeException\r\n    + FullyQualifiedErrorId : 按钮区域被其他窗口遮挡，不能捕获物理屏幕证据。\r\n \r\n"
+              }
+            ]
+          }
+        },
+        {
+          "name": "20 次移动回调延迟",
+          "status": "passed"
+        },
+        {
+          "name": "局部遮挡",
+          "status": "passed"
+        },
+        {
+          "name": "跨出左边界后继续移动",
+          "status": "passed"
+        },
+        {
+          "name": "最小化",
+          "status": "passed"
+        },
+        {
+          "name": "最大化",
+          "status": "passed"
+        },
+        {
+          "name": "恢复窗口",
+          "status": "passed"
+        }
+      ],
+      "caption": {
+        "predicted": {
+          "left": 1213,
+          "top": 372,
+          "right": 1368,
+          "bottom": 405
+        },
+        "formalWindow": {
+          "id": "12783350",
+          "pid": 31132,
+          "className": "TTCatsLegacyFixture",
+          "bounds": {
+            "left": 191,
+            "top": 360,
+            "right": 1369,
+            "bottom": 949
+          },
+          "buttons": {
+            "left": 1213,
+            "top": 372,
+            "right": 1368,
+            "bottom": 405
+          },
+          "buttonsSource": "hit-test",
+          "dpiAwareness": "unaware",
+          "windowDpi": 96,
+          "visible": true,
+          "minimized": false,
+          "maximized": false,
+          "fullscreen": false,
+          "cloaked": false,
+          "occludes": true,
+          "eligible": true,
+          "reason": ""
+        },
+        "titlebar": {
+          "cbSize": 140,
+          "rcTitleBar": {
+            "left": 216,
+            "top": 365,
+            "right": 1368,
+            "bottom": 407
+          },
+          "rgstate": {
+            "0": 1048576,
+            "1": 32768,
+            "2": 0,
+            "3": 0,
+            "4": 32768,
+            "5": 0
+          },
+          "rgrect": [
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 1157,
+              "top": 362,
+              "right": 1228,
+              "bottom": 407
+            },
+            {
+              "left": 1229,
+              "top": 362,
+              "right": 1300,
+              "bottom": 407
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 1298,
+              "top": 362,
+              "right": 1369,
+              "bottom": 407
+            }
+          ]
+        },
+        "titlebarPrediction": {
+          "left": 1157,
+          "top": 362,
+          "right": 1369,
+          "bottom": 407
+        },
+        "predictionSource": "readWindows",
+        "uia": {
+          "canMaximize": true,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": true,
+          "errors": [
+            "UI Automation 没有找到唯一的 minimize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 maximize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+          ],
+          "valid": false,
+          "buttons": []
+        },
+        "uiaError": [
+          "UI Automation 没有找到唯一的 minimize 标题栏按钮（数量 0）。",
+          "UI Automation 没有找到唯一的 maximize 标题栏按钮（数量 0）。",
+          "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+        ],
+        "hitInputCoordinates": "physical",
+        "hitBounds": {
+          "left": 1213,
+          "right": 1368,
+          "top": 372,
+          "bottom": 405
+        },
+        "comparisons": [
+          {
+            "source": "WM_NCHITTEST 扫描",
+            "bounds": {
+              "left": 1213,
+              "right": 1368,
+              "top": 372,
+              "bottom": 405
+            },
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": 0
+          }
+        ],
+        "captureMethod": "screen",
+        "screenshot": "caption-2880x1800-150pct-12783350-1791044251963.png",
+        "captureError": {
+          "message": "Command failed: powershell -NoProfile -File <工作树>\\app\\scripts\\capture-window-caption.ps1 -WindowHandle 12783350 -Left 1189 -Top 370 -Right 1369 -Bottom 407 -MonitorDpi 144 -OutputPath <工作树>\\app\\out\\window-ledges\\caption-2880x1800-150pct-12783350-1791044251963.png\n按钮区域被其他窗口遮挡，不能捕获物理屏幕证据。\r\nAt <工作树>\\app\\scripts\\capture-window-caption.ps1:66 char:107\r\n+ ... FromPoint($point),2) -ne $window) { throw '按钮区域被其他窗口遮挡，不能捕获物理屏幕证据。' }\r\n+                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : OperationStopped: (按钮区域被其他窗口遮挡，不能捕获物理屏幕证据。:String) [], RuntimeException\r\n    + FullyQualifiedErrorId : 按钮区域被其他窗口遮挡，不能捕获物理屏幕证据。\r\n \r\n"
+        },
+        "publicImage": {
+          "file": null,
+          "note": "该轮未生成截图，不用其他轮次文件代替。"
+        }
+      },
+      "movementToUpdateMs": [
+        51.17740000000049,
+        46.86509999999544,
+        46.64470000000438,
+        46.098299999997835,
+        11.553199999994831,
+        13.4375,
+        47.180300000007264,
+        45.343900000007125,
+        57.28139999999257,
+        46.43599999998696,
+        10.633399999991525,
+        46.3972999999969,
+        10.74199999999837,
+        24.391800000012154,
+        14.341199999995297,
+        12.896299999993062,
+        44.9322000000102,
+        24.394499999994878,
+        13.00470000000496,
+        14.584799999996903
+      ],
+      "movementErrors": [],
+      "observedSampleIntervalsMs": [
+        51.20260000000417,
+        44.4432000000088,
+        46.64659999999276,
+        46.92280000000028,
+        44.35800000000745,
+        47.31999999999243,
+        46.69049999999697,
+        44.75200000000768,
+        47.791199999992386,
+        46.14900000000489,
+        51.478699999992386,
+        45.56640000001062,
+        47.3521999999939,
+        48.56040000000212,
+        44.93309999999474,
+        44.641600000002654,
+        47.222099999999045,
+        45.94079999999667,
+        45.872300000002724,
+        45.38890000000538,
+        46.54339999999502,
+        54.22990000000573,
+        57.35099999999511,
+        44.10199999999895,
+        47.22909999999683,
+        46.4776000000129,
+        49.36259999999311,
+        44.48270000000775,
+        45.01369999999588,
+        47.958499999993364,
+        46.439400000002934,
+        48.307199999995646,
+        47.78549999999814,
+        51.831300000005285,
+        53.552999999999884,
+        49.34900000000198,
+        51.03190000000177,
+        58.33849999999802,
+        49.244900000005146,
+        43.750599999999395,
+        45.86679999998887,
+        50.20090000001073,
+        65.85839999999735,
+        52.235799999994924,
+        46.3640000000014,
+        50.86460000000079,
+        59.744800000000396,
+        48.97419999999693,
+        57.45230000000447
+      ],
+      "window": {
+        "id": "12783350",
+        "pid": 31132,
+        "className": "TTCatsLegacyFixture",
+        "bounds": {
+          "left": 191,
+          "top": 360,
+          "right": 1369,
+          "bottom": 949
+        },
+        "buttons": {
+          "left": 1213,
+          "right": 1368,
+          "top": 372,
+          "bottom": 405
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "unaware",
+        "windowDpi": 96,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "capabilities": {
+        "canMinimize": true,
+        "canMaximize": true
+      },
+      "occlusion": {
+        "zOrderVerified": true,
+        "blocker": {
+          "left": 455,
+          "top": 240,
+          "right": 737,
+          "bottom": 531
+        },
+        "ledge": {
+          "id": "12783350",
+          "left": 147.33333333333334,
+          "right": 932.6666666666666,
+          "top": 260,
+          "segments": [
+            {
+              "left": 147.33333333333334,
+              "right": 192.66666666666666
+            }
+          ]
+        }
+      },
+      "crossing": [
+        {
+          "at": 1791044255379,
+          "windows": [
+            {
+              "id": "528670",
+              "left": 622.6666666666666,
+              "right": 1816.6666666666667,
+              "top": 63.333333333333336,
+              "segments": [
+                {
+                  "left": 622.6666666666666,
+                  "right": 1674.6666666666667
+                }
+              ]
+            },
+            {
+              "id": "198178",
+              "left": 192.66666666666666,
+              "right": 1920.6666666666667,
+              "top": 137.33333333333334,
+              "segments": [
+                {
+                  "left": 192.66666666666666,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "55908626",
+              "left": 752,
+              "right": 1808.6666666666667,
+              "top": 191.33333333333334,
+              "segments": []
+            },
+            {
+              "id": "12783350",
+              "left": -92.66666666666667,
+              "right": 692.6666666666666,
+              "top": 260,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 192.66666666666666
+                }
+              ]
+            },
+            {
+              "id": "6496016",
+              "left": -5.333333333333333,
+              "right": 1274.6666666666667,
+              "top": 64,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "528166",
+              "left": 500,
+              "right": 1420,
+              "top": 236,
+              "segments": []
+            },
+            {
+              "id": "527118",
+              "left": 420,
+              "right": 1500,
+              "top": 216,
+              "segments": []
+            }
+          ]
+        },
+        {
+          "at": 1791044255549,
+          "windows": [
+            {
+              "id": "528670",
+              "left": 622.6666666666666,
+              "right": 1816.6666666666667,
+              "top": 63.333333333333336,
+              "segments": [
+                {
+                  "left": 622.6666666666666,
+                  "right": 1674.6666666666667
+                }
+              ]
+            },
+            {
+              "id": "198178",
+              "left": 192.66666666666666,
+              "right": 1920.6666666666667,
+              "top": 137.33333333333334,
+              "segments": [
+                {
+                  "left": 192.66666666666666,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "55908626",
+              "left": 752,
+              "right": 1808.6666666666667,
+              "top": 191.33333333333334,
+              "segments": []
+            },
+            {
+              "id": "12783350",
+              "left": -192.66666666666666,
+              "right": 592.6666666666666,
+              "top": 260,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 192.66666666666666
+                }
+              ]
+            },
+            {
+              "id": "6496016",
+              "left": -5.333333333333333,
+              "right": 1274.6666666666667,
+              "top": 64,
+              "segments": [
+                {
+                  "left": 0,
+                  "right": 622.6666666666666
+                }
+              ]
+            },
+            {
+              "id": "528166",
+              "left": 500,
+              "right": 1420,
+              "top": 236,
+              "segments": []
+            },
+            {
+              "id": "527118",
+              "left": 420,
+              "right": 1500,
+              "top": 216,
+              "segments": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "phases": [
+    {
+      "phase": "floor",
+      "samples": 0,
+      "elapsedMs": 30012.9634,
+      "cpuMicroseconds": 125000,
+      "cpuOneCorePercent": 0.41648669721164555,
+      "cpuMachinePercent": 0.026030418575727847,
+      "queryErrors": [],
+      "actualSampleIntervalsMs": []
+    },
+    {
+      "phase": "idle",
+      "samples": 30,
+      "elapsedMs": 30008.440199999997,
+      "cpuMicroseconds": 327000,
+      "cpuOneCorePercent": 1.089693425651627,
+      "cpuMachinePercent": 0.06810583910322669,
+      "queryErrors": [],
+      "actualSampleIntervalsMs": [
+        1033.7007999999987,
+        1034.2325000000055,
+        1020.5760999999984,
+        1018.6658000000025,
+        1020.1370999999999,
+        1026.5346999999965,
+        1024.7199000000037,
+        1021.9072999999989,
+        1019.5020999999979,
+        1025.6910999999964,
+        1015.5722999999998,
+        1018.2768000000069,
+        1028.6092999999964,
+        1021.9282999999996,
+        1017.3423000000039,
+        1024.794799999996,
+        1017.6854999999996,
+        1015.7525000000023,
+        1016.8462,
+        1023.6442999999999,
+        1021.8004999999976,
+        1021.575499999999,
+        1024.8688000000038,
+        1016.9196000000011,
+        1026.2311999999947,
+        1017.3510999999999,
+        1026.0491000000038,
+        1024.5751000000018,
+        1017.6180999999924
+      ]
+    },
+    {
+      "phase": "occupied",
+      "samples": 635,
+      "elapsedMs": 30003.680000000008,
+      "cpuMicroseconds": 6030000,
+      "cpuOneCorePercent": 20.097534702409835,
+      "cpuMachinePercent": 1.2560959189006147,
+      "queryErrors": [],
+      "actualSampleIntervalsMs": [
+        45.83900000000722,
+        45.539099999994505,
+        47.62159999999858,
+        48.877699999997276,
+        44.67140000000654,
+        46.20230000000447,
+        45.96889999999257,
+        46.115300000004936,
+        45.85889999999199,
+        46.36729999999807,
+        46.49510000000009,
+        44.09100000000035,
+        46.7731000000058,
+        48.17260000000533,
+        43.96579999999085,
+        47.27640000000247,
+        46.83830000000307,
+        46.4314999999915,
+        47.63940000000002,
+        47.15440000001399,
+        45.62969999999041,
+        50.197000000000116,
+        58.448300000003655,
+        45.4484999999986,
+        46.83389999999781,
+        44.73519999999553,
+        47.94540000001143,
+        46.23739999999816,
+        44.77419999999984,
+        47.91330000000016,
+        44.73939999999129,
+        51.8066000000108,
+        46.901700000002165,
+        40.513099999996484,
+        48.60989999999583,
+        47.71820000000298,
+        44.8524999999936,
+        48.46050000000105,
+        45.94220000000496,
+        43.829899999997,
+        45.85340000000724,
+        47.758499999996275,
+        47.23059999999532,
+        50.27190000000701,
+        41.749299999995856,
+        46.527799999996205,
+        47.95600000000559,
+        46.167600000000675,
+        48.18069999999716,
+        44.83740000000398,
+        47.28609999999753,
+        46.85020000000077,
+        48.010800000003655,
+        45.06549999999697,
+        47.90529999999853,
+        44.678799999994226,
+        45.893900000010035,
+        46.88249999999243,
+        46.564299999998184,
+        49.19010000000708,
+        46.759699999995064,
+        47.067599999994854,
+        47.473500000007334,
+        44.39389999999548,
+        47.274600000004284,
+        50.749400000000605,
+        56.04009999999835,
+        46.93060000000696,
+        46.8347999999969,
+        46.70339999999851,
+        44.94229999999516,
+        45.74539999999979,
+        48.4088000000047,
+        47.64999999999418,
+        45.33070000000589,
+        48.43959999999788,
+        44.58999999999651,
+        47.94090000000142,
+        45.61810000000696,
+        48.74859999999171,
+        46.34750000000349,
+        46.17260000000533,
+        46.06459999999788,
+        45.9372000000003,
+        47.255799999999,
+        45.500499999994645,
+        47.14740000000165,
+        51.6359999999986,
+        43.867599999997765,
+        45.85080000000016,
+        47.555400000012014,
+        48.516499999997905,
+        44.88739999999234,
+        44.643800000005285,
+        46.26269999999204,
+        54.22390000001178,
+        54.87149999999383,
+        43.984599999996135,
+        45.66010000000824,
+        47.322199999995064,
+        46.08430000000226,
+        47.83069999999134,
+        46.805200000002515,
+        46.14919999999984,
+        46.63330000000133,
+        46.92309999999998,
+        46.15670000000682,
+        47.58309999998892,
+        45.3011000000115,
+        51.693599999998696,
+        57.145999999993364,
+        46.88490000000456,
+        48.214200000002165,
+        46.93510000000242,
+        44.96020000000135,
+        46.73379999998724,
+        47.94460000000254,
+        46.631099999998696,
+        47.06360000000859,
+        45.90179999999236,
+        47.22520000000077,
+        45.39930000000459,
+        45.84570000000531,
+        46.07799999999406,
+        47.83199999999488,
+        46.81910000000789,
+        47.060899999996764,
+        46.19120000000112,
+        44.609700000000885,
+        48.45230000000447,
+        45.676699999996345,
+        50.31930000000284,
+        57.99269999998796,
+        44.92930000000342,
+        49.016499999997905,
+        45.02950000000419,
+        46.41120000000228,
+        50.650699999998324,
+        46.29760000000533,
+        44.71949999999197,
+        45.45010000000184,
+        45.7216000000044,
+        46.71469999999681,
+        45.63539999999921,
+        46.67870000000403,
+        47.800399999992806,
+        44.74010000000999,
+        46.0000999999902,
+        46.89420000000973,
+        47.24510000000009,
+        47.06559999998717,
+        46.04899999999907,
+        46.783600000009756,
+        52.44759999999951,
+        56.05030000000261,
+        44.756099999998696,
+        48.6762000000017,
+        46.6079999999929,
+        53.97609999999986,
+        54.92160000000149,
+        47.35659999999916,
+        46.54110000000219,
+        47.03729999999632,
+        47.25370000000112,
+        43.755300000004354,
+        45.26900000000023,
+        48.20909999999276,
+        45.41750000001048,
+        46.25309999998717,
+        44.713100000008126,
+        46.99009999999544,
+        48.3859999999986,
+        46.299500000008265,
+        47.181700000001,
+        47.12459999999555,
+        43.200500000006286,
+        46.37399999999616,
+        47.2329999999929,
+        44.608600000006845,
+        48.27479999999923,
+        45.651499999992666,
+        46.459600000001956,
+        45.97759999999835,
+        46.60590000000957,
+        47.01900000000023,
+        45.79999999998836,
+        47.75040000000445,
+        47.64590000000317,
+        46.75819999999658,
+        47.9545000000071,
+        46.187999999994645,
+        46.41569999999774,
+        45.57170000000042,
+        48.04970000000321,
+        46.411800000001676,
+        47.12399999999616,
+        52.39940000000934,
+        56.599399999991874,
+        46.420899999997346,
+        46.71450000000186,
+        44.21050000000105,
+        46.78770000000077,
+        49.13670000000275,
+        43.365299999990384,
+        46.19190000000526,
+        45.49190000000817,
+        47.502499999987776,
+        45.21920000000682,
+        47.10570000000007,
+        47.11259999999311,
+        48.598500000007334,
+        44.278999999994994,
+        49.422200000000885,
+        42.6021000000037,
+        46.682400000005146,
+        45.68249999999534,
+        48.20549999999639,
+        46.8637000000017,
+        50.54559999999765,
+        42.09769999999844,
+        47.25380000000587,
+        49.044800000003306,
+        49.00209999999788,
+        48.38649999999325,
+        55.33389999999781,
+        47.718800000002375,
+        45.853000000002794,
+        45.745999999999185,
+        46.10099999999511,
+        46.43270000000484,
+        46.88190000000759,
+        46.22839999999269,
+        48.8527000000031,
+        43.98739999999816,
+        46.92990000000282,
+        47.40029999999388,
+        45.6024000000034,
+        47.081200000000536,
+        46.99069999999483,
+        46.0911000000051,
+        52.9146999999939,
+        57.181300000011106,
+        45.03830000000016,
+        47.61019999999553,
+        45.91809999999532,
+        43.344899999996414,
+        47.55600000001141,
+        45.46919999999227,
+        46.83389999999781,
+        47.02160000000731,
+        44.80479999999807,
+        48.01970000000438,
+        44.57259999999951,
+        46.07480000000214,
+        48.329899999997,
+        45.10480000000098,
+        46.36209999999846,
+        46.75590000000375,
+        47.42129999998724,
+        45.841400000004796,
+        44.80789999999979,
+        46.99250000000757,
+        52.260599999994156,
+        55.683600000003935,
+        52.8576999999932,
+        57.507500000006985,
+        44.87069999999949,
+        44.57059999999183,
+        49.4265000000014,
+        44.06690000000526,
+        44.49330000000191,
+        46.92609999999695,
+        46.565300000002026,
+        46.89639999999781,
+        45.00109999999404,
+        47.31520000001183,
+        47.38409999999567,
+        45.26359999999113,
+        46.09230000000389,
+        47.38960000000952,
+        46.877699999997276,
+        45.860899999999674,
+        48.72030000000086,
+        50.49639999998908,
+        42.727800000007846,
+        46.156199999997625,
+        46.55130000000645,
+        49.06909999999334,
+        42.80079999999725,
+        45.79760000000533,
+        47.81630000000587,
+        46.22469999999157,
+        45.998099999997066,
+        47.57390000000305,
+        45.348500000007334,
+        47.423399999999674,
+        45.123399999996764,
+        47.74009999999544,
+        46.77939999999944,
+        45.939200000007986,
+        45.607399999993504,
+        47.72359999999753,
+        45.31590000000142,
+        47.31339999999909,
+        44.35150000000431,
+        52.3012000000017,
+        58.94679999999062,
+        44.99930000001041,
+        48.285699999993085,
+        44.57820000000356,
+        44.96339999999327,
+        44.96840000001248,
+        47.548199999990175,
+        46.04750000000058,
+        47.17420000000857,
+        44.591499999994994,
+        47.540399999998044,
+        47.98179999999411,
+        47.51170000000275,
+        44.791299999997136,
+        46.557300000000396,
+        45.876600000003236,
+        46.013300000005984,
+        46.174299999998766,
+        45.997099999993225,
+        47.8637000000017,
+        46.58630000000994,
+        49.63979999998992,
+        51.76980000000913,
+        57.96769999999378,
+        44.83749999999418,
+        46.41930000000866,
+        46.30310000000463,
+        46.084499999997206,
+        47.079100000002654,
+        48.4713999999949,
+        45.999400000000605,
+        47.691500000000815,
+        45.72019999999611,
+        48.62489999999525,
+        49.06110000000626,
+        43.08770000000368,
+        47.98399999999674,
+        46.62489999999525,
+        45.73559999999998,
+        46.21280000000843,
+        48.61499999999069,
+        44.05329999999958,
+        47.58299999999872,
+        56.77419999999984,
+        54.29230000000098,
+        58.69000000000233,
+        46.42470000000321,
+        45.466700000004494,
+        47.571100000001024,
+        46.78289999999106,
+        48.79439999999886,
+        59.28850000000966,
+        45.41359999999986,
+        44.108299999992596,
+        47.40009999999893,
+        46.82140000000072,
+        44.99980000000505,
+        45.50560000000405,
+        47.24609999998938,
+        46.18890000000829,
+        47.209699999992154,
+        47.79300000000512,
+        48.057199999995646,
+        44.10899999999674,
+        51.79780000000028,
+        58.44770000000426,
+        42.97030000000086,
+        45.835800000000745,
+        46.650500000003376,
+        46.70369999999821,
+        46.17149999999674,
+        46.55030000000261,
+        47.62459999999555,
+        47.73660000000382,
+        44.00920000000042,
+        47.99539999999979,
+        45.63090000000375,
+        46.853900000001886,
+        44.62179999999353,
+        47.5908000000054,
+        43.07869999999821,
+        47.126699999993434,
+        46.61819999999716,
+        48.740200000000186,
+        47.64930000000459,
+        49.50930000000517,
+        50.37819999999192,
+        53.37930000000051,
+        46.75710000000254,
+        47.50479999999516,
+        46.05240000000049,
+        48.48670000000857,
+        45.14669999999751,
+        45.95679999999993,
+        46.575500000006286,
+        45.38619999999355,
+        46.54459999999381,
+        46.69120000000112,
+        46.139100000000326,
+        47.773400000005495,
+        46.36259999999311,
+        48.679100000008475,
+        46.36809999999241,
+        45.323199999998906,
+        47.00380000000587,
+        47.44180000000051,
+        52.925900000002,
+        59.54399999999441,
+        58.3408000000054,
+        43.91109999999753,
+        49.82390000000305,
+        44.45350000000326,
+        47.93630000000121,
+        47.51829999999609,
+        44.52019999999902,
+        49.234599999996135,
+        44.20990000000165,
+        46.85950000000594,
+        48.47159999998985,
+        45.52930000000924,
+        47.39549999999872,
+        45.138200000001234,
+        46.816399999996065,
+        47.351699999999255,
+        45.78079999999318,
+        48.49770000000717,
+        47.73110000000452,
+        45.98079999999027,
+        50.684900000007474,
+        62.78609999999753,
+        57.02950000000419,
+        45.5280999999959,
+        46.38409999999567,
+        46.322100000004866,
+        48.175600000002305,
+        45.885699999998906,
+        45.10139999999956,
+        47.43390000000363,
+        46.84010000000126,
+        47.72339999998803,
+        47.990400000009686,
+        48.43409999999858,
+        44.16709999999148,
+        48.4264000000112,
+        45.834600000001956,
+        46.98309999999765,
+        44.88989999999467,
+        44.76050000000396,
+        45.508399999991525,
+        46.219000000011874,
+        44.85349999999744,
+        53.51949999999488,
+        54.787100000001374,
+        46.109800000005635,
+        46.79089999999269,
+        46.995999999999185,
+        47.688300000008894,
+        45.717399999994086,
+        45.441500000000815,
+        47.81699999999546,
+        45.255400000009104,
+        46.72580000000016,
+        46.60199999999895,
+        45.1646999999939,
+        44.95470000000205,
+        47.53840000000491,
+        44.72709999998915,
+        47.23510000000533,
+        44.5396000000037,
+        52.3180999999895,
+        58.70679999999993,
+        43.38770000000659,
+        50.52689999999711,
+        59.44120000000112,
+        43.59820000000764,
+        47.490399999995134,
+        44.88709999999264,
+        48.29790000000503,
+        47.4600000000064,
+        46.36129999998957,
+        44.662100000001374,
+        46.62189999999828,
+        47.43640000000596,
+        44.18429999999353,
+        49.23460000001069,
+        43.81489999999758,
+        47.23149999999441,
+        48.2841000000044,
+        46.80529999999271,
+        48.098500000007334,
+        46.572000000000116,
+        48.23489999999583,
+        58.00250000000233,
+        51.73369999999704,
+        56.81919999999809,
+        47.833700000002864,
+        45.01380000000063,
+        45.489400000005844,
+        47.41580000000249,
+        46.71959999999672,
+        45.49529999999504,
+        46.43730000000505,
+        44.767599999991944,
+        43.75710000000254,
+        48.68989999999758,
+        47.51720000000205,
+        44.26799999999639,
+        46.86300000001211,
+        46.695799999986775,
+        46.278100000010454,
+        45.80809999999474,
+        47.956300000005285,
+        47.752699999997276,
+        43.75810000000638,
+        46.529099999999744,
+        52.373299999992014,
+        57.39870000000519,
+        43.46630000000005,
+        46.89569999999367,
+        45.05130000000645,
+        46.034399999989546,
+        45.732400000008056,
+        47.566500000000815,
+        47.77030000000377,
+        46.317699999999604,
+        46.03669999999693,
+        48.7957000000024,
+        44.22030000000086,
+        45.26429999999527,
+        47.401499999992666,
+        46.286800000001676,
+        46.741600000008475,
+        50.58619999999064,
+        46.650500000003376,
+        44.05470000000787,
+        47.491299999994226,
+        46.189100000003236,
+        53.65209999999206,
+        55.95919999999751,
+        43.876600000003236,
+        46.882299999997485,
+        44.80830000000424,
+        46.39639999999781,
+        44.982400000008056,
+        45.58049999999639,
+        46.9372000000003,
+        44.177700000000186,
+        49.651700000002165,
+        44.94739999999001,
+        45.64860000000044,
+        44.52490000000398,
+        46.82480000000214,
+        47.404099999999744,
+        45.289300000004005,
+        46.52679999999236,
+        48.933600000003935,
+        43.07240000000456,
+        47.943699999988894,
+        47.42980000001262,
+        50.66489999998885,
+        55.8182000000088,
+        45.616500000003725,
+        45.86669999999867,
+        48.31119999999646,
+        45.86389999999665,
+        43.44759999999951,
+        48.06360000000859,
+        46.17109999999229,
+        46.98209999999381,
+        46.88630000001285,
+        47.39059999999881,
+        44.885599999994156,
+        47.271099999998114,
+        45.124400000000605,
+        48.31609999999637,
+        46.58960000000661,
+        47.8862999999983,
+        44.542700000005425,
+        46.85119999999006,
+        47.1478000000061,
+        45.253899999996065,
+        50.907700000010664,
+        57.73739999999816,
+        46.22569999999541,
+        47.861999999993714,
+        47.830000000001746,
+        45.24569999999949,
+        45.83849999999802,
+        48.01720000000205,
+        46.68850000000384,
+        45.48040000000037,
+        45.59769999999844,
+        48.26039999999921,
+        46.65869999999995,
+        44.71959999999672,
+        47.040500000002794,
+        48.499500000005355,
+        47.79069999999774,
+        43.29760000000533,
+        46.88399999999092,
+        46.30440000000817,
+        46.199199999988195,
+        47.685900000011316,
+        54.544799999988754,
+        53.638300000005984,
+        47.3298000000068,
+        46.04660000000149,
+        45.50689999999304,
+        46.78720000000612,
+        46.75439999999071,
+        45.507299999997485,
+        47.528100000010454,
+        46.47119999999995,
+        45.86359999999695,
+        45.83299999999872,
+        45.79750000000058,
+        45.41599999999744,
+        46.76279999999679,
+        48.350700000009965,
+        46.52880000000005,
+        43.578899999993155,
+        46.845000000001164,
+        46.387100000007194,
+        47.41309999999066,
+        47.40110000000277,
+        53.58070000000589,
+        56.40129999999772,
+        44.66939999999886
+      ]
+    }
+  ],
+  "completedAppChecks": [
+    "记事本",
+    "浏览器",
+    "资源管理器",
+    "DPI 不感知老程序",
+    "独立 Legacy 回归窗口"
+  ],
+  "failures": [
+    {
+      "scope": "资源管理器",
+      "name": "按钮参考及实际图像",
+      "status": "failed",
+      "error": {
+        "message": "资源管理器按钮核对失败。",
+        "errors": [
+          {
+            "message": "UIA 和命中扫描均无有效参考。"
+          }
+        ]
+      }
+    },
+    {
+      "scope": "独立 Legacy 回归窗口",
+      "name": "按钮参考及实际图像",
+      "status": "failed",
+      "error": {
+        "message": "独立 Legacy 回归窗口按钮核对失败。",
+        "errors": [
+          {
+            "message": "Command failed: powershell -NoProfile -File <工作树>\\app\\scripts\\capture-window-caption.ps1 -WindowHandle 12783350 -Left 1189 -Top 370 -Right 1369 -Bottom 407 -MonitorDpi 144 -OutputPath <工作树>\\app\\out\\window-ledges\\caption-2880x1800-150pct-12783350-1791044251963.png\n按钮区域被其他窗口遮挡，不能捕获物理屏幕证据。\r\nAt <工作树>\\app\\scripts\\capture-window-caption.ps1:66 char:107\r\n+ ... FromPoint($point),2) -ne $window) { throw '按钮区域被其他窗口遮挡，不能捕获物理屏幕证据。' }\r\n+                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : OperationStopped: (按钮区域被其他窗口遮挡，不能捕获物理屏幕证据。:String) [], RuntimeException\r\n    + FullyQualifiedErrorId : 按钮区域被其他窗口遮挡，不能捕获物理屏幕证据。\r\n \r\n"
+          }
+        ]
+      }
+    }
+  ],
+  "cpuMethod": "核对进程累计 CPU，列单核和整机百分比；不是完整应用性能",
+  "evidence": {
+    "round": 10,
+    "codeCommit": "ac4c52eb4c250aa0bc039012a78a9f907b161e1b",
+    "note": "用户批准的一次完整核对；整体失败。公开副本去除堆栈、标准输出和本机路径，保留原始测量和各项错误。"
+  }
+}

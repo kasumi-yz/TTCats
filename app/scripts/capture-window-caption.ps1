@@ -13,6 +13,7 @@ Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 public static class CaptionCapture {
     [StructLayout(LayoutKind.Sequential)]
     public struct Rect { public int Left, Top, Right, Bottom; }
@@ -22,6 +23,7 @@ public static class CaptionCapture {
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr window, IntPtr dc, uint flags);
     [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(Point point);
     [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr window, uint flags);
+    [DllImport("user32.dll",CharSet=CharSet.Unicode)] public static extern int GetClassNameW(IntPtr window,StringBuilder name,int count);
     [DllImport("user32.dll")] public static extern IntPtr GetWindowDpiAwarenessContext(IntPtr window);
     [DllImport("user32.dll")] public static extern int GetAwarenessFromDpiAwarenessContext(IntPtr context);
     [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr window);
@@ -44,14 +46,23 @@ try {
     if ($awareness -lt 0 -or $windowDpi -eq 0) { throw '无法确定目标窗口的 DPI，不能猜截图方式。' }
     # 老程序按 96 DPI 绘图，PrintWindow 不会替物理尺寸位图放大内容，非纯色也可能错位。
     $fromScreen = $awareness -ne 2 -or $windowDpi -ne $MonitorDpi
+    $owners = @(
+        foreach ($taskPoint in @(@(($Left+1),($Top+1)),@(($Right-2),($Top+1)),@(($Left+1),($Bottom-2)),@(($Right-2),($Bottom-2)),@([int](($Left+$Right)/2),[int](($Top+$Bottom)/2)))) {
+            $point=[CaptionCapture+Point]::new()
+            $point.X=$taskPoint[0];$point.Y=$taskPoint[1]
+            $hit=[CaptionCapture]::WindowFromPoint($point)
+            $root=[CaptionCapture]::GetAncestor($hit,2)
+            $name=[Text.StringBuilder]::new(256)
+            [void][CaptionCapture]::GetClassNameW($root,$name,256)
+            @{x=$point.X;y=$point.Y;rootHandle=$root.ToInt64();rootClass=$name.ToString();isTarget=($root -eq $window)}
+        }
+    )
     if ($PlanOnly) {
-        $center=[CaptionCapture+Point]::new()
-        $center.X=[int](($Left+$Right)/2);$center.Y=[int](($Top+$Bottom)/2)
         ConvertTo-Json -Compress -InputObject @{
             outer=@{left=$rect.Left;top=$rect.Top;right=$rect.Right;bottom=$rect.Bottom}
             windowDpi=$windowDpi;awareness=$awareness
             method=$(if($fromScreen){'screen'}else{'PrintWindow'})
-            regionVisible=([CaptionCapture]::GetAncestor([CaptionCapture]::WindowFromPoint($center),2) -eq $window)
+            regionVisible=(@($owners | Where-Object { !$_.isTarget }).Count -eq 0);owners=$owners
         }
         return
     }
@@ -60,10 +71,8 @@ try {
     $bitmap = [Drawing.Bitmap]::new($width, $height, [Drawing.Imaging.PixelFormat]::Format24bppRgb)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     if ($fromScreen) {
-        foreach ($taskPoint in @(@(($Left+1),($Top+1)),@(($Right-2),($Top+1)),@(($Left+1),($Bottom-2)),@(($Right-2),($Bottom-2)),@([int](($Left+$Right)/2),[int](($Top+$Bottom)/2)))) {
-            $point=[CaptionCapture+Point]::new()
-            $point.X=$taskPoint[0];$point.Y=$taskPoint[1]
-            if ([CaptionCapture]::GetAncestor([CaptionCapture]::WindowFromPoint($point),2) -ne $window) { throw '按钮区域被其他窗口遮挡，不能捕获物理屏幕证据。' }
+        if ($owners | Where-Object { !$_.isTarget }) {
+            throw "按钮区域所属窗口检查失败，不能捕获物理屏幕证据：$($owners | ConvertTo-Json -Compress)"
         }
         $graphics.CopyFromScreen($rect.Left,$rect.Top,0,0,[Drawing.Size]::new($width,$height),[Drawing.CopyPixelOperation]::SourceCopy)
     } else {
@@ -85,6 +94,7 @@ try {
         crop = @{ left=$cropLeft; top=$cropTop; right=$cropRight; bottom=$cropBottom }
         width=$caption.Width; height=$caption.Height
         method=$(if($fromScreen){'screen'}else{'PrintWindow'})
+        regionVisible=(@($owners | Where-Object { !$_.isTarget }).Count -eq 0);owners=$owners
     }
 } finally {
     if ($caption) { $caption.Dispose() }

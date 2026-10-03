@@ -224,7 +224,8 @@ export function createWindowLedgeTest() {
             throw new Error(`无法移动窗口 ${id}。`);
         },
         raise(): void {
-          if (!position(hwnd, -1, 0, 0, 0, 0, 0x13))
+          // 第一次进入置顶组仍可能排在已有置顶窗口后；再明确调整组内顺序。
+          if (!position(hwnd, -1, 0, 0, 0, 0, 0x13) || !position(hwnd, 0, 0, 0, 0, 0, 0x13))
             throw new Error(`无法调整窗口 ${id} 的前后顺序。`);
         },
         minimize(): void {

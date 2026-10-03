@@ -1,0 +1,398 @@
+{
+  "note": "相同预检真实接口：修复前先看到失败，再改准备步骤；全部窗口在屏幕外，不移动用户窗口。",
+  "before": {
+    "capturedAt": "2026-10-03T16:43:55.850Z",
+    "status": "failed",
+    "samples": [
+      {
+        "target": "2822710",
+        "order": [
+          "57741196",
+          "2822710"
+        ],
+        "targetFirst": false
+      },
+      {
+        "target": "57741196",
+        "order": [
+          "57741196",
+          "2822710"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2822710",
+        "order": [
+          "2822710",
+          "57741196"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57741196",
+        "order": [
+          "57741196",
+          "2822710"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2822710",
+        "order": [
+          "2822710",
+          "57741196"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57741196",
+        "order": [
+          "57741196",
+          "2822710"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2822710",
+        "order": [
+          "2822710",
+          "57741196"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57741196",
+        "order": [
+          "57741196",
+          "2822710"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2822710",
+        "order": [
+          "2822710",
+          "57741196"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57741196",
+        "order": [
+          "57741196",
+          "2822710"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2822710",
+        "order": [
+          "2822710",
+          "57741196"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57741196",
+        "order": [
+          "57741196",
+          "2822710"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2822710",
+        "order": [
+          "2822710",
+          "57741196"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57741196",
+        "order": [
+          "57741196",
+          "2822710"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2822710",
+        "order": [
+          "2822710",
+          "57741196"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57741196",
+        "order": [
+          "57741196",
+          "2822710"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2822710",
+        "order": [
+          "2822710",
+          "57741196"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57741196",
+        "order": [
+          "57741196",
+          "2822710"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2822710",
+        "order": [
+          "2822710",
+          "57741196"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57741196",
+        "order": [
+          "57741196",
+          "2822710"
+        ],
+        "targetFirst": true
+      }
+    ],
+    "checks": [
+      {
+        "name": "读取四类目标",
+        "status": "passed"
+      },
+      {
+        "name": "创建独立 Legacy 回归窗口",
+        "status": "passed"
+      },
+      {
+        "name": "读取独立 Legacy 回归窗口",
+        "status": "passed"
+      },
+      {
+        "name": "屏幕外置顶顺序回归",
+        "status": "failed",
+        "error": {
+          "message": "置顶后目标仍在另一个置顶窗口后面，实际按钮可能被遮挡。"
+        }
+      },
+      {
+        "name": "关闭屏幕外置顶回归窗口",
+        "status": "passed"
+      },
+      {
+        "name": "清理独立 Legacy 进程",
+        "status": "passed"
+      },
+      {
+        "name": "清理测试窗口及上下文",
+        "status": "passed"
+      }
+    ]
+  },
+  "after": {
+    "capturedAt": "2026-10-03T16:44:45.506Z",
+    "status": "passed",
+    "samples": [
+      {
+        "target": "2888246",
+        "order": [
+          "2888246",
+          "57806732"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57806732",
+        "order": [
+          "57806732",
+          "2888246"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2888246",
+        "order": [
+          "2888246",
+          "57806732"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57806732",
+        "order": [
+          "57806732",
+          "2888246"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2888246",
+        "order": [
+          "2888246",
+          "57806732"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57806732",
+        "order": [
+          "57806732",
+          "2888246"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2888246",
+        "order": [
+          "2888246",
+          "57806732"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57806732",
+        "order": [
+          "57806732",
+          "2888246"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2888246",
+        "order": [
+          "2888246",
+          "57806732"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57806732",
+        "order": [
+          "57806732",
+          "2888246"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2888246",
+        "order": [
+          "2888246",
+          "57806732"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57806732",
+        "order": [
+          "57806732",
+          "2888246"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2888246",
+        "order": [
+          "2888246",
+          "57806732"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57806732",
+        "order": [
+          "57806732",
+          "2888246"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2888246",
+        "order": [
+          "2888246",
+          "57806732"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57806732",
+        "order": [
+          "57806732",
+          "2888246"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2888246",
+        "order": [
+          "2888246",
+          "57806732"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57806732",
+        "order": [
+          "57806732",
+          "2888246"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "2888246",
+        "order": [
+          "2888246",
+          "57806732"
+        ],
+        "targetFirst": true
+      },
+      {
+        "target": "57806732",
+        "order": [
+          "57806732",
+          "2888246"
+        ],
+        "targetFirst": true
+      }
+    ],
+    "checks": [
+      {
+        "name": "读取四类目标",
+        "status": "passed"
+      },
+      {
+        "name": "创建独立 Legacy 回归窗口",
+        "status": "passed"
+      },
+      {
+        "name": "读取独立 Legacy 回归窗口",
+        "status": "passed"
+      },
+      {
+        "name": "屏幕外置顶顺序回归",
+        "status": "passed"
+      },
+      {
+        "name": "关闭屏幕外置顶回归窗口",
+        "status": "passed"
+      },
+      {
+        "name": "清理独立 Legacy 进程",
+        "status": "passed"
+      },
+      {
+        "name": "清理测试窗口及上下文",
+        "status": "passed"
+      }
+    ]
+  }
+}

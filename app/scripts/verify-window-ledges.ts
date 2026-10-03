@@ -317,6 +317,7 @@ async function runConfiguration(isPreflight: boolean): Promise<boolean> {
     phases: [] as Record<string, unknown>[],
     completedAppChecks: [] as string[],
     failures: [] as unknown[],
+    zOrderPreflight: [] as { target: string; order: string[]; targetFirst: boolean }[],
     cpuMethod: '核对进程累计 CPU，列单核和整机百分比；不是完整应用性能',
   };
   const save = (): void => {
@@ -470,6 +471,56 @@ async function runConfiguration(isPreflight: boolean): Promise<boolean> {
       legacyWindow = config.read().find((w) => w.id === legacy);
       if (!legacyWindow) throw new Error('正式列表未读到独立 Legacy 回归窗口。');
     });
+    if (isPreflight) {
+      let closeBlocker: (() => Promise<void>) | undefined;
+      try {
+        await log.run('屏幕外置顶顺序回归', async () => {
+          if (!legacyWindow) throw new Error('缺少屏幕外回归窗口，不能验证置顶顺序。');
+          const blocker = await createLegacyWindow(
+            Math.max(...config.displays.map((d) => d.bounds.right)) + 2000,
+            Math.max(...config.displays.map((d) => d.bounds.bottom)) + 2000,
+          );
+          closeBlocker = blocker.close;
+          const rect = testApi.outer(blocker.id);
+          if (
+            config.displays.some(
+              (d) =>
+                rect.left < d.bounds.right &&
+                rect.right > d.bounds.left &&
+                rect.top < d.bounds.bottom &&
+                rect.bottom > d.bounds.top,
+            )
+          )
+            throw new Error('置顶回归窗口未处于屏幕外。');
+          const first = testApi.prepare(legacy),
+            second = testApi.prepare(blocker.id);
+          first.raise();
+          // 模拟应用之间切换：第一次进入置顶组和已置顶后再次排序都必须到前面。
+          for (let i = 0; i < 10; i++) {
+            for (const [id, placement] of [
+              [blocker.id, second],
+              [legacy, first],
+            ] as const) {
+              placement.raise();
+              const order = config
+                .read()
+                .filter((w) => w.id === legacy || w.id === blocker.id)
+                .map((w) => w.id);
+              result.zOrderPreflight.push({
+                target: id,
+                order,
+                targetFirst: order.length === 2 && order[0] === id,
+              });
+            }
+          }
+          if (result.zOrderPreflight.some((sample) => !sample.targetFirst))
+            throw new Error('置顶后目标仍在另一个置顶窗口后面，实际按钮可能被遮挡。');
+        });
+      } finally {
+        const close = closeBlocker;
+        if (close) await log.run('关闭屏幕外置顶回归窗口', close);
+      }
+    }
     selected.push(['独立 Legacy 回归窗口', legacyWindow]);
     let cover = '';
     if (!isPreflight) {
