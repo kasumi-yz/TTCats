@@ -61,6 +61,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('diagnostics/export') }),
   z.strictObject({ type: z.literal('update/check') }),
   z.strictObject({ type: z.literal('update/install') }),
+  z.strictObject({ type: z.literal('debug/simulateIdle') }),
   z.strictObject({ type: z.literal('debug/crashOverlay') }),
   z.strictObject({ type: z.literal('debug/simulateFullscreen'), active: z.boolean() }),
   z.strictObject({ type: z.literal('debug/ledgeLines'), visible: z.boolean() }),

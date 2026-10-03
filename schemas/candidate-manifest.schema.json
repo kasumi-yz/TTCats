@@ -29,6 +29,29 @@
     "note": {
       "type": "string"
     },
+    "assessment": {
+      "type": "object",
+      "properties": {
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "reasons": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        }
+      },
+      "required": [
+        "score",
+        "reasons"
+      ],
+      "additionalProperties": false
+    },
     "assetLog": {
       "type": "object",
       "properties": {
