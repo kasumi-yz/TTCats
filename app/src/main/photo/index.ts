@@ -4,8 +4,10 @@ import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { app, clipboard, ClipboardItem, desktopCapturer, Notification, screen } from 'electron';
 import type { BrowserWindow, MenuItemConstructorOptions } from 'electron';
-import { IPC_CHANNELS } from '../../shared/ipc';
+import type { ContentCatalog } from '../../shared/core-api';
+import { IPC_CHANNELS, type StateSnapshot } from '../../shared/ipc';
 import { zh } from '../../shared/strings.zh-CN';
+import type { MainFeature } from '../features';
 import { composePhoto } from './compose';
 
 interface PhotoOverlay {
@@ -166,4 +168,29 @@ export function createPhoto(options: {
       },
     ],
   };
+}
+
+/** 拍照的接线：只在非安全模式、未在退出、且有猫显示时可拍；托盘和调试台共用同一个入口。 */
+export function createPhotoFeature(options: {
+  overlay: () => PhotoOverlay | undefined;
+  session: { readonly safeMode: boolean; snapshot: () => StateSnapshot };
+  content: ContentCatalog;
+  stopping: () => boolean;
+  updateTray: () => void;
+  report: (error: unknown) => void;
+}) {
+  const { session, content } = options;
+  const photo = createPhoto({
+    overlay: options.overlay,
+    allowed: () =>
+      !session.safeMode &&
+      !options.stopping() &&
+      session.snapshot().settings.visibleCats.some((id) => Object.hasOwn(content.cats, id)),
+    updateTray: options.updateTray,
+    report: options.report,
+  });
+  return {
+    menuSection: photo.menuSection,
+    mainCommands: { 'photo/take': photo.take },
+  } satisfies MainFeature;
 }

@@ -1,5 +1,7 @@
 import type { App } from 'electron';
+import type { StateSnapshot } from '../../shared/ipc';
 import { zh } from '../../shared/strings.zh-CN';
+import type { MainFeature } from '../features';
 
 export const LOGIN_ARGUMENT = '--autostart';
 export const LOGIN_ITEM_NAME = 'top.ttcats.desktop';
@@ -52,4 +54,20 @@ export function createAutostart(options: {
 export function startupOptions(args: readonly string[]) {
   const startupQuiet = args.includes(LOGIN_ARGUMENT);
   return { startupQuiet, openSettings: !startupQuiet && args.includes('--settings') };
+}
+
+/** 开机启动的接线：启动时按存档同步一次，之后跟随设置；安全模式下不改系统登记。 */
+export function createAutostartFeature(
+  options: Parameters<typeof createAutostart>[0] & {
+    enabled: boolean;
+    safeMode: () => boolean;
+  },
+) {
+  const autostart = createAutostart(options);
+  autostart.sync(options.enabled);
+  return {
+    onSnapshot(snapshot: StateSnapshot): void {
+      if (!options.safeMode()) autostart.sync(snapshot.settings.launchAtLogin);
+    },
+  } satisfies MainFeature;
 }
