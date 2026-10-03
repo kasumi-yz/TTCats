@@ -1,4 +1,4 @@
-// #129：仅开发模式使用；主进程/专用 preload 在 #104 实现，安装版不提供此接口。
+// #129：仅开发模式使用；#104 沿用唯一 preload 注入桥，安装版不提供此接口。
 // 资源 URL 与 candidateKey 由主进程签发，调用方不能提供任意本机文件路径。
 import type { CandidateManifest } from './schemas/candidate-manifest';
 import type { ReviewResult } from './schemas/review-result';
@@ -12,6 +12,8 @@ export const REVIEW_STATION_CHANNELS = {
   chooseBackground: 'ttcats:review-station:choose-background',
   saveResult: 'ttcats:review-station:save-result',
   exportCandidate: 'ttcats:review-station:export-candidate',
+  getCandidateLock: 'ttcats:review-station:get-candidate-lock',
+  clearCandidateLock: 'ttcats:review-station:clear-candidate-lock',
 } as const;
 
 export interface ReviewCandidatePreview {
@@ -51,6 +53,16 @@ export interface ReviewExport {
   videoUrl: string;
 }
 
+export interface ReviewCandidateLock {
+  /** 当前锁文件的字节哈希；确认清除时防止删掉已更换所有者的锁。 */
+  revision: string;
+  /** 锁被损坏或写入中崩溃时为 null；主进程提供可读的错误说明。 */
+  owner: { machine: string; processId: number; processStartedAt: string } | null;
+  /** 同机确认仍在运行时禁止清除；异机、损坏或查询失败时为 unknown。 */
+  state: 'running' | 'unknown';
+  description: string;
+}
+
 /** 所有方法均由主进程执行；失败时拒绝 Promise，错误信息为中文。 */
 export interface ReviewStationBridge {
   openWindow(): Promise<void>;
@@ -66,4 +78,8 @@ export interface ReviewStationBridge {
   saveResult(request: ReviewSaveRequest): Promise<{ revision: string }>;
   /** 只导出已保存且 accepted 的这次修订；明确由用户按钮触发。 */
   exportCandidate(candidateKey: string, expectedRevision: string): Promise<ReviewExport>;
+  /** 同机确认所有者已退出时自动回收；没有锁返回 null。 */
+  getCandidateLock(candidateKey: string): Promise<ReviewCandidateLock | null>;
+  /** 用户确认后核对锁修订与所有者；仍在运行的锁必须拒绝清除。 */
+  clearCandidateLock(candidateKey: string, expectedLockRevision: string): Promise<void>;
 }

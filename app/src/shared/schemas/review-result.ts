@@ -7,7 +7,8 @@ import { IdSchema, JsonSchemaRefField, SchemaVersionSchema } from './common';
 import { validateWith, type ValidationResult } from './validate';
 
 const FrameSchema = z.int().min(0);
-const SourcePointSchema = z.strictObject({ x: z.number().min(0), y: z.number().min(0) });
+// 坐标范围在轨迹级统一校验，避免每帧各产生一条越界错误。
+const SourcePointSchema = z.strictObject({ x: z.number(), y: z.number() });
 const Sha256Schema = z.string().regex(/^[a-f0-9]{64}(?![\s\S])/, {
   error: zh.reviewResult.sha256Format,
 });
@@ -49,7 +50,7 @@ export const ReviewResultSchema = z
     /** 只有人主动确认才能为 true；自动评分不改变这个值。 */
     accepted: z.boolean(),
     note: z.string(),
-    /** 人实际花费的秒数；按真实经过的时间计，不包含自动处理用时。 */
+    /** 此候选在挑片台累计的人工秒数；不包含自动处理或旧 confirmation 的历史用时。 */
     manualSeconds: z.number().min(0),
   })
   .superRefine((result, ctx) => {
@@ -87,10 +88,19 @@ export const ReviewResultSchema = z
       if (points.length !== source.frameCount) {
         add(path, zh.validation.perFrameLength(points.length, source.frameCount));
       }
+      let invalidCount = 0;
+      let firstInvalidFrame = 0;
       for (const [frame, point] of points.entries()) {
-        if (point !== null && (point.x >= source.width || point.y >= source.height)) {
-          add([...path, frame], text.pointBounds(source.width, source.height));
+        if (
+          point !== null &&
+          (point.x < 0 || point.y < 0 || point.x >= source.width || point.y >= source.height)
+        ) {
+          if (invalidCount === 0) firstInvalidFrame = frame;
+          invalidCount++;
         }
+      }
+      if (invalidCount > 0) {
+        add(path, text.pointBounds(source.width, source.height, invalidCount, firstInvalidFrame));
       }
     }
   });
@@ -98,10 +108,10 @@ export const ReviewResultSchema = z
 export type ReviewSource = z.infer<typeof ReviewSourceSchema>;
 export type ReviewResult = z.infer<typeof ReviewResultSchema>;
 
-/** 调用方传入所加载候选的身份，让缺字段等错误也能指出是哪只猫、哪个候选。 */
+/** 调用方传入清单的身份和片段类型，不能让结果改变实际导出区间的选择规则。 */
 export function validateReviewResult(
   data: unknown,
-  expected: { cat: string; candidateId: string },
+  expected: { cat: string; candidateId: string; kind: ReviewResult['kind'] },
 ): ValidationResult<ReviewResult> {
   const result = validateWith(ReviewResultSchema, data);
   const context = zh.reviewResult.context(expected.cat, expected.candidateId);
@@ -110,6 +120,9 @@ export function validateReviewResult(
   }
   if (result.value.cat !== expected.cat || result.value.candidateId !== expected.candidateId) {
     return { ok: false, problems: [`${context}${zh.reviewResult.identityMismatch}`] };
+  }
+  if (result.value.kind !== expected.kind) {
+    return { ok: false, problems: [`${context}${zh.reviewResult.kindMismatch}`] };
   }
   return result;
 }

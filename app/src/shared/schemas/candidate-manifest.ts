@@ -33,7 +33,7 @@ export type AssetLog = z.infer<typeof AssetLogSchema>;
 /** 自动初筛仅供人参考；没有评分的旧候选保持兼容。 */
 export const CandidateAssessmentSchema = z.strictObject({
   score: z.number().min(0).max(100),
-  reasons: z.array(z.string().regex(/\S/, { error: zh.reviewResult.emptyReason })).min(1),
+  reasons: z.array(z.string().regex(/\S/, { error: zh.validation.emptyAssessmentReason })).min(1),
 });
 export type CandidateAssessment = z.infer<typeof CandidateAssessmentSchema>;
 

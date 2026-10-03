@@ -72,7 +72,11 @@ describe('挑片台的挑选结果', () => {
     const data = result();
     data.selection.footAnchors = data.selection.footAnchors.slice(2, 5);
     data.selection.keypoints['nose'] = [{ x: 100, y: 20 }];
-    const validation = validateReviewResult(data, { cat: data.cat, candidateId: data.candidateId });
+    const validation = validateReviewResult(data, {
+      cat: data.cat,
+      candidateId: data.candidateId,
+      kind: data.kind,
+    });
     expect(validation.ok).toBe(false);
     if (validation.ok) throw new Error('expected invalid result');
     expect(validation.problems).toEqual(
@@ -131,7 +135,7 @@ describe('挑片台的挑选结果', () => {
 
   it('缺字段时用中文指出猫、候选和字段，身份不能串到别的候选', () => {
     const data = result();
-    const expected = { cat: data.cat, candidateId: data.candidateId };
+    const expected = { cat: data.cat, candidateId: data.candidateId, kind: data.kind };
     expect(validateReviewResult({ ...data, selection: undefined }, expected)).toEqual({
       ok: false,
       problems: ['猫「test-cat」候选「walk-001」：缺少必填字段 selection（人工挑选参数）'],
@@ -142,6 +146,42 @@ describe('挑片台的挑选结果', () => {
     });
     expect(validateReviewResult({ ...data, candidateId: 'walk-002' }, expected).ok).toBe(false);
     expect(validateReviewResult(data, expected)).toEqual({ ok: true, value: data });
+  });
+
+  it.each(['loop', 'transition', 'action'] as const)('候选为 %s 时拒绝其他片段类型', (kind) => {
+    const data = { ...result(), kind };
+    const expected = { cat: data.cat, candidateId: data.candidateId, kind };
+    expect(validateReviewResult(data, expected).ok).toBe(true);
+    for (const other of ['loop', 'transition', 'action'] as const) {
+      if (other === kind) continue;
+      expect(validateReviewResult({ ...data, kind: other }, expected)).toEqual({
+        ok: false,
+        problems: ['猫「test-cat」候选「walk-001」：挑选结果的片段类型与候选清单不符'],
+      });
+    }
+  });
+
+  it('300 帧的锚点和关键点越界，各自只报一次并说明数量和第一帧', () => {
+    const data = result();
+    data.source.frameCount = 300;
+    data.selection.footAnchors = Array.from({ length: 300 }, () => ({ x: 100, y: 80 }));
+    data.selection.keypoints['nose'] = [
+      null,
+      { x: 70, y: 20 },
+      ...Array.from({ length: 298 }, () => ({ x: -1, y: -1 })),
+    ];
+    const validation = validateReviewResult(data, {
+      cat: data.cat,
+      candidateId: data.candidateId,
+      kind: data.kind,
+    });
+    expect(validation.ok).toBe(false);
+    if (validation.ok) throw new Error('expected invalid result');
+    expect(validation.problems).toHaveLength(2);
+    expect(validation.problems[0]).toContain('footAnchors（落脚锚点）');
+    expect(validation.problems[0]).toContain('有 300 帧超出原始画面，第一处是第 0 帧');
+    expect(validation.problems[1]).toContain('keypoints.nose');
+    expect(validation.problems[1]).toContain('有 298 帧超出原始画面，第一处是第 2 帧');
   });
 });
 

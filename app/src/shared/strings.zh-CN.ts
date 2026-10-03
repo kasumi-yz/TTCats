@@ -111,6 +111,7 @@ export const zh = {
   } as Readonly<Record<string, string>>,
 
   validation: {
+    emptyAssessmentReason: '评分原因不能为空',
     wholeFile: '（整个文件）',
     catPack: (catId: string) => `猫咪包「${catId}」`,
     eventFile: (file: string) => `事件配置「${file}」`,
@@ -553,13 +554,13 @@ export const zh = {
   },
   reviewResult: {
     sha256Format: '校验值必须是 64 位小写十六进制 SHA-256',
-    emptyReason: '评分原因不能为空',
     trimRange: '裁剪区间必须有帧且不超过原始帧数，结束帧不包含在区间内',
     loopRange: '循环区间必须有帧且位于裁剪区间内，结束帧不包含在区间内',
     soundRange: '声音起始帧必须位于实际导出的区间内，使用原始帧号',
-    pointBounds: (width: number, height: number) =>
-      `坐标必须位于原始画面内：0 ≤ x < ${width}，0 ≤ y < ${height}`,
+    pointBounds: (width: number, height: number, count: number, firstFrame: number) =>
+      `有 ${count} 帧超出原始画面，第一处是第 ${firstFrame} 帧；坐标须在原始画面内：0 ≤ x < ${width}，0 ≤ y < ${height}`,
     context: (cat: string, candidateId: string) => `猫「${cat}」候选「${candidateId}」：`,
     identityMismatch: '挑选结果的猫或候选 id 与正在处理的候选不符',
+    kindMismatch: '挑选结果的片段类型与候选清单不符',
   },
 };

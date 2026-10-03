@@ -96,12 +96,10 @@
             "type": "object",
             "properties": {
               "x": {
-                "type": "number",
-                "minimum": 0
+                "type": "number"
               },
               "y": {
-                "type": "number",
-                "minimum": 0
+                "type": "number"
               }
             },
             "required": [
@@ -125,12 +123,10 @@
                   "type": "object",
                   "properties": {
                     "x": {
-                      "type": "number",
-                      "minimum": 0
+                      "type": "number"
                     },
                     "y": {
-                      "type": "number",
-                      "minimum": 0
+                      "type": "number"
                     }
                   },
                   "required": [
