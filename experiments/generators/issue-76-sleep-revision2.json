@@ -1,0 +1,28 @@
+{
+  "revision": 2,
+  "reason": "用户要求参考桌面新增的豆豆睡眠照片重出睡姿图",
+  "tool": "Codex built-in image_gen",
+  "prompt": "Use case: identity-preserve. Create one photorealistic sleeping pose asset for the real golden cat Doudou. Image 1 is the approved standing asset: preserve this exact individual, head size, coat rendering, collar, color grading, studio lighting, right-facing exact side-profile camera, framing and flat background. Images 2-5 are NEW real sleep references from the owner: ONLY the GOLDEN cat is Doudou (ignore the silver tabby and Siamese cats). Carefully learn the real round cheek shape, short pink muzzle, natural closed eyelids, dense apricot coat, pale cream underside, heavy rounded torso and relaxed sleepy softness. Image 4 shows the low belly-down body shape. Image 5 is strongest for the sleepy face and plush cheek anatomy. Do not copy furniture, bed, floor, hands, cables, other cats, or home lighting. Final pose remains a belly-down sleeping loaf for animation: exact side view facing RIGHT, eyes fully closed, head lowered, chin physically resting on the slightly forward front paws, relaxed ears, rear legs folded beneath the broad low soft body. Thick tail lies naturally along the visible flank with its dark tip near the front paws. Keep the head exactly the same physical size as image 1; do not make a giant head or round toy. Narrow flat light ivory collar with small gold tone buckle and tiny ring. Only one anatomically correct cat. Whole cat visible with empty space, composition like image 1 on a landscape 1344x768 canvas; approximate ground contact y690, hindquarters around x588. Background perfectly uniform #38828C RGB56,130,140, no floor or horizon, no cast shadow or gradient, no text. Natural photo fur, no cartoon, no 3D, no exaggerated fluffy kitten proportions. Produce a fresh candidate.",
+  "referencePaths": [
+    "D:/TTCats-素材库/work/issue-7/poses/pose-stand.png",
+    "C:/Users/Salmon/Desktop/IMG_20260810_201656.jpg",
+    "C:/Users/Salmon/Desktop/IMG_20260815_165123.jpg",
+    "C:/Users/Salmon/Desktop/IMG_20260826_221153.jpg",
+    "C:/Users/Salmon/Desktop/IMG_20260906_100921.jpg"
+  ],
+  "generatedCandidates": 4,
+  "attempts": [
+    5,
+    6,
+    7,
+    8
+  ],
+  "userAccepted": false,
+  "assetRoot": "D:/TTCats-素材库/work/issue-76/poses/revision-2",
+  "deviations": [
+    "睡姿静态生图提示词按用户新参考要求重写，旧原文保留；H3视频提示词未修改",
+    "4张尾尖均在偏后位置，未达到靠近前爪的要求",
+    "同模型CPU抠图，非GPU性能验收",
+    "后脚被尾巴遮挡，位置按轮廓估计"
+  ]
+}
