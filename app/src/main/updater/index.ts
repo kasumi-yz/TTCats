@@ -1,8 +1,9 @@
 import { app, type MenuItemConstructorOptions } from 'electron';
 import updater from 'electron-updater';
 import type { AppUpdater } from 'electron-updater';
-import type { UpdateStatus } from '../../shared/ipc';
+import type { StateSnapshot, UpdateStatus } from '../../shared/ipc';
 import { zh } from '../../shared/strings.zh-CN';
+import type { MainFeature } from '../features';
 
 export const UPDATE_TIMING = { startupMs: 60_000, intervalMs: 4 * 60 * 60_000 };
 
@@ -141,4 +142,48 @@ export function createUpdater(options: {
       // 保留 error 监听器，接住仍在下载的请求以及安装启动失败。
     },
   };
+}
+
+/** 自动更新的接线：状态写进程序状态并刷新托盘，跟随设置开关，退出最后一步才安装。 */
+export function createUpdaterFeature(options: {
+  packaged: boolean;
+  enabled: boolean;
+  publish: (status: UpdateStatus) => void;
+  updateTray: () => void;
+  stopping: () => boolean;
+  report: (error: unknown) => void;
+  quit: () => void;
+}) {
+  const updates = createUpdater({
+    packaged: options.packaged,
+    enabled: options.enabled,
+    publish: (status) => {
+      options.publish(status);
+      options.updateTray();
+    },
+    report: options.report,
+    quit: options.quit,
+  });
+  options.publish(updates.status);
+  return {
+    onSnapshot(snapshot: StateSnapshot): void {
+      updates.setEnabled(snapshot.settings.autoUpdate);
+    },
+    menuSection: updates.menuSection,
+    mainCommands: {
+      'update/check': () => {
+        if (!options.stopping()) return updates.check();
+      },
+      'update/install': () => {
+        if (!options.stopping()) updates.requestInstall();
+      },
+    },
+    dispose(): void {
+      updates.dispose();
+    },
+    /** 交给 attachShutdown 的 finishQuit：存档和清理都做完以后才安装更新。 */
+    finishQuit(): void {
+      updates.finishQuit();
+    },
+  } satisfies MainFeature & { finishQuit: () => void };
 }
