@@ -1,0 +1,1613 @@
+{
+  "status": "passed",
+  "kind": "preflight",
+  "machine": "Zephyr",
+  "capturedAt": "2026-10-03T16:44:45.506Z",
+  "label": "2880x1800-150pct",
+  "displays": [
+    {
+      "id": 3742356399,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "workArea": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1728
+      },
+      "scaleFactor": 1.5,
+      "primary": true
+    }
+  ],
+  "samplingPlan": {
+    "strategy": "定时读取；设定延时不代表实际采样间隔",
+    "activeDelayMs": 33,
+    "idleDelayMs": 1000,
+    "warmupMs": 1000,
+    "cpuDurationMs": 30000,
+    "movementSamples": 20,
+    "movementSettleMs": 80,
+    "movementTimeoutMs": 500,
+    "latencyMethod": "移动命令前到 onUpdate 回调到达的单调时钟差；不轮询，不含 IPC 或屏幕呈现"
+  },
+  "versions": {
+    "node": "24.21.0",
+    "acorn": "8.18.0",
+    "ada": "4.0.0",
+    "amaro": "1.1.11",
+    "ares": "1.34.8",
+    "brotli": "1.2.0",
+    "cldr": "48.0",
+    "icu": "78.2",
+    "llhttp": "9.4.3",
+    "merve": "1.2.2",
+    "modules": "149",
+    "napi": "10",
+    "nbytes": "0.1.4",
+    "ncrypto": "0.0.1",
+    "nghttp2": "1.70.0",
+    "nghttp3": "",
+    "ngtcp2": "",
+    "openssl": "0.0.0",
+    "simdjson": "4.6.7",
+    "simdutf": "7.7.0",
+    "sqlite": "3.53.4",
+    "tz": "2025c",
+    "undici": "7.29.1",
+    "unicode": "17.0",
+    "uv": "1.52.1",
+    "uvwasi": "0.0.23",
+    "v8": "15.2.124.28-electron.0",
+    "zlib": "1.3.2.1-motley",
+    "zstd": "1.6.0",
+    "electron": "44.5.1",
+    "chrome": "152.0.7977.130"
+  },
+  "checks": [
+    {
+      "name": "读取四类目标",
+      "status": "passed"
+    },
+    {
+      "name": "创建独立 Legacy 回归窗口",
+      "status": "passed"
+    },
+    {
+      "name": "读取独立 Legacy 回归窗口",
+      "status": "passed"
+    },
+    {
+      "name": "屏幕外置顶顺序回归",
+      "status": "passed"
+    },
+    {
+      "name": "关闭屏幕外置顶回归窗口",
+      "status": "passed"
+    },
+    {
+      "name": "清理独立 Legacy 进程",
+      "status": "passed"
+    },
+    {
+      "name": "清理测试窗口及上下文",
+      "status": "passed"
+    }
+  ],
+  "apps": [
+    {
+      "name": "记事本",
+      "original": {
+        "id": "55908626",
+        "pid": 23764,
+        "className": "Notepad",
+        "bounds": {
+          "left": 1128,
+          "top": 287,
+          "right": 2713,
+          "bottom": 1548
+        },
+        "buttons": {
+          "left": 2500,
+          "right": 2712,
+          "top": 288,
+          "bottom": 332
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed"
+        },
+        {
+          "name": "只读按钮与截图路径",
+          "status": "passed"
+        }
+      ],
+      "caption": {
+        "predicted": {
+          "left": 2500,
+          "top": 288,
+          "right": 2712,
+          "bottom": 332
+        },
+        "formalWindow": {
+          "id": "55908626",
+          "pid": 23764,
+          "className": "Notepad",
+          "bounds": {
+            "left": 1128,
+            "top": 287,
+            "right": 2713,
+            "bottom": 1548
+          },
+          "buttons": {
+            "left": 2500,
+            "top": 288,
+            "right": 2712,
+            "bottom": 332
+          },
+          "buttonsSource": "hit-test",
+          "dpiAwareness": "per-monitor",
+          "windowDpi": 144,
+          "visible": true,
+          "minimized": false,
+          "maximized": false,
+          "fullscreen": false,
+          "cloaked": false,
+          "occludes": true,
+          "eligible": true,
+          "reason": ""
+        },
+        "titlebar": {
+          "cbSize": 140,
+          "rcTitleBar": {
+            "left": 1130,
+            "top": 290,
+            "right": 2711,
+            "bottom": 287
+          },
+          "rgstate": {
+            "0": 1048576,
+            "1": 32768,
+            "2": 0,
+            "3": 0,
+            "4": 32768,
+            "5": 0
+          },
+          "rgrect": [
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 2500,
+              "top": 288,
+              "right": 2571,
+              "bottom": 332
+            },
+            {
+              "left": 2571,
+              "top": 288,
+              "right": 2641,
+              "bottom": 332
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 2641,
+              "top": 288,
+              "right": 2712,
+              "bottom": 332
+            }
+          ]
+        },
+        "titlebarPrediction": {
+          "left": 2500,
+          "top": 288,
+          "right": 2712,
+          "bottom": 332
+        },
+        "predictionSource": "readWindows",
+        "uia": {
+          "canMaximize": true,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": true,
+          "errors": [
+            "UI Automation 没有找到唯一的 minimize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 maximize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+          ],
+          "valid": false,
+          "buttons": []
+        },
+        "uiaError": [
+          "UI Automation 没有找到唯一的 minimize 标题栏按钮（数量 0）。",
+          "UI Automation 没有找到唯一的 maximize 标题栏按钮（数量 0）。",
+          "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+        ],
+        "hitInputCoordinates": "physical",
+        "hitBounds": {
+          "left": 2500,
+          "right": 2712,
+          "top": 288,
+          "bottom": 332
+        },
+        "comparisons": [
+          {
+            "source": "WM_NCHITTEST 扫描",
+            "bounds": {
+              "left": 2500,
+              "right": 2712,
+              "top": 288,
+              "bottom": 332
+            },
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": 0
+          }
+        ],
+        "captureMethod": "PrintWindow",
+        "capturePlan": {
+          "method": "PrintWindow",
+          "windowDpi": 144,
+          "owners": [
+            {
+              "y": 288,
+              "rootClass": "CabinetWClass",
+              "rootHandle": 528670,
+              "isTarget": false,
+              "x": 2477
+            },
+            {
+              "y": 288,
+              "rootClass": "CabinetWClass",
+              "rootHandle": 528670,
+              "isTarget": false,
+              "x": 2711
+            },
+            {
+              "y": 332,
+              "rootClass": "CabinetWClass",
+              "rootHandle": 528670,
+              "isTarget": false,
+              "x": 2477
+            },
+            {
+              "y": 332,
+              "rootClass": "CabinetWClass",
+              "rootHandle": 528670,
+              "isTarget": false,
+              "x": 2711
+            },
+            {
+              "y": 310,
+              "rootClass": "CabinetWClass",
+              "rootHandle": 528670,
+              "isTarget": false,
+              "x": 2594
+            }
+          ],
+          "outer": {
+            "left": 1121,
+            "right": 2720,
+            "bottom": 1555,
+            "top": 287
+          },
+          "awareness": 2,
+          "regionVisible": false
+        }
+      },
+      "movementToUpdateMs": [],
+      "movementErrors": [],
+      "observedSampleIntervalsMs": [],
+      "window": {
+        "id": "55908626",
+        "pid": 23764,
+        "className": "Notepad",
+        "bounds": {
+          "left": 1128,
+          "top": 287,
+          "right": 2713,
+          "bottom": 1548
+        },
+        "buttons": {
+          "left": 2500,
+          "top": 288,
+          "right": 2712,
+          "bottom": 332
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "capabilities": {
+        "canMinimize": true,
+        "canMaximize": true
+      }
+    },
+    {
+      "name": "浏览器",
+      "original": {
+        "id": "198178",
+        "pid": 25732,
+        "className": "Chrome_WidgetWin_1",
+        "bounds": {
+          "left": 289,
+          "top": 206,
+          "right": 2881,
+          "bottom": 1752
+        },
+        "buttons": {
+          "left": 2675,
+          "right": 2880,
+          "top": 208,
+          "bottom": 266
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed"
+        },
+        {
+          "name": "只读按钮与截图路径",
+          "status": "passed"
+        }
+      ],
+      "caption": {
+        "predicted": {
+          "left": 2675,
+          "right": 2880,
+          "top": 208,
+          "bottom": 266
+        },
+        "formalWindow": {
+          "id": "198178",
+          "pid": 25732,
+          "className": "Chrome_WidgetWin_1",
+          "bounds": {
+            "left": 289,
+            "top": 206,
+            "right": 2881,
+            "bottom": 1752
+          },
+          "buttons": {
+            "left": 2675,
+            "right": 2880,
+            "top": 208,
+            "bottom": 266
+          },
+          "buttonsSource": "hit-test",
+          "dpiAwareness": "per-monitor",
+          "windowDpi": 144,
+          "visible": true,
+          "minimized": false,
+          "maximized": false,
+          "fullscreen": false,
+          "cloaked": false,
+          "occludes": true,
+          "eligible": true,
+          "reason": ""
+        },
+        "titlebar": {
+          "cbSize": 140,
+          "rcTitleBar": {
+            "left": 291,
+            "top": 209,
+            "right": 2879,
+            "bottom": 206
+          },
+          "rgstate": {
+            "0": 1048576,
+            "1": 32768,
+            "2": 0,
+            "3": 0,
+            "4": 32768,
+            "5": 0
+          },
+          "rgrect": [
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            }
+          ]
+        },
+        "titlebarPrediction": null,
+        "predictionSource": "readWindows",
+        "uia": {
+          "canMaximize": true,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": true,
+          "errors": [],
+          "valid": true,
+          "buttons": [
+            {
+              "left": 2675,
+              "bottom": 266,
+              "top": 207,
+              "right": 2743,
+              "kind": "minimize",
+              "frameworkId": "Chrome"
+            },
+            {
+              "left": 2742,
+              "bottom": 266,
+              "top": 207,
+              "right": 2811,
+              "kind": "maximize",
+              "frameworkId": "Chrome"
+            },
+            {
+              "left": 2811,
+              "bottom": 266,
+              "top": 207,
+              "right": 2880,
+              "kind": "close",
+              "frameworkId": "Chrome"
+            }
+          ]
+        },
+        "hitInputCoordinates": "physical",
+        "hitBounds": {
+          "left": 2675,
+          "right": 2880,
+          "top": 208,
+          "bottom": 266
+        },
+        "comparisons": [
+          {
+            "source": "UI Automation",
+            "bounds": {
+              "left": 2675,
+              "right": 2880,
+              "top": 207,
+              "bottom": 266
+            },
+            "horizontalMatch": true,
+            "topDifference": 1,
+            "bottomDifference": 0
+          },
+          {
+            "source": "WM_NCHITTEST 扫描",
+            "bounds": {
+              "left": 2675,
+              "right": 2880,
+              "top": 208,
+              "bottom": 266
+            },
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": 0
+          }
+        ],
+        "captureMethod": "PrintWindow",
+        "capturePlan": {
+          "method": "PrintWindow",
+          "windowDpi": 144,
+          "owners": [
+            {
+              "y": 207,
+              "rootClass": "CabinetWClass",
+              "rootHandle": 528670,
+              "isTarget": false,
+              "x": 2652
+            },
+            {
+              "y": 207,
+              "rootClass": "Chrome_WidgetWin_1",
+              "rootHandle": 198178,
+              "isTarget": true,
+              "x": 2879
+            },
+            {
+              "y": 266,
+              "rootClass": "CabinetWClass",
+              "rootHandle": 528670,
+              "isTarget": false,
+              "x": 2652
+            },
+            {
+              "y": 266,
+              "rootClass": "Chrome_WidgetWin_1",
+              "rootHandle": 198178,
+              "isTarget": true,
+              "x": 2879
+            },
+            {
+              "y": 237,
+              "rootClass": "Chrome_WidgetWin_1",
+              "rootHandle": 198178,
+              "isTarget": true,
+              "x": 2766
+            }
+          ],
+          "outer": {
+            "left": 280,
+            "right": 2890,
+            "bottom": 1761,
+            "top": 206
+          },
+          "awareness": 2,
+          "regionVisible": false
+        }
+      },
+      "movementToUpdateMs": [],
+      "movementErrors": [],
+      "observedSampleIntervalsMs": [],
+      "window": {
+        "id": "198178",
+        "pid": 25732,
+        "className": "Chrome_WidgetWin_1",
+        "bounds": {
+          "left": 289,
+          "top": 206,
+          "right": 2881,
+          "bottom": 1752
+        },
+        "buttons": {
+          "left": 2675,
+          "right": 2880,
+          "top": 208,
+          "bottom": 266
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "capabilities": {
+        "canMinimize": true,
+        "canMaximize": true
+      }
+    },
+    {
+      "name": "资源管理器",
+      "original": {
+        "id": "528670",
+        "pid": 16584,
+        "className": "CabinetWClass",
+        "bounds": {
+          "left": 934,
+          "top": 95,
+          "right": 2725,
+          "bottom": 1251
+        },
+        "buttons": {
+          "left": 2512,
+          "top": 96,
+          "right": 2724,
+          "bottom": 140
+        },
+        "buttonsSource": "titlebar",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed"
+        },
+        {
+          "name": "只读按钮与截图路径",
+          "status": "passed"
+        }
+      ],
+      "caption": {
+        "predicted": {
+          "left": 2512,
+          "top": 96,
+          "right": 2724,
+          "bottom": 140
+        },
+        "formalWindow": {
+          "id": "528670",
+          "pid": 16584,
+          "className": "CabinetWClass",
+          "bounds": {
+            "left": 934,
+            "top": 95,
+            "right": 2725,
+            "bottom": 1251
+          },
+          "buttons": {
+            "left": 2512,
+            "top": 96,
+            "right": 2724,
+            "bottom": 140
+          },
+          "buttonsSource": "titlebar",
+          "dpiAwareness": "per-monitor",
+          "windowDpi": 144,
+          "visible": true,
+          "minimized": false,
+          "maximized": false,
+          "fullscreen": false,
+          "cloaked": false,
+          "occludes": true,
+          "eligible": true,
+          "reason": ""
+        },
+        "titlebar": {
+          "cbSize": 140,
+          "rcTitleBar": {
+            "left": 936,
+            "top": 98,
+            "right": 2723,
+            "bottom": 95
+          },
+          "rgstate": {
+            "0": 1048576,
+            "1": 32768,
+            "2": 0,
+            "3": 0,
+            "4": 32768,
+            "5": 0
+          },
+          "rgrect": [
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 2512,
+              "top": 96,
+              "right": 2583,
+              "bottom": 140
+            },
+            {
+              "left": 2583,
+              "top": 96,
+              "right": 2653,
+              "bottom": 140
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 2653,
+              "top": 96,
+              "right": 2724,
+              "bottom": 140
+            }
+          ]
+        },
+        "titlebarPrediction": {
+          "left": 2512,
+          "top": 96,
+          "right": 2724,
+          "bottom": 140
+        },
+        "predictionSource": "readWindows",
+        "uia": {
+          "canMaximize": true,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": true,
+          "errors": [],
+          "valid": true,
+          "buttons": [
+            {
+              "left": 2653,
+              "bottom": 140,
+              "top": 96,
+              "right": 2724,
+              "kind": "close",
+              "frameworkId": ""
+            },
+            {
+              "left": 2583,
+              "bottom": 140,
+              "top": 96,
+              "right": 2653,
+              "kind": "maximize",
+              "frameworkId": ""
+            },
+            {
+              "left": 2512,
+              "bottom": 140,
+              "top": 96,
+              "right": 2583,
+              "kind": "minimize",
+              "frameworkId": ""
+            }
+          ]
+        },
+        "hitError": {
+          "message": "系统命中测试没有找到关闭按钮，不能据此核对截图。返回值：[[10,11],[1,1787],[11,11]]"
+        },
+        "comparisons": [
+          {
+            "source": "UI Automation",
+            "bounds": {
+              "left": 2512,
+              "right": 2724,
+              "top": 96,
+              "bottom": 140
+            },
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": 0
+          }
+        ],
+        "captureMethod": "PrintWindow",
+        "capturePlan": {
+          "method": "PrintWindow",
+          "windowDpi": 144,
+          "owners": [
+            {
+              "y": 96,
+              "rootClass": "CabinetWClass",
+              "rootHandle": 528670,
+              "isTarget": true,
+              "x": 2489
+            },
+            {
+              "y": 96,
+              "rootClass": "CabinetWClass",
+              "rootHandle": 528670,
+              "isTarget": true,
+              "x": 2723
+            },
+            {
+              "y": 140,
+              "rootClass": "CabinetWClass",
+              "rootHandle": 528670,
+              "isTarget": true,
+              "x": 2489
+            },
+            {
+              "y": 140,
+              "rootClass": "CabinetWClass",
+              "rootHandle": 528670,
+              "isTarget": true,
+              "x": 2723
+            },
+            {
+              "y": 118,
+              "rootClass": "CabinetWClass",
+              "rootHandle": 528670,
+              "isTarget": true,
+              "x": 2606
+            }
+          ],
+          "outer": {
+            "left": 925,
+            "right": 2734,
+            "bottom": 1260,
+            "top": 95
+          },
+          "awareness": 2,
+          "regionVisible": true
+        }
+      },
+      "movementToUpdateMs": [],
+      "movementErrors": [],
+      "observedSampleIntervalsMs": [],
+      "window": {
+        "id": "528670",
+        "pid": 16584,
+        "className": "CabinetWClass",
+        "bounds": {
+          "left": 934,
+          "top": 95,
+          "right": 2725,
+          "bottom": 1251
+        },
+        "buttons": {
+          "left": 2512,
+          "top": 96,
+          "right": 2724,
+          "bottom": 140
+        },
+        "buttonsSource": "titlebar",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "capabilities": {
+        "canMinimize": true,
+        "canMaximize": true
+      }
+    },
+    {
+      "name": "DPI 不感知老程序",
+      "original": {
+        "id": "11997304",
+        "pid": 32524,
+        "className": "#32770",
+        "bounds": {
+          "left": 167,
+          "top": 156,
+          "right": 931,
+          "bottom": 814
+        },
+        "buttons": null,
+        "buttonsSource": "none",
+        "dpiAwareness": "unaware",
+        "windowDpi": 96,
+        "visible": false,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": false,
+        "eligible": false,
+        "reason": "invisible"
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed"
+        },
+        {
+          "name": "只读按钮与截图路径",
+          "status": "passed"
+        }
+      ],
+      "caption": {
+        "predicted": null,
+        "formalWindow": {
+          "id": "11997304",
+          "pid": 32524,
+          "className": "#32770",
+          "bounds": {
+            "left": 167,
+            "top": 156,
+            "right": 931,
+            "bottom": 814
+          },
+          "buttons": null,
+          "buttonsSource": "none",
+          "dpiAwareness": "unaware",
+          "windowDpi": 96,
+          "visible": false,
+          "minimized": false,
+          "maximized": false,
+          "fullscreen": false,
+          "cloaked": false,
+          "occludes": false,
+          "eligible": false,
+          "reason": "invisible"
+        },
+        "titlebar": {
+          "cbSize": 140,
+          "rcTitleBar": {
+            "left": 192,
+            "top": 161,
+            "right": 930,
+            "bottom": 203
+          },
+          "rgstate": {
+            "0": 1048576,
+            "1": 32768,
+            "2": 32768,
+            "3": 32768,
+            "4": 32768,
+            "5": 0
+          },
+          "rgrect": [
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 879,
+              "top": 158,
+              "right": 932,
+              "bottom": 203
+            }
+          ]
+        },
+        "titlebarPrediction": {
+          "left": 879,
+          "top": 158,
+          "right": 932,
+          "bottom": 203
+        },
+        "predictionSource": "非站立窗口的同一 titlebarButtons 纯函数；不是可站顶边",
+        "uia": {
+          "canMaximize": false,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": false,
+          "errors": [
+            "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+          ],
+          "valid": false,
+          "buttons": []
+        },
+        "uiaError": [
+          "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+        ],
+        "hitInputCoordinates": "physical",
+        "hitBounds": {
+          "left": 877,
+          "right": 930,
+          "top": 168,
+          "bottom": 201
+        },
+        "comparisons": [
+          {
+            "source": "WM_NCHITTEST 扫描",
+            "bounds": {
+              "left": 877,
+              "right": 930,
+              "top": 168,
+              "bottom": 201
+            },
+            "horizontalMatch": true,
+            "topDifference": -10,
+            "bottomDifference": 2
+          }
+        ],
+        "captureMethod": "screen",
+        "capturePlan": {
+          "method": "screen",
+          "windowDpi": 96,
+          "owners": [
+            {
+              "y": 157,
+              "rootClass": "Chrome_WidgetWin_1",
+              "rootHandle": 6496016,
+              "isTarget": false,
+              "x": 854
+            },
+            {
+              "y": 157,
+              "rootClass": "Chrome_WidgetWin_1",
+              "rootHandle": 6496016,
+              "isTarget": false,
+              "x": 929
+            },
+            {
+              "y": 203,
+              "rootClass": "Chrome_WidgetWin_1",
+              "rootHandle": 6496016,
+              "isTarget": false,
+              "x": 854
+            },
+            {
+              "y": 203,
+              "rootClass": "Chrome_WidgetWin_1",
+              "rootHandle": 6496016,
+              "isTarget": false,
+              "x": 929
+            },
+            {
+              "y": 180,
+              "rootClass": "Chrome_WidgetWin_1",
+              "rootHandle": 6496016,
+              "isTarget": false,
+              "x": 892
+            }
+          ],
+          "outer": {
+            "left": 156,
+            "right": 942,
+            "bottom": 825,
+            "top": 156
+          },
+          "awareness": 0,
+          "regionVisible": false
+        }
+      },
+      "movementToUpdateMs": [],
+      "movementErrors": [],
+      "observedSampleIntervalsMs": [],
+      "window": {
+        "id": "11997304",
+        "pid": 32524,
+        "className": "#32770",
+        "bounds": {
+          "left": 167,
+          "top": 156,
+          "right": 931,
+          "bottom": 814
+        },
+        "buttons": null,
+        "buttonsSource": "none",
+        "dpiAwareness": "unaware",
+        "windowDpi": 96,
+        "visible": false,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": false,
+        "eligible": false,
+        "reason": "invisible"
+      },
+      "capabilities": {
+        "canMinimize": false,
+        "canMaximize": false
+      }
+    },
+    {
+      "name": "独立 Legacy 回归窗口",
+      "original": {
+        "id": "57806732",
+        "pid": 27412,
+        "className": "TTCatsLegacyFixture",
+        "bounds": {
+          "left": 7331,
+          "top": 5700,
+          "right": 8209,
+          "bottom": 6289
+        },
+        "buttons": {
+          "left": 8053,
+          "right": 8208,
+          "top": 5712,
+          "bottom": 5745
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "unaware",
+        "windowDpi": 96,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed"
+        },
+        {
+          "name": "只读按钮与截图路径",
+          "status": "passed"
+        }
+      ],
+      "caption": {
+        "predicted": {
+          "left": 8053,
+          "right": 8208,
+          "top": 5712,
+          "bottom": 5745
+        },
+        "formalWindow": {
+          "id": "57806732",
+          "pid": 27412,
+          "className": "TTCatsLegacyFixture",
+          "bounds": {
+            "left": 7331,
+            "top": 5700,
+            "right": 8209,
+            "bottom": 6289
+          },
+          "buttons": {
+            "left": 8053,
+            "right": 8208,
+            "top": 5712,
+            "bottom": 5745
+          },
+          "buttonsSource": "hit-test",
+          "dpiAwareness": "unaware",
+          "windowDpi": 96,
+          "visible": true,
+          "minimized": false,
+          "maximized": false,
+          "fullscreen": false,
+          "cloaked": false,
+          "occludes": true,
+          "eligible": true,
+          "reason": ""
+        },
+        "titlebar": {
+          "cbSize": 140,
+          "rcTitleBar": {
+            "left": 7356,
+            "top": 5705,
+            "right": 8208,
+            "bottom": 5747
+          },
+          "rgstate": {
+            "0": 1048576,
+            "1": 32768,
+            "2": 0,
+            "3": 0,
+            "4": 32768,
+            "5": 0
+          },
+          "rgrect": [
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 7997,
+              "top": 5702,
+              "right": 8068,
+              "bottom": 5747
+            },
+            {
+              "left": 8069,
+              "top": 5702,
+              "right": 8140,
+              "bottom": 5747
+            },
+            {
+              "left": 0,
+              "top": 0,
+              "right": 0,
+              "bottom": 0
+            },
+            {
+              "left": 8138,
+              "top": 5702,
+              "right": 8209,
+              "bottom": 5747
+            }
+          ]
+        },
+        "titlebarPrediction": {
+          "left": 7997,
+          "top": 5702,
+          "right": 8209,
+          "bottom": 5747
+        },
+        "predictionSource": "readWindows",
+        "uia": {
+          "canMaximize": true,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": true,
+          "errors": [
+            "UI Automation 没有找到唯一的 minimize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 maximize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+          ],
+          "valid": false,
+          "buttons": []
+        },
+        "uiaError": [
+          "UI Automation 没有找到唯一的 minimize 标题栏按钮（数量 0）。",
+          "UI Automation 没有找到唯一的 maximize 标题栏按钮（数量 0）。",
+          "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+        ],
+        "hitInputCoordinates": "physical",
+        "hitBounds": {
+          "left": 8053,
+          "right": 8208,
+          "top": 5712,
+          "bottom": 5745
+        },
+        "comparisons": [
+          {
+            "source": "WM_NCHITTEST 扫描",
+            "bounds": {
+              "left": 8053,
+              "right": 8208,
+              "top": 5712,
+              "bottom": 5745
+            },
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": 0
+          }
+        ],
+        "captureMethod": "screen",
+        "capturePlan": {
+          "method": "screen",
+          "windowDpi": 96,
+          "owners": [
+            {
+              "y": 5711,
+              "rootClass": "TTCatsLegacyFixture",
+              "rootHandle": 57806732,
+              "isTarget": true,
+              "x": 8030
+            },
+            {
+              "y": 5711,
+              "rootClass": "TTCatsLegacyFixture",
+              "rootHandle": 57806732,
+              "isTarget": true,
+              "x": 8207
+            },
+            {
+              "y": 5745,
+              "rootClass": "TTCatsLegacyFixture",
+              "rootHandle": 57806732,
+              "isTarget": true,
+              "x": 8030
+            },
+            {
+              "y": 5745,
+              "rootClass": "TTCatsLegacyFixture",
+              "rootHandle": 57806732,
+              "isTarget": true,
+              "x": 8207
+            },
+            {
+              "y": 5728,
+              "rootClass": "TTCatsLegacyFixture",
+              "rootHandle": 57806732,
+              "isTarget": true,
+              "x": 8119
+            }
+          ],
+          "outer": {
+            "left": 7320,
+            "right": 8220,
+            "bottom": 6300,
+            "top": 5700
+          },
+          "awareness": 0,
+          "regionVisible": true
+        }
+      },
+      "movementToUpdateMs": [],
+      "movementErrors": [],
+      "observedSampleIntervalsMs": [],
+      "window": {
+        "id": "57806732",
+        "pid": 27412,
+        "className": "TTCatsLegacyFixture",
+        "bounds": {
+          "left": 7331,
+          "top": 5700,
+          "right": 8209,
+          "bottom": 6289
+        },
+        "buttons": {
+          "left": 8053,
+          "right": 8208,
+          "top": 5712,
+          "bottom": 5745
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "unaware",
+        "windowDpi": 96,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "capabilities": {
+        "canMinimize": true,
+        "canMaximize": true
+      }
+    }
+  ],
+  "phases": [],
+  "completedAppChecks": [
+    "记事本",
+    "浏览器",
+    "资源管理器",
+    "DPI 不感知老程序",
+    "独立 Legacy 回归窗口"
+  ],
+  "failures": [],
+  "zOrderPreflight": [
+    {
+      "target": "2888246",
+      "order": [
+        "2888246",
+        "57806732"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "57806732",
+      "order": [
+        "57806732",
+        "2888246"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "2888246",
+      "order": [
+        "2888246",
+        "57806732"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "57806732",
+      "order": [
+        "57806732",
+        "2888246"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "2888246",
+      "order": [
+        "2888246",
+        "57806732"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "57806732",
+      "order": [
+        "57806732",
+        "2888246"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "2888246",
+      "order": [
+        "2888246",
+        "57806732"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "57806732",
+      "order": [
+        "57806732",
+        "2888246"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "2888246",
+      "order": [
+        "2888246",
+        "57806732"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "57806732",
+      "order": [
+        "57806732",
+        "2888246"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "2888246",
+      "order": [
+        "2888246",
+        "57806732"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "57806732",
+      "order": [
+        "57806732",
+        "2888246"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "2888246",
+      "order": [
+        "2888246",
+        "57806732"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "57806732",
+      "order": [
+        "57806732",
+        "2888246"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "2888246",
+      "order": [
+        "2888246",
+        "57806732"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "57806732",
+      "order": [
+        "57806732",
+        "2888246"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "2888246",
+      "order": [
+        "2888246",
+        "57806732"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "57806732",
+      "order": [
+        "57806732",
+        "2888246"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "2888246",
+      "order": [
+        "2888246",
+        "57806732"
+      ],
+      "targetFirst": true
+    },
+    {
+      "target": "57806732",
+      "order": [
+        "57806732",
+        "2888246"
+      ],
+      "targetFirst": true
+    }
+  ],
+  "cpuMethod": "核对进程累计 CPU，列单核和整机百分比；不是完整应用性能",
+  "evidence": {
+    "note": "置顶顺序修复后的同次预检；五个目标及 20 次屏幕外排序全通过，不含实际屏幕图像或 CPU。"
+  }
+}

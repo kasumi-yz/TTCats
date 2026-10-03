@@ -3,6 +3,7 @@ import koffi from 'koffi';
 import type { Platform, ScreenPoint } from '../types';
 import { isFullscreenWindow, type Rect } from './fullscreen';
 export { FULLSCREEN_IGNORED_PROCESSES } from './fullscreen';
+export { readWindows } from './windows';
 const QUNS_BUSY = 2;
 const QUNS_RUNNING_D3D_FULL_SCREEN = 3;
 const QUNS_PRESENTATION_MODE = 4;

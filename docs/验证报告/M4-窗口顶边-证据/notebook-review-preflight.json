@@ -1,0 +1,798 @@
+{
+  "status": "passed",
+  "kind": "preflight",
+  "machine": "Zephyr",
+  "capturedAt": "2026-10-03T16:05:39.519Z",
+  "label": "2880x1800-150pct",
+  "displays": [
+    {
+      "id": 3742356399,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "workArea": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1728
+      },
+      "scaleFactor": 1.5,
+      "primary": true
+    }
+  ],
+  "samplingPlan": {
+    "strategy": "定时读取；设定延时不代表实际采样间隔",
+    "activeDelayMs": 33,
+    "idleDelayMs": 1000,
+    "warmupMs": 1000,
+    "cpuDurationMs": 30000,
+    "movementSamples": 20,
+    "movementSettleMs": 80,
+    "movementTimeoutMs": 500,
+    "latencyMethod": "移动命令前到 onUpdate 回调到达的单调时钟差；不轮询，不含 IPC 或屏幕呈现"
+  },
+  "scope": "只读预检；未移动用户窗口、未动鼠标、未取桌面图像、未测 CPU；不是完整实测。",
+  "checks": [
+    {
+      "name": "读取四类目标",
+      "status": "passed",
+      "errorMessages": []
+    },
+    {
+      "name": "创建独立 Legacy 回归窗口",
+      "status": "passed",
+      "errorMessages": []
+    },
+    {
+      "name": "读取独立 Legacy 回归窗口",
+      "status": "passed",
+      "errorMessages": []
+    },
+    {
+      "name": "清理独立 Legacy 进程",
+      "status": "passed",
+      "errorMessages": []
+    },
+    {
+      "name": "清理测试窗口及上下文",
+      "status": "passed",
+      "errorMessages": []
+    }
+  ],
+  "apps": [
+    {
+      "name": "记事本",
+      "original": {
+        "id": "55908626",
+        "pid": 23764,
+        "className": "Notepad",
+        "bounds": {
+          "left": 1128,
+          "top": 287,
+          "right": 2713,
+          "bottom": 1548
+        },
+        "buttons": {
+          "left": 2500,
+          "right": 2712,
+          "top": 288,
+          "bottom": 332
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "window": {
+        "id": "55908626",
+        "pid": 23764,
+        "className": "Notepad",
+        "bounds": {
+          "left": 1128,
+          "top": 287,
+          "right": 2713,
+          "bottom": 1548
+        },
+        "buttons": {
+          "left": 2500,
+          "top": 288,
+          "right": 2712,
+          "bottom": 332
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed",
+          "errorMessages": []
+        },
+        {
+          "name": "只读按钮与截图路径",
+          "status": "passed",
+          "errorMessages": []
+        }
+      ],
+      "capabilities": {
+        "canMinimize": true,
+        "canMaximize": true
+      },
+      "caption": {
+        "predicted": {
+          "left": 2500,
+          "top": 288,
+          "right": 2712,
+          "bottom": 332
+        },
+        "predictionSource": "readWindows",
+        "titlebarPrediction": {
+          "left": 2500,
+          "top": 288,
+          "right": 2712,
+          "bottom": 332
+        },
+        "uia": {
+          "canMaximize": true,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": true,
+          "errors": [
+            "UI Automation 没有找到唯一的 minimize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 maximize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+          ],
+          "valid": false,
+          "buttons": []
+        },
+        "hitBounds": {
+          "left": 2500,
+          "right": 2712,
+          "top": 288,
+          "bottom": 332
+        },
+        "hitErrorMessage": null,
+        "comparisons": [
+          {
+            "source": "WM_NCHITTEST 扫描",
+            "bounds": {
+              "left": 2500,
+              "right": 2712,
+              "top": 288,
+              "bottom": 332
+            },
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": 0
+          }
+        ],
+        "captureMethod": "PrintWindow",
+        "capturePlan": {
+          "windowDpi": 144,
+          "outer": {
+            "left": 1121,
+            "right": 2720,
+            "bottom": 1555,
+            "top": 287
+          },
+          "awareness": 2,
+          "regionVisible": false,
+          "method": "PrintWindow"
+        }
+      }
+    },
+    {
+      "name": "浏览器",
+      "original": {
+        "id": "198178",
+        "pid": 25732,
+        "className": "Chrome_WidgetWin_1",
+        "bounds": {
+          "left": 289,
+          "top": 206,
+          "right": 2881,
+          "bottom": 1752
+        },
+        "buttons": {
+          "left": 2675,
+          "right": 2880,
+          "top": 208,
+          "bottom": 266
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "window": {
+        "id": "198178",
+        "pid": 25732,
+        "className": "Chrome_WidgetWin_1",
+        "bounds": {
+          "left": 289,
+          "top": 206,
+          "right": 2881,
+          "bottom": 1752
+        },
+        "buttons": {
+          "left": 2675,
+          "right": 2880,
+          "top": 208,
+          "bottom": 266
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed",
+          "errorMessages": []
+        },
+        {
+          "name": "只读按钮与截图路径",
+          "status": "passed",
+          "errorMessages": []
+        }
+      ],
+      "capabilities": {
+        "canMinimize": true,
+        "canMaximize": true
+      },
+      "caption": {
+        "predicted": {
+          "left": 2675,
+          "right": 2880,
+          "top": 208,
+          "bottom": 266
+        },
+        "predictionSource": "readWindows",
+        "titlebarPrediction": null,
+        "uia": {
+          "canMaximize": true,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": true,
+          "errors": [],
+          "valid": true,
+          "buttons": [
+            {
+              "left": 2675,
+              "bottom": 266,
+              "top": 207,
+              "right": 2743,
+              "kind": "minimize",
+              "frameworkId": "Chrome"
+            },
+            {
+              "left": 2742,
+              "bottom": 266,
+              "top": 207,
+              "right": 2811,
+              "kind": "maximize",
+              "frameworkId": "Chrome"
+            },
+            {
+              "left": 2811,
+              "bottom": 266,
+              "top": 207,
+              "right": 2880,
+              "kind": "close",
+              "frameworkId": "Chrome"
+            }
+          ]
+        },
+        "hitBounds": {
+          "left": 2675,
+          "right": 2880,
+          "top": 208,
+          "bottom": 266
+        },
+        "hitErrorMessage": null,
+        "comparisons": [
+          {
+            "source": "UI Automation",
+            "bounds": {
+              "left": 2675,
+              "right": 2880,
+              "top": 207,
+              "bottom": 266
+            },
+            "horizontalMatch": true,
+            "topDifference": 1,
+            "bottomDifference": 0
+          },
+          {
+            "source": "WM_NCHITTEST 扫描",
+            "bounds": {
+              "left": 2675,
+              "right": 2880,
+              "top": 208,
+              "bottom": 266
+            },
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": 0
+          }
+        ],
+        "captureMethod": "PrintWindow",
+        "capturePlan": {
+          "windowDpi": 144,
+          "outer": {
+            "left": 280,
+            "right": 2890,
+            "bottom": 1761,
+            "top": 206
+          },
+          "awareness": 2,
+          "regionVisible": true,
+          "method": "PrintWindow"
+        }
+      }
+    },
+    {
+      "name": "资源管理器",
+      "original": {
+        "id": "528670",
+        "pid": 16584,
+        "className": "CabinetWClass",
+        "bounds": {
+          "left": 934,
+          "top": 95,
+          "right": 2725,
+          "bottom": 1251
+        },
+        "buttons": {
+          "left": 2512,
+          "top": 96,
+          "right": 2724,
+          "bottom": 140
+        },
+        "buttonsSource": "titlebar",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "window": {
+        "id": "528670",
+        "pid": 16584,
+        "className": "CabinetWClass",
+        "bounds": {
+          "left": 934,
+          "top": 95,
+          "right": 2725,
+          "bottom": 1251
+        },
+        "buttons": {
+          "left": 2512,
+          "top": 96,
+          "right": 2724,
+          "bottom": 140
+        },
+        "buttonsSource": "titlebar",
+        "dpiAwareness": "per-monitor",
+        "windowDpi": 144,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed",
+          "errorMessages": []
+        },
+        {
+          "name": "只读按钮与截图路径",
+          "status": "passed",
+          "errorMessages": []
+        }
+      ],
+      "capabilities": {
+        "canMinimize": true,
+        "canMaximize": true
+      },
+      "caption": {
+        "predicted": {
+          "left": 2512,
+          "top": 96,
+          "right": 2724,
+          "bottom": 140
+        },
+        "predictionSource": "readWindows",
+        "titlebarPrediction": {
+          "left": 2512,
+          "top": 96,
+          "right": 2724,
+          "bottom": 140
+        },
+        "uia": {
+          "canMaximize": true,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": true,
+          "errors": [],
+          "valid": true,
+          "buttons": [
+            {
+              "left": 2653,
+              "bottom": 140,
+              "top": 96,
+              "right": 2724,
+              "kind": "close",
+              "frameworkId": ""
+            },
+            {
+              "left": 2583,
+              "bottom": 140,
+              "top": 96,
+              "right": 2653,
+              "kind": "maximize",
+              "frameworkId": ""
+            },
+            {
+              "left": 2512,
+              "bottom": 140,
+              "top": 96,
+              "right": 2583,
+              "kind": "minimize",
+              "frameworkId": ""
+            }
+          ]
+        },
+        "hitBounds": null,
+        "hitErrorMessage": "系统命中测试没有找到关闭按钮，不能据此核对截图。返回值：[[10,11],[1,1787],[11,11]]",
+        "comparisons": [
+          {
+            "source": "UI Automation",
+            "bounds": {
+              "left": 2512,
+              "right": 2724,
+              "top": 96,
+              "bottom": 140
+            },
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": 0
+          }
+        ],
+        "captureMethod": "PrintWindow",
+        "capturePlan": {
+          "windowDpi": 144,
+          "outer": {
+            "left": 925,
+            "right": 2734,
+            "bottom": 1260,
+            "top": 95
+          },
+          "awareness": 2,
+          "regionVisible": true,
+          "method": "PrintWindow"
+        }
+      }
+    },
+    {
+      "name": "DPI 不感知老程序",
+      "original": {
+        "id": "11997304",
+        "pid": 32524,
+        "className": "#32770",
+        "bounds": {
+          "left": 167,
+          "top": 156,
+          "right": 931,
+          "bottom": 814
+        },
+        "buttons": null,
+        "buttonsSource": "none",
+        "dpiAwareness": "unaware",
+        "windowDpi": 96,
+        "visible": false,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": false,
+        "eligible": false,
+        "reason": "invisible"
+      },
+      "window": {
+        "id": "11997304",
+        "pid": 32524,
+        "className": "#32770",
+        "bounds": {
+          "left": 167,
+          "top": 156,
+          "right": 931,
+          "bottom": 814
+        },
+        "buttons": null,
+        "buttonsSource": "none",
+        "dpiAwareness": "unaware",
+        "windowDpi": 96,
+        "visible": false,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": false,
+        "eligible": false,
+        "reason": "invisible"
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed",
+          "errorMessages": []
+        },
+        {
+          "name": "只读按钮与截图路径",
+          "status": "passed",
+          "errorMessages": []
+        }
+      ],
+      "capabilities": {
+        "canMinimize": false,
+        "canMaximize": false
+      },
+      "caption": {
+        "predicted": null,
+        "predictionSource": "非站立窗口的同一 titlebarButtons 纯函数；不是可站顶边",
+        "titlebarPrediction": {
+          "left": 879,
+          "top": 158,
+          "right": 932,
+          "bottom": 203
+        },
+        "uia": {
+          "canMaximize": false,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": false,
+          "errors": [
+            "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+          ],
+          "valid": false,
+          "buttons": []
+        },
+        "hitBounds": {
+          "left": 877,
+          "right": 930,
+          "top": 168,
+          "bottom": 201
+        },
+        "hitErrorMessage": null,
+        "comparisons": [
+          {
+            "source": "WM_NCHITTEST 扫描",
+            "bounds": {
+              "left": 877,
+              "right": 930,
+              "top": 168,
+              "bottom": 201
+            },
+            "horizontalMatch": true,
+            "topDifference": -10,
+            "bottomDifference": 2
+          }
+        ],
+        "captureMethod": "screen",
+        "capturePlan": {
+          "windowDpi": 96,
+          "outer": {
+            "left": 156,
+            "right": 942,
+            "bottom": 825,
+            "top": 156
+          },
+          "awareness": 0,
+          "regionVisible": false,
+          "method": "screen"
+        }
+      }
+    },
+    {
+      "name": "独立 Legacy 回归窗口",
+      "original": {
+        "id": "12521206",
+        "pid": 26572,
+        "className": "TTCatsLegacyFixture",
+        "bounds": {
+          "left": 7331,
+          "top": 5700,
+          "right": 8209,
+          "bottom": 6289
+        },
+        "buttons": {
+          "left": 8053,
+          "right": 8208,
+          "top": 5712,
+          "bottom": 5745
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "unaware",
+        "windowDpi": 96,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "window": {
+        "id": "12521206",
+        "pid": 26572,
+        "className": "TTCatsLegacyFixture",
+        "bounds": {
+          "left": 7331,
+          "top": 5700,
+          "right": 8209,
+          "bottom": 6289
+        },
+        "buttons": {
+          "left": 8053,
+          "right": 8208,
+          "top": 5712,
+          "bottom": 5745
+        },
+        "buttonsSource": "hit-test",
+        "dpiAwareness": "unaware",
+        "windowDpi": 96,
+        "visible": true,
+        "minimized": false,
+        "maximized": false,
+        "fullscreen": false,
+        "cloaked": false,
+        "occludes": true,
+        "eligible": true,
+        "reason": ""
+      },
+      "checks": [
+        {
+          "name": "目标存在及 DPI",
+          "status": "passed",
+          "errorMessages": []
+        },
+        {
+          "name": "只读按钮与截图路径",
+          "status": "passed",
+          "errorMessages": []
+        }
+      ],
+      "capabilities": {
+        "canMinimize": true,
+        "canMaximize": true
+      },
+      "caption": {
+        "predicted": {
+          "left": 8053,
+          "right": 8208,
+          "top": 5712,
+          "bottom": 5745
+        },
+        "predictionSource": "readWindows",
+        "titlebarPrediction": {
+          "left": 7997,
+          "top": 5702,
+          "right": 8209,
+          "bottom": 5747
+        },
+        "uia": {
+          "canMaximize": true,
+          "root": {
+            "offscreen": false,
+            "frameworkId": "Win32"
+          },
+          "canMinimize": true,
+          "errors": [
+            "UI Automation 没有找到唯一的 minimize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 maximize 标题栏按钮（数量 0）。",
+            "UI Automation 没有找到唯一的 close 标题栏按钮（数量 0）。"
+          ],
+          "valid": false,
+          "buttons": []
+        },
+        "hitBounds": {
+          "left": 8053,
+          "right": 8208,
+          "top": 5712,
+          "bottom": 5745
+        },
+        "hitErrorMessage": null,
+        "comparisons": [
+          {
+            "source": "WM_NCHITTEST 扫描",
+            "bounds": {
+              "left": 8053,
+              "right": 8208,
+              "top": 5712,
+              "bottom": 5745
+            },
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": 0
+          }
+        ],
+        "captureMethod": "screen",
+        "capturePlan": {
+          "windowDpi": 96,
+          "outer": {
+            "left": 7320,
+            "right": 8220,
+            "bottom": 6300,
+            "top": 5700
+          },
+          "awareness": 0,
+          "regionVisible": true,
+          "method": "screen"
+        }
+      }
+    }
+  ],
+  "completedAppChecks": [
+    "记事本",
+    "浏览器",
+    "资源管理器",
+    "DPI 不感知老程序",
+    "独立 Legacy 回归窗口"
+  ],
+  "phases": [],
+  "failures": []
+}
