@@ -1,0 +1,74 @@
+{
+  "record_version": 1,
+  "manual": {
+    "manifest": "D:\\TTCats-素材库\\factory\\clip-c8c65cc1533044aa\\finalize\\manifest.json",
+    "source_sha256": "3683554145a8f9555ce05abc73e4bc243ea72b531bdc873b2d86ebbb25c40231",
+    "video_sha256": "39a6de5a83005e38b98bc73c949be2d384147fed0d429a6729fa310b76616bb4",
+    "status": "accepted",
+    "range": {
+      "start": 40,
+      "end": 73
+    },
+    "fps": 24.0,
+    "frame_count": 33,
+    "duration_seconds": 1.375,
+    "width": 726,
+    "height": 306,
+    "display_height": 153,
+    "raw_speed": 176.0,
+    "display_speed": 97.53893129770992,
+    "alpha_seam_mean_error": 0.03038326009386091,
+    "alpha_adjacent_mean_error": 0.03561032529605587,
+    "alpha_seam_to_adjacent_ratio": 0.8532148988042549,
+    "nose_missing_frames": 0,
+    "assessment": null
+  },
+  "automatic": {
+    "manifest": "D:\\TTCats-素材库\\factory\\clip-319ec0b29bc5478b\\finalize\\manifest.json",
+    "source_sha256": "3683554145a8f9555ce05abc73e4bc243ea72b531bdc873b2d86ebbb25c40231",
+    "video_sha256": "5047ccab7be43ed3db0db0c190aac5f67aa6758409a451e3c21aa83574a568f0",
+    "status": "pending",
+    "range": {
+      "start": 40,
+      "end": 73
+    },
+    "fps": 24.0,
+    "frame_count": 33,
+    "duration_seconds": 1.375,
+    "width": 726,
+    "height": 306,
+    "display_height": 153,
+    "raw_speed": 173.6424461269656,
+    "display_speed": 96.23237854059316,
+    "alpha_seam_mean_error": 0.045172461393495254,
+    "alpha_adjacent_mean_error": 0.035433271982697905,
+    "alpha_seam_to_adjacent_ratio": 1.2748600077224876,
+    "nose_missing_frames": 0,
+    "assessment": {
+      "score": 83.99,
+      "reasons": [
+        "首帧与姿势帧主体颜色差（近似）：0.02254（参考上限 0.08）",
+        "尾帧与姿势帧主体颜色差（近似）：0.02157（参考上限 0.08）",
+        "背景四角颜色偏差（不能识别镜头抖动）：6（参考上限 8）",
+        "软毛边接近背景色的比例（可能包含本色毛发）：0.0632（参考上限 0.1）",
+        "实际导出末帧到首帧的轮廓/颜色差：0.009393（参考上限 0.08）",
+        "脚是否打滑：未取得完整、可信肉垫轨迹，待人工逐脚检查；锚点位移不当作脚位移。",
+        "自动值仅供挑选，未人工确认；身份、四肢/尾巴结构、镜像花纹仍需审看。",
+        "平移锚点来自主体轮廓拟合，不等于每只脚着地；关键点匹配不可信时记 null。",
+        "固定锚点采用本猫配置测量值，无法证明原始肉垫没有移动。"
+      ]
+    }
+  },
+  "differences": {
+    "frame_count": 0,
+    "duration_seconds": 0.0,
+    "width": 0,
+    "height": 0,
+    "display_height": 0,
+    "raw_speed": -2.357553873034391,
+    "display_speed": -1.306552757116762,
+    "alpha_seam_mean_error": 0.014789201299634343,
+    "raw_anchor_x_mean_absolute_error": 16.493991457969564
+  },
+  "note": "成品解码量测与单帧对照；不代表新画面获用户认可或真实桌面交互通过。"
+}

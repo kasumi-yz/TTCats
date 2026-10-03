@@ -1,0 +1,24 @@
+{
+  "record_version": 1,
+  "date": "2026-10-03",
+  "old_batch": "issue-105-h3-live",
+  "new_config": "D:\\TTCats-素材库\\work\\issue-105\\h3-live-reprocessed-verified.json",
+  "cli_exit_code": 0,
+  "downloaded_seeds": [
+    42,
+    1234
+  ],
+  "source_hashes_match": true,
+  "asset_logs_unchanged": true,
+  "old_state_sources_logs_and_candidates_unchanged": true,
+  "old_file_hashes": {
+    "D:\\TTCats-素材库\\batches\\issue-105-h3-live\\state.json": "1ae48f3a5e308b3660fd330b837e28dc7b8aed273818e52561d5a1eabaa6a970",
+    "D:\\TTCats-素材库\\inbox\\h3-batch-396912cd2433471e9d7959167abf91ed.mp4": "9a085dd0d65510205f43877c5654d57cc65d7e668b92c219203f2c88201a012a",
+    "D:\\TTCats-素材库\\generation-records\\7d16c6e08c4947578ecfe2183207100b803a84ccfffc37d54836b8ad996fff2f\\attempt-5.json": "62ed9cc66c792fb48f5ae60f30891a1b608501ce36eb59dc051d2262234a5f93",
+    "D:\\TTCats-素材库\\factory\\clip-d27a30dfa2ea4886\\finalize\\manifest.json": "ccbb109e529a23e982adc6f54a0d30012aaa5b8e78d88a8a0cd4f278280239bb",
+    "D:\\TTCats-素材库\\inbox\\h3-batch-b14a550d3b6d4112ae9e346948761fd1.mp4": "e166067a8aa2730fcfe4700d79b4c897fa52f5eed873fcf2adf7e85fd46c18bc",
+    "D:\\TTCats-素材库\\generation-records\\7d16c6e08c4947578ecfe2183207100b803a84ccfffc37d54836b8ad996fff2f\\attempt-6.json": "d557e8a397d37f51ac0d1ff38705d85c7fc1eb532361e60443d0fcb0fe17208d",
+    "D:\\TTCats-素材库\\factory\\clip-fa9f9c0ee73d4d40\\finalize\\manifest.json": "e9670fca97afbda42db2a2a1865fd8f79c31b4db31d9540e0d65b6b47e887d13"
+  },
+  "note": "本轮仅验证从旧版真实 H3 批次导出复用配置；不调用生成服务，不重跑 GPU，不声明新版画面接受。新配置完整加工与不重提由合成集成测试验证。"
+}

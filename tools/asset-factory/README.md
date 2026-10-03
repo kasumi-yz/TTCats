@@ -1,8 +1,135 @@
-# 素材工厂 v0
+# 素材工厂 v1
 
-对应 #4、ADR-0006。把仓库外收件箱的原始视频依次加工成候选，再由人确认后输出片段。
+对应 #4、#105、ADR-0006。把仓库外的原始视频加工成候选，再由人确认后输出片段。
 不按猫的名字写死处理规则。所有生成记录、模型、拆帧、预览和结果都放在素材库。
-没有挑片台、自动评分或自动判断合格，这些属于 M1.5。
+v1 增加批量 H3 生成、续跑、量化初筛与自动处理。挑片台窗口和挑选结果消费由 #104 实现，
+格式沿用已合并 #130 的 `docs/接口/挑片台.md`；评分只供参考，工具不会接受或淘汰真实猫的候选。
+
+## v1：一条命令批量生成和处理
+
+复用已安装的 H3/ComfyUI、BiRefNet、GPU 依赖及 ffmpeg。命令不会启动 ComfyUI、安装依赖或下载模型。
+开始前确认本机 ComfyUI 在配置的地址运行，生成期间不要进行独占桌面/性能验收。
+需新安装或下载时，先给用户列出大小、存放位置和影响，等确认后再动手。
+
+1. 将 `examples/batch-cat.json` **复制到仓库外素材库**，按该猫已认可的姿势帧和测量值填写。
+   样例提示词与数值仅展示格式，不能作为其他猫的已认可参数。路径相对于这份配置文件，
+   支持绝对路径；真实照片、姿势帧和原始视频不进入仓库。
+2. 猫的 id、中文名、外貌 `appearance`、实际背景 RGB、画布、站姿高度、显示高度、
+   后脚位置 `rear_foot`、地面线 `ground_y`、姿势帧和初始关键点都集中在 `cat` 中。
+   提示词只展开显式的 `{appearance}`，不改写其余原文；展开前后文本和 SHA-256 写入档案。
+3. `clips` 写每段的共享片段名、类型、起止姿势、提示词、种子和生成时长。
+   `action_seconds` 是提示词要求的**实际动作时长**，不要把生成总时长填进去。
+   `first_frame`/`last_frame` 可覆盖起止姿势图，例如走路水平平移后的首尾帧。
+   `rear_foot` 可覆盖本段首帧测量值；走路首帧平移以后，不能照抄标准站姿的横坐标。
+
+```powershell
+cd '<当前工作树>\tools\asset-factory'
+$env:TTCATS_ASSET_ROOT = 'D:\TTCats-素材库'
+uv run --extra gpu asset-factory batch --config 'D:\TTCats-素材库\batch-cat.json'
+```
+
+串行执行每段的每个种子：H3 → 原始素材档案 → ingest → matte/去残色 → 自动建议/初筛 →
+深浅/镜像预览 → 按本猫比例重算显示高度 → 透明 WebM → 实际解码 alpha 的点击遮罩。
+所有候选的 `manifest.status` 都为 `pending`，没有自动创建人工接受记录。
+单项处理失败会保留原因并继续其他种子；有仍在运行或提交状态不确定的 H3 任务时停止排后续项。
+
+配置支持直接处理已有原片：在某段添加 `inputs`，每项包含 `seed`、`path`、
+符合共享 AssetLog 的 `asset_log`，可选 `generator_log`（原生成档案路径）。
+此时不调用 H3，实际种子以 `inputs` 为准；档案缺字段、源路径不符就停止，不能伪造生成记录。
+`asset_log.rawVideo` 填原视频的绝对路径，模型、工作流、提示词、次数和时间填真实值。
+
+### 续跑与失败恢复
+
+直接重跑同一条 `batch --config ...`。完成阶段原子发布，按原始文件和产物 SHA-256 复用；
+不重复拆帧/抠图/导出，不创建第二份任务。未完成阶段会重新执行。
+配置、姿势图、原片、生成档案、工作流、处理代码改变时，旧批次拒绝续跑。
+程序更新或加工产物损坏时，用下面的命令把旧批次**已下载且源哈希未变**的原片与 AssetLog 自动转成新配置：
+
+```powershell
+uv run --extra gpu asset-factory reuse-generated --config 'D:\TTCats-素材库\batch-cat.json' --id batch-cat-reprocessed --output 'D:\TTCats-素材库\batch-cat-reprocessed.json'
+uv run --extra gpu asset-factory batch --config 'D:\TTCats-素材库\batch-cat-reprocessed.json'
+```
+
+新配置以 `inputs` 加工原片，不调用 H3；每个候选在新 job 中重新加工，旧候选与人工挑选结果保留。
+仅包含已下载原片的种子；未生成、在途及失败项明确列出，不会被误报为已完成，也不会重提。
+保留原配置、旧 state 和生成档案；需要恢复在途项时，应先在原程序版本运行原批次。
+原片已改动或缺失时拒绝复用；只改批次 id 仍会重新生成，因此不要将它作为程序更新的恢复方式。
+同一批次的操作系统锁随进程退出释放；锁文件保留，不能手动删除正在使用的锁文件。
+
+`batches/<id>/state.json` 保存阶段、原任务号和产物身份；`report.json` 列出候选路径、分数和失败原因。
+H3 的每次实际提交另存 `generation-records`：模型清单/工作流版本、种子、次数、原文与展开文本、
+姿势图哈希、任务号、运行库及输出哈希。模型哈希来自安装清单，本次没有重新读取几十 GB 模型，
+档案明确 `verified_for_this_run: false`。下载的是本机生成结果，不是新模型或依赖。
+
+- 查询中断：保存任务号，下次查同一任务；不重提。生成成功但结果复制中断也从同一历史结果恢复。
+- 提交时断电/响应丢失：按持久 `client_id` 查询队列与历史；找不到或有多项时不猜测重提。
+  保持服务可访问后重跑原命令即可自动恢复唯一任务。服务重启导致历史丢失时，先查输出目录
+  `TTCats/<run_id>*`；有结果则保留原片和生成档案作为新批次 `inputs`，无法确认就停止。
+- **本人确认该任务从未提交**以后才用 `--retry-uncertain walk-42`；有重复生成风险，旧档案保留。
+- 明确拒绝提交（例如 HTTP 400）与确认生成报错都记为失败，修正服务/工作流问题后再用
+  `--retry-failed` 明确重试；次数继续累加。连接或响应丢失仍保留不确定状态。
+- 产物损坏/被修改：报错并保留原目录，用 `reuse-generated` 复用原片重新加工。
+  工厂只记录自身产物的首次发布哈希；挑片台的 `review-result.json`、备份和 `.review-lock`
+  可正常保存、改动和释放，不会被判为候选损坏。候选清单、视频和遮罩的损坏检测继续生效。
+
+### 自动检查、锚点和关键点的边界
+
+`auto/assessment.json` 保存测量方法、数值、参考阈值、0～100 参考分数和中文原因；
+共享候选清单只带 `assessment.score/reasons`。分数是已测项目 `100/(1+(数值/参考上限)^2)` 的平均，
+未测项不会被假装计为通过，不是“合格概率”，没有自动淘汰阈值。
+
+| 项目 | 自动测量 | 仍需人工检查 |
+|---|---|---|
+| 首尾 | 与实际起止姿势帧的主体 RGB 差 | 身份、细节和衔接观感 |
+| 背景 | 四角与配置背景色的偏差 | 镜头移动、地面线、手/人/文字/道具 |
+| 毛边 | 软透明边接近背景色的比例 | 真实毛色可能相似，需看深浅背景 |
+| 时长 | 归一化主体变化量检测开始/停下，与 action_seconds 比较 | 很小或被遮挡的动作可能漏测 |
+| 循环 | 建议区间末帧到首帧的归一化轮廓/颜色差 | 连续播放、最终解码接缝和脚接触 |
+| 脚 | 完整可信 rear-toe 模板轨迹时量固定后脚水平范围/地面线偏差 | 走路每只脚接触、遮挡肉垫、模板是否认对 |
+
+`anchor_mode`：`fixed` 使用本猫固定后脚与地面线、速度为 0；`translation` 按不透明主体水平移动
+建议匀速段、平滑锚点和速度；`silhouette` 保留 v0 轮廓底部建议，适用于无可靠固定锚点时的草稿。
+平移/轮廓只是代理，**不能当成真实脚趾没有打滑的证据**。锚点位置会影响换片段，必须挑选后核对。
+
+`cat.landmarks` 或单段 `landmarks` 可提供 `nose`、`scruff`、用于量测的 `rear-toe`：
+
+```json
+{"nose": {"point": {"x": 607.0, "y": 505.0}, "radius": 5, "search": 12, "max_error": 0.18}}
+```
+
+坐标必须是该段**原始第一帧**的测量点。局部纹理匹配逐帧追踪，遮挡、低纹理或误差过大记 null；
+未提供就不造轨迹。`rear-toe` 只作量测，不导出为游戏关键点；nose/scruff 建议保留原始帧坐标供挑片台修改。
+建议的裁剪区间、循环和锚点写入同一 `suggest/suggestion.json`，与候选实际导出一致。
+
+### 拎起和落地的可复用命令
+
+```powershell
+uv run --extra gpu asset-factory pickup-map clip-任务号 --options 'D:\TTCats-素材库\完整后颈标注.json'
+uv run --extra gpu asset-factory derive-land clip-源任务号 --start 0 --end 124 --seconds 0.9 --fps 48 --curve linear
+```
+
+`pickup-map` 要求每帧有效 scruff；以原始后颈上移量建立单调高度→帧号建议，记录非单调修正量，
+暂停/半途3倍返回/固定抓取偏移是接入建议，本命令不修改游戏。缺轨迹直接报错，不冒充跟手验收。
+`derive-land` 接受人选定的时长、半开源区间和 linear/ease-out 取帧曲线，
+从 ingest 解码帧选取、无插帧、无损 FFV1 保存派生原片。0.9 秒/48 fps 是43帧、实际43/48秒。
+`derivations` 保存每帧源索引、原始/派生路径与 SHA-256、实际 ffmpeg 命令，原始初筛不会被改写。
+派生原片再作为 `inputs` 批处理：按新裁剪重新算显示高度、跟踪关键点、生成遮罩。
+原片首尾和派生新首尾须分别检查，脚底/跟手/放下接缝的真实桌面验收不由本命令代替。
+
+### 与挑片台对接
+
+每个候选仍是 `factory/<job>/finalize/manifest.json`，配套 ingest、原尺寸 matte、
+suggest 和 `finalize/export-log.json.options`；增加的 `auto` 记录是工厂私有测量，不是另一份共享协议。
+比例依据在 `auto/measurements.json`：`stand_height`、`stand_display_height`、源哈希及本次裁剪高度。
+改变挑选区间后可以复用 `asset_factory.automation.display_height` 按该猫比例重算，不能继承旧高度。
+人工结果只沿用 #130 的 `review-result.json` 原始帧/像素/哈希及锁约定；读取、confirm/finalize 正式导出由 #104 接入。
+v1 不自动把任何真实候选改成 accepted，旧 v0 confirm/finalize 命令继续可用。
+
+### 验证证据
+
+豆豆走路的自动/手工量测见 [对比记录](validation/issue-105-walk-comparison.json)，
+两种子真实 H3 的中断续跑、无重复生成及最终遮罩校验见 [批处理记录](validation/issue-105-h3-live.json)。
+对比可用 `scripts/compare-candidates.py` 复现；实际素材保存在仓库外，候选仍待人工确认。
 
 ## 安装
 

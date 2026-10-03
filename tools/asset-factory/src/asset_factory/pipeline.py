@@ -21,11 +21,18 @@ from .storage import (
 )
 
 
-def ingest(root: Path, source: Path, cat: str, generator_log: Path | None = None) -> str:
+def ingest(
+    root: Path,
+    source: Path,
+    cat: str,
+    generator_log: Path | None = None,
+    *,
+    job_id: str | None = None,
+) -> str:
     source = source.resolve()
     if not source.is_file():
         raise FactoryError(f"猫「{cat}」：缺少原始视频 {source}")
-    job = f"clip-{uuid4().hex[:16]}"
+    job = job_id or f"clip-{uuid4().hex[:16]}"
     destination = job_path(root, job)
     with operation(root, "ingest", cat, {"source": str(source), "job": job}):
         try:
@@ -135,14 +142,14 @@ def matte(root: Path, job: str, model: Path, model_hash: str, background: tuple[
         log["model"] = matte_record.model_dump(mode="json")
 
 
-def suggest(root: Path, job: str):
+def suggest(root: Path, job: str, selection: Suggestion | None = None):
     directory = job_path(root, job)
     record = load_record(directory / "ingest.json", IngestRecord)
     with operation(root, "suggest", record.cat, {"job": job}):
         load_record(directory / "matte" / "matte.json", MatteRecord, record.cat)
         paths = frame_paths(directory, record, "matte")
         with new_directory(directory / "suggest") as temporary:
-            selection = make_suggestion(paths, record.fps, record.cat)
+            selection = selection or make_suggestion(paths, record.fps, record.cat)
             write_json(temporary / "suggestion.json", selection.model_dump(mode="json"))
             template = Confirmation(
                 selection=selection, manual_seconds=0.0, accepted=False, notes="尚未人工确认"
