@@ -287,6 +287,35 @@ test('M2 接线：入场出场、召唤全部、勿扰到期、快捷键及全�
   }
 });
 
+test('定时推进：没有操作或快进时，勿扰仍按真实时间到期并写回存档', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-real-tick-'));
+  mkdirSync(join(directory, 'TTCats'));
+  const state = defaultGameState(ids);
+  state.doNotDisturb = { mode: 'timed', until: Date.now() + 10_000 };
+  const file = join(directory, 'TTCats/save.json');
+  writeFileSync(
+    file,
+    JSON.stringify({ saveVersion: CURRENT_SAVE_VERSION, savedAt: Date.now(), state }),
+  );
+  const app = await launch(directory);
+  try {
+    const settings = await pageFor(app, 'panel=settings');
+    expect((await snapshot(settings)).doNotDisturb.mode).toBe('timed');
+    await expect
+      .poll(async () => (await snapshot(settings)).doNotDisturb.mode, { timeout: 15_000 })
+      .toBe('off');
+    await expect
+      .poll(
+        () =>
+          (JSON.parse(readFileSync(file, 'utf8')) as { state: { doNotDisturb: { mode: string } } })
+            .state.doNotDisturb.mode,
+      )
+      .toBe('off');
+  } finally {
+    await app.close();
+  }
+});
+
 test('最后一只猫：调试台关闭后仍走完出场，再暂停桌面层', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'ttcats-smoke-last-exit-'));
   mkdirSync(join(directory, 'TTCats'));
