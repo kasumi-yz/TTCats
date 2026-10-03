@@ -14,7 +14,8 @@ function setup({ patience = 0, scale = 1, relativeSize = 1, doNotDisturb = false
     ]),
     snapshot: initial,
     bounds: SCREEN,
-    now: 0,
+    // 先让入场走完，再从屏内开始测。
+    now: -60_000,
     random: () => 0.5,
   });
   stage.handleCommand({ type: 'debug/playClip', cat: id, clip: 'idle-stand' }, 0);
@@ -121,8 +122,8 @@ describe('在猫旁边连续点击让开（D10）', () => {
       expect(current.clip).toBe('sleep');
     }
     stage.applySnapshot({ ...initial, revision: 2, doNotDisturb: { mode: 'off' } }, 120000);
-    stage.update(240000);
-    expect(behavior(240000)).not.toBe('去睡觉');
+    // 关闭勿扰时立刻醒来；之后睡不睡由自主行为决定。
+    expect(behavior(120000)).not.toBe('去睡觉');
   });
 
   it('拎起和下落不受影响，模拟命令也不能覆盖悬空状态', () => {

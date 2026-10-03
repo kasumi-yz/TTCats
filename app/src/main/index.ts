@@ -19,12 +19,14 @@ import {
 import { createAppStatus } from './app-status';
 import { showCatMenu } from './cat-menu';
 import { createGameCommands } from './game-commands';
+import { createDiagnosticsExport } from './diagnostics';
 import { createGameSession } from './game-session';
 import { registerIpcRoutes } from './ipc-router';
 import { attachMainLog, createApplicationLog } from './log';
 import { configureOverlayGpu, createOverlay } from './overlay';
 import { createPanelWindows, sendToWindow } from './panel-windows';
-import { createPlatform } from './platform';
+import { createPlatform, readSystemInfo } from './platform';
+import { createPhoto } from './photo';
 import { attachRecovery } from './recovery';
 import { SaveStore } from './save';
 import { attachShutdown } from './shutdown';
@@ -124,6 +126,26 @@ if (!app.requestSingleInstanceLock()) {
         updateTray,
         report,
       });
+      const exportDiagnostics = createDiagnosticsExport({
+        logDirectory: log.directory,
+        saveFile: save.file,
+        contentDirectory: directory,
+        content,
+        safeMode: () => session.safeMode,
+        stopping,
+        overlayWindow: () => overlay?.window,
+        report,
+        system: readSystemInfo,
+      });
+      const photo = createPhoto({
+        overlay: () => overlay,
+        allowed: () =>
+          !session.safeMode &&
+          !stopping() &&
+          session.snapshot().settings.visibleCats.some((id) => Object.hasOwn(content.cats, id)),
+        updateTray,
+        report,
+      });
       const detachIpc = registerIpcRoutes({
         ipc: ipcMain,
         allowedSender: panels.allowedSender,
@@ -131,12 +153,8 @@ if (!app.requestSingleInstanceLock()) {
         acceptFacts: () => !session.safeMode && !stopping(),
         command,
         mainCommands: {
-          'photo/take': (message) => {
-            report(zh.interfaces.commandNotReady(message.type));
-          },
-          'diagnostics/export': (message) => {
-            report(zh.interfaces.commandNotReady(message.type));
-          },
+          'photo/take': photo.take,
+          'diagnostics/export': exportDiagnostics,
           'update/check': (message) => {
             report(zh.interfaces.commandNotReady(message.type));
           },
@@ -168,6 +186,8 @@ if (!app.requestSingleInstanceLock()) {
         },
         onWindow: (window) => {
           panels.registerWindow(window);
+          window.on('show', updateTray);
+          window.on('hide', updateTray);
           recovery = attachRecovery({
             overlay: window,
             save,
@@ -178,6 +198,7 @@ if (!app.requestSingleInstanceLock()) {
                 .snapshot()
                 .settings.visibleCats.filter((id) => Object.hasOwn(content.cats, id)),
             catName: (id) => names.get(id) ?? id,
+            exportDiagnostics,
             faultedCat: () => undefined,
             reload: async () => {
               await (await overlayReady).reload();
@@ -227,7 +248,7 @@ if (!app.requestSingleInstanceLock()) {
             app.quit();
           },
         }),
-        sections: [catMenuSection, captureMenuSection, applicationMenuSection],
+        sections: [catMenuSection, captureMenuSection, photo.menuSection, applicationMenuSection],
         openSettings: () => {
           panels.openPanel('settings');
         },

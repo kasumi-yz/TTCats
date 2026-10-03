@@ -51,6 +51,7 @@ export async function createOverlay(options: OverlayOptions) {
   let displayId: number | undefined;
   let lastFullscreenCheck = -Infinity;
   let rendererReady = false;
+  let photoCaptures = 0;
   const send = (message: MainToOverlay): void => {
     if (
       window &&
@@ -312,6 +313,19 @@ export async function createOverlay(options: OverlayOptions) {
     },
     rebuild,
     reload,
+    async withCaptureProtection<T>(capture: () => Promise<T>): Promise<T> {
+      const target = window;
+      if (!target || target.isDestroyed()) throw new Error(zh.photo.desktopChanged);
+      photoCaptures++;
+      try {
+        target.setContentProtection(true);
+        return await capture();
+      } finally {
+        photoCaptures--;
+        if (!target.isDestroyed())
+          target.setContentProtection(photoCaptures > 0 || !settings.showInScreenCapture);
+      }
+    },
     enterSafeMode(): void {
       safeMode = true;
       resetInput();
@@ -322,7 +336,8 @@ export async function createOverlay(options: OverlayOptions) {
       const moved = JSON.stringify(next.display) !== JSON.stringify(settings.display);
       settings = next;
       hidden = next.visibleCats.length === 0;
-      if (window && !window.isDestroyed()) window.setContentProtection(!next.showInScreenCapture);
+      if (window && !window.isDestroyed())
+        window.setContentProtection(photoCaptures > 0 || !next.showInScreenCapture);
       applyVisibility();
       poll();
       if (moved) changed();
