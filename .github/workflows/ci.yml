@@ -53,8 +53,42 @@ jobs:
       - if: steps.detect.outputs.present == 'true'
         run: uv run pytest
 
+  # 只改文档或猫咪内容数据的 PR 不需要启动程序：冒烟用的是 --test-content 测试猫，
+  # 真实猫咪包已由"检查（Linux）"里的内容校验覆盖。推到 main 时总是跑。
+  changes:
+    name: 判断是否需要冒烟
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.diff.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE...$HEAD")
+          echo "$changed"
+          other=$(echo "$changed" | grep -vE '^(docs/|content/|\.github/ISSUE_TEMPLATE/)|\.md$' || true)
+          if [ -z "$other" ]; then
+            echo "只改了文档或内容数据，跳过冒烟。"
+            echo "app=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "app=true" >> "$GITHUB_OUTPUT"
+          fi
+
   smoke:
     name: 冒烟测试（Windows）
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -65,10 +99,13 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run test:smoke
-      - run: npm run dist
+      # 安装包只在 main 上做：PR 上省约 1 分钟，开发者试装用 main 的构件
+      - if: github.event_name == 'push'
+        run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      - uses: actions/upload-artifact@v4
+      - if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
         with:
           name: TTCats-Windows-installer
           path: app/dist/TTCats-Setup-*.exe
