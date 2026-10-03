@@ -41,7 +41,11 @@ try {
   const visible = () =>
     application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows().some(
-        (window) => window.webContents.getURL().includes('/overlay/') && window.isVisible(),
+        (window) =>
+          !window.isDestroyed() &&
+          !window.webContents.isDestroyed() &&
+          window.webContents.getURL().includes('/overlay/') &&
+          window.isVisible(),
       ),
     );
   await expect.poll(visible).toBe(true);
