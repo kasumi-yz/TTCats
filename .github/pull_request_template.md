@@ -20,3 +20,4 @@ Closes #
 
 - 作者：Claude / Codex
 - [ ] 已经由另一方（Codex / Claude）审查通过
+- [ ] 或者：免审：<理由>（只限 `docs/agents/pr-review.md`"免审的小改动"）
