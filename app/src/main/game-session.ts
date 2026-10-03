@@ -1,4 +1,5 @@
 import { createGameCore } from '../core/game';
+import { isDeepStrictEqual } from 'node:util';
 import type { ContentCatalog, GameOutput } from '../shared/core-api';
 import type { Fact, GameCommand, StateSnapshot } from '../shared/ipc';
 import type { GameState } from '../shared/schemas';
@@ -14,17 +15,26 @@ export function createGameSession(options: {
   now: () => number;
   publish: (snapshot: StateSnapshot) => void;
   log: (message: string) => void;
+  startupQuiet?: boolean;
 }) {
   const { content, save, now, publish, log } = options;
   // 安静时段按本地时间算；core/game 不读时区（硬性规则 1）。
   const utcOffsetMinutes = (at: number): number => -new Date(at).getTimezoneOffset();
-  let game = createGameCore({ content, state: options.state, now: now(), utcOffsetMinutes });
+  let game = createGameCore({
+    content,
+    state: options.state,
+    now: now(),
+    utcOffsetMinutes,
+    startupQuiet: options.startupQuiet,
+  });
   let revision = 0;
   let safeMode = false;
   const snapshot = (): StateSnapshot => ({ ...game.snapshot(now()), revision: ++revision });
   const persist = (): void => {
     if (!safeMode && !save.readOnly) save.requestSave(game.exportState());
   };
+  // 构造时可能清除过期勿扰；只写回真正变过的状态，避免每次启动挤掉备份。
+  if (!isDeepStrictEqual(game.exportState(), options.state)) persist();
   const accept = (result: GameOutput): GameOutput => {
     result.problems.forEach(log);
     if (result.stateChanged) persist();
@@ -41,6 +51,9 @@ export function createGameSession(options: {
     },
     command(command: GameCommand): GameOutput {
       return accept(game.handleCommand(command, now()));
+    },
+    tick(): GameOutput {
+      return accept(game.tick(now()));
     },
     fact(fact: Fact): GameOutput {
       return accept(game.handleFact(fact, now()));

@@ -11,7 +11,7 @@ export interface TrayMenuContext {
   settings: Settings;
   safeMode: boolean;
   command: (message: GameCommand) => void;
-  summon: (cat: string) => void;
+  summon: (cat?: string) => void;
   openPanel: (panel: PanelName, cat?: string) => void;
   quit: () => void;
 }
@@ -27,14 +27,24 @@ export const catMenuSection: TrayMenuSection = ({
 }) => [
   {
     label: text.summon,
-    submenu: Object.entries(content.cats).map(([id, { cat }]) => ({
-      id: `summon:${id}`,
-      label: cat.name,
-      enabled: !safeMode && settings.visibleCats.includes(id),
-      click: () => {
-        summon(id);
+    submenu: [
+      {
+        id: 'summon:all',
+        label: zh.m2Wiring.all,
+        enabled: !safeMode && settings.visibleCats.some((id) => Object.hasOwn(content.cats, id)),
+        click: () => {
+          summon();
+        },
       },
-    })),
+      ...Object.entries(content.cats).map(([id, { cat }]) => ({
+        id: `summon:${id}`,
+        label: cat.name,
+        enabled: !safeMode && settings.visibleCats.includes(id),
+        click: () => {
+          summon(id);
+        },
+      })),
+    ],
   },
   {
     label: text.visibility,

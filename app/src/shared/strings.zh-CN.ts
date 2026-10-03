@@ -467,6 +467,11 @@ export const zh = {
       `版本 ${from} 的存档状态格式不对（应该是带 settings 的对象），无法迁移。`,
     commandNotReady: (type: string) => `命令「${type}」对应的功能还没做好，已忽略。`,
   },
+  autostart: {
+    development: '开发模式不注册开机启动项。',
+    disabledByWindows: 'Windows 已禁用 TTCats 的开机启动，保留系统选择。',
+    failed: (reason: string) => `开机启动项同步失败：${reason}`,
+  },
   diagnostics: {
     dialogTitle: '导出诊断信息',
     fileName: (stamp: string) => `TTCats-诊断-${stamp}.zip`,
@@ -516,5 +521,20 @@ export const zh = {
     clipboardFailed: (file: string, reason: string) =>
       `照片已保存到 ${file}，但复制到剪贴板失败：${reason}`,
     noticeFailed: (reason: string) => `拍照失败通知无法显示：${reason}`,
+  },
+  m2Wiring: {
+    all: '全部',
+    doNotDisturb: '勿扰',
+    durations: { '30m': '30 分钟', '1h': '1 小时', '2h': '2 小时', untilOff: '直到我关掉' },
+    until: (end: string) => `勿扰中，${end} 结束`,
+    untilOff: '勿扰中，直到我关掉',
+    end: '结束勿扰',
+    shortcutFailed: (accelerator: string) =>
+      `一键隐藏快捷键「${accelerator}」注册失败，可能已被其他程序占用。`,
+  },
+  updater: {
+    install: (version: string) => `重启并更新到 ${version}`,
+    failed: (error: string) => `更新失败：${error}`,
+    retryLater: '检查失败，请稍后重试。',
   },
 };

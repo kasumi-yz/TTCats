@@ -26,6 +26,7 @@
     "check:package": "tsx scripts/check-package-content.ts"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "fflate": "^0.8.3",
     "koffi": "^3.3.2",
     "pixi.js": "^8.21.0",

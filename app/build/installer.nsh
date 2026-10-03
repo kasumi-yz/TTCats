@@ -4,6 +4,11 @@
 !macroend
 
 !macro customUnInstall
+  ; 开机启动项名由 main/autostart 显式指定。更新/覆盖安装必须保留。
+  ${IfNot} ${isUpdated}
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "top.ttcats.desktop"
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" "top.ttcats.desktop"
+  ${EndIf}
   ; 覆盖安装和自动更新会调用旧版卸载程序，不能弹窗或删除数据。
   ${IfNot} ${isUpdated}
   ${AndIfNot} ${Silent}

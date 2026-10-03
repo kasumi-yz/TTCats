@@ -16,7 +16,7 @@ vi.mock('electron', () => ({
   dialog: { showMessageBox: mock.showMessageBox },
 }));
 
-function setup(flush = vi.fn()) {
+function setup(flush = vi.fn(), finishQuit?: () => void) {
   const calls: string[] = [];
   const report = vi.fn();
   const disposeOverlay = vi.fn(() => {
@@ -39,6 +39,7 @@ function setup(flush = vi.fn()) {
     ],
     disposeOverlay,
     detachMainLog,
+    ...(finishQuit ? { finishQuit } : {}),
   });
   const requestQuit = () => {
     const preventDefault = vi.fn();
@@ -52,6 +53,21 @@ describe('主进程退出流程', () => {
   beforeEach(() => {
     mock.listeners.clear();
     vi.resetAllMocks();
+  });
+
+  it('已下载更新也必须先保存并释放桌面层，再交给更新模块安装', async () => {
+    const install = vi.fn();
+    const { calls, requestQuit } = setup(vi.fn(), () => {
+      calls.push('install');
+      install();
+    });
+    requestQuit();
+    expect(install).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(install).toHaveBeenCalledOnce();
+    });
+    expect(calls).toEqual(['first', 'second', 'overlay', 'log', 'install']);
+    expect(mock.quit).not.toHaveBeenCalled();
   });
 
   it('先保存，再按注册顺序清理，最后释放桌面层和日志；重复退出不重复执行', async () => {

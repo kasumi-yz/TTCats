@@ -78,6 +78,7 @@ describe('托盘菜单段', () => {
       zh.integration.quit,
     ]);
     expect(cats(0).map((item) => [item.id, item.label])).toEqual([
+      ['summon:all', zh.m2Wiring.all],
       ['summon:first', '第一只猫'],
       ['summon:second', '第二只猫'],
     ]);
@@ -100,7 +101,7 @@ describe('托盘菜单段', () => {
 
   it('安全模式封住召唤和显示入口，仍可改截图显示、打开设置和退出', () => {
     const { tray, context, cats, menu } = setup();
-    expect(cats(0).map((item) => item.enabled)).toEqual([true, false]);
+    expect(cats(0).map((item) => item.enabled)).toEqual([true, true, false]);
     expect(cats(1).map((item) => item.checked)).toEqual([true, false]);
     context.safeMode = true;
     tray.update();
@@ -113,7 +114,7 @@ describe('托盘菜单段', () => {
     const { tray, context, cats, menu } = setup();
     context.settings = { ...context.settings, visibleCats: ['second'], showInScreenCapture: true };
     tray.update();
-    expect(cats(0).map((item) => item.enabled)).toEqual([false, true]);
+    expect(cats(0).map((item) => item.enabled)).toEqual([true, false, true]);
     expect(cats(1).map((item) => item.checked)).toEqual([false, true]);
     expect(menu().find((item) => item.id === 'capture')?.checked).toBe(true);
   });

@@ -22,6 +22,7 @@ globalThis.smoke = {
   saveBlocked: false,
   saveDialogResolvers: [],
   shortcuts: new Map(),
+  blockedShortcut: null,
   fullscreen: false,
   crashes: 0,
   slowRequests: 0,
@@ -96,10 +97,30 @@ Menu.prototype.popup = function (options) {
   });
 };
 const register = globalShortcut.register.bind(globalShortcut);
+const isRegistered = globalShortcut.isRegistered.bind(globalShortcut);
+const unregister = globalShortcut.unregister.bind(globalShortcut);
+// #66 允许在系统边界受控。仅并行本机测试显式启用；默认和 CI 仍注册真实快捷键。
+const controlledShortcuts = process.env.TTCATS_SMOKE_CONTROL_SHORTCUTS === '1';
+// 本机并行会话可以为冒烟分配独立快捷键；CI 默认仍验证正式快捷键。
+const smokeAccelerator = (accelerator) =>
+  accelerator === 'CommandOrControl+Shift+F10'
+    ? (process.env.TTCATS_SMOKE_DEBUG_SHORTCUT ?? accelerator)
+    : accelerator;
 globalShortcut.register = (accelerator, callback) => {
-  globalThis.smoke.shortcuts.set(accelerator, callback);
-  return register(accelerator, callback);
+  const registered =
+    globalThis.smoke.blockedShortcut !== accelerator &&
+    (controlledShortcuts || register(smokeAccelerator(accelerator), callback));
+  if (registered) globalThis.smoke.shortcuts.set(accelerator, callback);
+  return registered;
 };
+globalShortcut.unregister = (accelerator) => {
+  globalThis.smoke.shortcuts.delete(accelerator);
+  if (!controlledShortcuts) unregister(smokeAccelerator(accelerator));
+};
+globalShortcut.isRegistered = (accelerator) =>
+  controlledShortcuts
+    ? globalThis.smoke.shortcuts.has(accelerator)
+    : isRegistered(smokeAccelerator(accelerator));
 dialog.showMessageBox = async (options) => {
   globalThis.smoke.dialogs.push(options);
   if (options.buttons?.includes('不保存，直接退出')) {

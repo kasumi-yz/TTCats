@@ -2,7 +2,7 @@ import * as os from 'node:os';
 import type { Platform, SystemInfo } from './types';
 import { readWindowsSystemInfo } from './win/system-info';
 
-export type { Platform, SystemInfo } from './types';
+export type { Platform, ScreenPoint, SystemInfo } from './types';
 
 /** 非 Windows 环境不加载 Windows DLL，也不查询系统按键。 */
 export async function createPlatform(): Promise<Platform> {

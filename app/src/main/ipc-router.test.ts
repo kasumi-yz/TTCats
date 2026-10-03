@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import type { IpcMain, IpcMainInvokeEvent, WebContents } from 'electron';
 import { describe, expect, it, vi } from 'vitest';
 import { catalog, defined, snapshot, testCat } from '../core/stage/test-fixtures';
-import { IPC_CHANNELS } from '../shared/ipc';
+import { IPC_CHANNELS, type AppStatus } from '../shared/ipc';
 import { zh } from '../shared/strings.zh-CN';
 import { registerIpcRoutes } from './ipc-router';
 
@@ -11,6 +11,9 @@ vi.mock('electron', () => ({}));
 class FakeIpc extends EventEmitter {
   handlers = new Map<string, (event: IpcMainInvokeEvent) => unknown>();
   handle(channel: string, handler: (event: IpcMainInvokeEvent) => unknown) {
+    // 和 Electron 一样：同一频道注册两次直接报错
+    if (this.handlers.has(channel))
+      throw new Error(`Attempted to register a second handler for '${channel}'`);
     this.handlers.set(channel, handler);
   }
   removeHandler(channel: string) {
@@ -38,6 +41,15 @@ function setup() {
   const fullscreen = vi.fn();
   const fact = vi.fn();
   const getSnapshot = vi.fn(() => snapshot(['cat']));
+  const status: AppStatus = {
+    revision: 3,
+    version: '0.0.0',
+    update: { state: 'unsupported' },
+    hideAllShortcut: { accelerator: '', registered: false },
+    displays: [{ id: 7, label: 'DELL', width: 2560, height: 1440, scaleFactor: 1, primary: true }],
+    overlayDisplayId: 7,
+  };
+  const getAppStatus = vi.fn(() => status);
   const content = catalog([{ cat: testCat('cat') }]);
   const report = vi.fn();
   const detach = registerIpcRoutes({
@@ -56,6 +68,7 @@ function setup() {
     },
     fact,
     snapshot: getSnapshot,
+    appStatus: getAppStatus,
     content,
     report,
   });
@@ -74,6 +87,8 @@ function setup() {
     fullscreen,
     fact,
     getSnapshot,
+    getAppStatus,
+    status,
     content,
     report,
     detach,
@@ -153,17 +168,23 @@ describe('主进程 IPC 路由', () => {
   it.each(['unknown', 'subframe'] as const)(
     '拒绝 %s 发送方的命令、事实和查询，不能触发崩溃调试',
     (source) => {
-      const { ipc, event, unknown, overlay, command, crash, fact, getSnapshot } = setup();
+      const { ipc, event, unknown, overlay, command, crash, fact, getSnapshot, getAppStatus } =
+        setup();
       const sender = source === 'unknown' ? event(unknown) : event(overlay, true);
       ipc.emit(IPC_CHANNELS.command, sender, { type: 'cat/sleep', cat: 'cat' });
       ipc.emit(IPC_CHANNELS.command, sender, { type: 'debug/crashOverlay' });
       ipc.emit(IPC_CHANNELS.fact, sender, { type: 'cat/poked', cat: 'cat', at: 0 });
-      for (const channel of [IPC_CHANNELS.getSnapshot, IPC_CHANNELS.getContent])
+      for (const channel of [
+        IPC_CHANNELS.getSnapshot,
+        IPC_CHANNELS.getContent,
+        IPC_CHANNELS.getAppStatus,
+      ])
         expect(() => ipc.invoke(channel, sender)).toThrow(zh.integration.unknownSender);
       expect(command).not.toHaveBeenCalled();
       expect(crash).not.toHaveBeenCalled();
       expect(fact).not.toHaveBeenCalled();
       expect(getSnapshot).not.toHaveBeenCalled();
+      expect(getAppStatus).not.toHaveBeenCalled();
     },
   );
 
@@ -184,6 +205,11 @@ describe('主进程 IPC 路由', () => {
     expect(ipc.invoke(IPC_CHANNELS.getSnapshot, event(panel))).toEqual(snapshot(['cat']));
     expect(getSnapshot).toHaveBeenCalledOnce();
     expect(ipc.invoke(IPC_CHANNELS.getContent, event(panel))).toBe(content);
+  });
+
+  it('已登记面板查询到程序状态（含显示器列表和桌面层所在的显示器）', () => {
+    const { ipc, event, panel, status } = setup();
+    expect(ipc.invoke(IPC_CHANNELS.getAppStatus, event(panel))).toBe(status);
   });
 
   it('格式错误先拒绝，日志包含消息类型和字段路径', () => {

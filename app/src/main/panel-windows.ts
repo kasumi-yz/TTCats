@@ -1,6 +1,12 @@
 import { join } from 'node:path';
 import { BrowserWindow } from 'electron';
-import type { MainToOverlay, PanelName, StageDebugReport, StateSnapshot } from '../shared/ipc';
+import type {
+  AppStatus,
+  MainToOverlay,
+  PanelName,
+  StageDebugReport,
+  StateSnapshot,
+} from '../shared/ipc';
 import { IPC_CHANNELS } from '../shared/ipc';
 import { zh } from '../shared/strings.zh-CN';
 import { attachRendererLog, type FileLog } from './log';
@@ -21,13 +27,14 @@ export function createPanelWindows(options: {
   log: FileLog;
   report: (error: unknown) => void;
   overlaySend: (channel: string, payload: MainToOverlay) => void;
+  stageDebugRequired: () => boolean;
 }) {
   const windows = new Set<BrowserWindow>();
   const panels = new Map<string, BrowserWindow>();
   const updateDebug = (): void => {
     options.overlaySend(IPC_CHANNELS.mainToOverlay, {
       type: 'stageDebug',
-      enabled: panels.has('debug'),
+      enabled: panels.has('debug') || options.stageDebugRequired(),
     });
   };
   const registerWindow = (window: BrowserWindow): void => {
@@ -84,6 +91,9 @@ export function createPanelWindows(options: {
       [...windows].some((window) => !window.isDestroyed() && window.webContents.id === id),
     publish(snapshot: StateSnapshot): void {
       for (const window of windows) sendToWindow(window, IPC_CHANNELS.snapshot, snapshot);
+    },
+    publishAppStatus(status: AppStatus): void {
+      for (const panel of panels.values()) sendToWindow(panel, IPC_CHANNELS.appStatus, status);
     },
     sendDebugReport(report: StageDebugReport): void {
       const debug = panels.get('debug');

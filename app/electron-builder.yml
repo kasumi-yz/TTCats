@@ -5,8 +5,14 @@ productName: TTCats
 directories:
   output: dist
   buildResources: build
+publish:
+  provider: github
+  owner: kasumi-yz
+  repo: TTCats
+  releaseType: draft
 asar: true
 win:
+  verifyUpdateCodeSignature: false
   target:
     - target: nsis
       arch: [x64]

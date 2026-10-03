@@ -3,6 +3,10 @@ import { join, resolve } from 'node:path';
 import { app, dialog, globalShortcut, ipcMain, net, protocol } from 'electron';
 import type { MainToOverlay, StageCommand, StateSnapshot } from '../shared/ipc';
 import { CONTENT_PROTOCOL } from '../shared/content-url';
+import { DEBUG_PANEL_SHORTCUT } from '../shared/accelerator';
+import { createAppStatus } from './app-status';
+import { createHideAllShortcut } from './hide-all-shortcut';
+import { createDoNotDisturbMenu } from './do-not-disturb-menu';
 import {
   CURRENT_SAVE_VERSION,
   defaultGameState,
@@ -17,6 +21,7 @@ import {
   registerContentScheme,
 } from './content';
 import { showCatMenu } from './cat-menu';
+import { createAutostart, startupOptions } from './autostart';
 import { createGameCommands } from './game-commands';
 import { createDiagnosticsExport } from './diagnostics';
 import { createGameSession } from './game-session';
@@ -29,6 +34,7 @@ import { createPhoto } from './photo';
 import { attachRecovery } from './recovery';
 import { SaveStore } from './save';
 import { attachShutdown } from './shutdown';
+import { createUpdater } from './updater';
 import {
   applicationMenuSection,
   captureMenuSection,
@@ -37,7 +43,8 @@ import {
 } from './tray-menu';
 
 const text = zh.integration;
-const debugShortcut = 'CommandOrControl+Shift+F10';
+const debugShortcut = DEBUG_PANEL_SHORTCUT;
+const startup = startupOptions(process.argv);
 
 // 隔离自动测试数据，正式安装包不接受此开发选项。
 if (!app.isPackaged && process.env['TTCATS_TEST_APP_DATA']) {
@@ -90,17 +97,54 @@ if (!app.requestSingleInstanceLock()) {
       let tray: ReturnType<typeof createTrayMenu> | undefined;
       // eslint-disable-next-line prefer-const -- IPC 和窗口回调在退出监听器注册前已经接线。
       let shutdown: ReturnType<typeof attachShutdown> | undefined;
+      // eslint-disable-next-line prefer-const -- 状态发布回调在更新控制器创建前定义。
+      let updates: ReturnType<typeof createUpdater> | undefined;
       const stopping = (): boolean => shutdown?.closing === true || shutdown?.quitting === true;
       const overlaySend = (channel: string, payload: StageCommand | MainToOverlay): void => {
         if (overlay?.window && !session.safeMode) sendToWindow(overlay.window, channel, payload);
       };
-      const panels = createPanelWindows({ log, report, overlaySend });
+      const panels = createPanelWindows({
+        log,
+        report,
+        overlaySend,
+        stageDebugRequired: () => overlay?.waitingForExit === true,
+      });
+      const appStatus = createAppStatus(
+        {
+          version: app.getVersion(),
+          update: { state: 'unsupported' },
+          hideAllShortcut: {
+            accelerator: initialState.settings.hideAllShortcut,
+            registered: false,
+          },
+          displays: [],
+          overlayDisplayId: null,
+        },
+        (status) => {
+          panels.publishAppStatus(status);
+        },
+      );
+      const hideAllShortcut = createHideAllShortcut({
+        toggle: () => {
+          command({ type: 'hideAll/toggle' });
+        },
+        publish: (hideAllShortcut) => {
+          appStatus.update({ hideAllShortcut });
+        },
+        report,
+      });
+      const autostart = createAutostart({ app, executable: process.execPath, log: report });
+      autostart.sync(initialState.settings.launchAtLogin);
       const updateTray = (): void => {
         tray?.update();
       };
       const publish = (snapshot: StateSnapshot): void => {
+        if (!session.safeMode) autostart.sync(snapshot.settings.launchAtLogin);
         panels.publish(snapshot);
         overlay?.updateSettings(snapshot.settings);
+        overlay?.updateHideAll(snapshot.hideAll);
+        hideAllShortcut.update(snapshot.settings.hideAllShortcut);
+        updates?.setEnabled(snapshot.settings.autoUpdate);
         updateTray();
       };
       const session = createGameSession({
@@ -110,6 +154,7 @@ if (!app.requestSingleInstanceLock()) {
         now: Date.now,
         publish,
         log: report,
+        startupQuiet: startup.startupQuiet,
       });
       const { command, summon } = createGameCommands({
         session,
@@ -130,6 +175,19 @@ if (!app.requestSingleInstanceLock()) {
         report,
         system: readSystemInfo,
       });
+      updates = createUpdater({
+        packaged: app.isPackaged,
+        enabled: initialState.settings.autoUpdate,
+        publish: (update) => {
+          appStatus.update({ update });
+          updateTray();
+        },
+        report,
+        quit: () => {
+          app.quit();
+        },
+      });
+      appStatus.update({ update: updates.status });
       const photo = createPhoto({
         overlay: () => overlay,
         allowed: () =>
@@ -148,14 +206,14 @@ if (!app.requestSingleInstanceLock()) {
         mainCommands: {
           'photo/take': photo.take,
           'diagnostics/export': exportDiagnostics,
-          'update/check': (message) => {
-            report(zh.interfaces.commandNotReady(message.type));
+          'update/check': () => {
+            if (!stopping()) return updates.check();
           },
-          'update/install': (message) => {
-            report(zh.interfaces.commandNotReady(message.type));
+          'update/install': () => {
+            if (!stopping()) updates.requestInstall();
           },
           'debug/simulateFullscreen': (message) => {
-            report(zh.interfaces.commandNotReady(message.type));
+            if (!stopping() && !session.safeMode) overlay?.simulateFullscreen(message.active);
           },
           'debug/crashOverlay': () => {
             if (!shutdown?.closing) recovery?.crash();
@@ -165,14 +223,19 @@ if (!app.requestSingleInstanceLock()) {
           session.fact(message);
         },
         snapshot: session.snapshot,
+        appStatus: appStatus.current,
         content,
         report,
       });
       const overlayReady = createOverlay({
         onReady: panels.updateDebug,
+        onExitChange: panels.updateDebug,
         system: await createPlatform(),
         settings: initialState.settings,
         onError: report,
+        onDisplays: (displays, current) => {
+          appStatus.update({ displays, overlayDisplayId: current });
+        },
         onWindow: (window) => {
           panels.registerWindow(window);
           window.on('show', updateTray);
@@ -224,6 +287,7 @@ if (!app.requestSingleInstanceLock()) {
         },
       });
       overlay = await overlayReady;
+      overlay.updateHideAll(session.snapshot().hideAll);
       if (session.safeMode) overlay.enterSafeMode();
       tray = createTrayMenu({
         context: () => ({
@@ -237,20 +301,37 @@ if (!app.requestSingleInstanceLock()) {
             app.quit();
           },
         }),
-        sections: [catMenuSection, captureMenuSection, photo.menuSection, applicationMenuSection],
+        sections: [
+          catMenuSection,
+          createDoNotDisturbMenu(session.snapshot),
+          captureMenuSection,
+          photo.menuSection,
+          updates.menuSection,
+          applicationMenuSection,
+        ],
         openSettings: () => {
           panels.openPanel('settings');
         },
       });
       updateTray();
+      hideAllShortcut.update(session.snapshot().settings.hideAllShortcut);
+      // 定时器只唤醒；core/game 按传入的真实时间结束勿扰、静默并推送快照。
+      const tickTimer = setInterval(() => {
+        if (stopping() || session.safeMode) return;
+        try {
+          session.tick();
+        } catch (error) {
+          report(error);
+        }
+      }, 1000);
       if (
         !globalShortcut.register(debugShortcut, () => {
           panels.openPanel('debug');
         })
       )
         report(text.shortcutFailed);
-      const onSecondInstance = (): void => {
-        panels.openPanel('settings');
+      const onSecondInstance = (_event: Electron.Event, args: string[]): void => {
+        if (!startupOptions(args).startupQuiet) panels.openPanel('settings');
       };
       app.on('second-instance', onSecondInstance);
       // 关闭所有面板后继续驻留托盘。
@@ -262,6 +343,15 @@ if (!app.requestSingleInstanceLock()) {
         },
         report,
         steps: [
+          () => {
+            clearInterval(tickTimer);
+          },
+          () => {
+            hideAllShortcut.dispose();
+          },
+          () => {
+            updates.dispose();
+          },
           () => {
             recovery?.dispose();
           },
@@ -287,12 +377,16 @@ if (!app.requestSingleInstanceLock()) {
         ],
         disposeOverlay: () => overlay.dispose(),
         detachMainLog,
+        finishQuit: () => {
+          updates.finishQuit();
+        },
       });
-      if (process.argv.includes('--settings')) panels.openPanel('settings');
+      if (startup.openSettings) panels.openPanel('settings');
     })
     .catch((error: unknown) => {
       log.report(String(error));
-      dialog.showErrorBox(zh.app.name, `${text.startupFailed}\n${String(error)}`);
+      if (!startup.startupQuiet)
+        dialog.showErrorBox(zh.app.name, `${text.startupFailed}\n${String(error)}`);
       detachMainLog();
       app.exit(1);
     });

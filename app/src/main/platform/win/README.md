@@ -4,7 +4,7 @@
 
 通过 `await createPlatform()`（从 `main/platform/index.ts` 导入）创建接口，然后同步查询：
 
-- `isFullscreen()`：通知状态为 2、3、4 时返回 `true`，覆盖全屏程序、D3D 独占全屏和演示模式；HRESULT 失败会抛出含 API 名和错误码的诊断错误。
+- `isFullscreen(display)`：通知状态为 3（D3D 独占全屏）、4（演示模式）时直接返回 `true`，系统不说是哪块屏幕；状态 2（忙碌）时再核对前台窗口：要和猫在同一块显示器上（`display` 是那块显示器上的一点，Electron 坐标，用 `screen.dipToScreenPoint` 换成物理像素后 `MonitorFromPoint`），并且盖满那块显示器，桌面、任务栏和白名单程序不算（#29、#65）。HRESULT 失败会抛出含 API 名和错误码的诊断错误。
 - `isCtrlDown()`：读取合并的 Ctrl 当前按下位，左右 Ctrl 均有效，不使用不可靠的“最近按过”位。
 - `isLeftButtonDown()`：读取系统设置里的主按钮。每次检查 `SM_SWAPBUTTON`，交换左右键后立即改读物理右键，供拖动松手兜底使用。
 
@@ -28,10 +28,27 @@ npm run test:smoke
 
 本模块单元测试覆盖通知状态分类、HRESULT 失败、按下位、松手后残留的“最近按过”位、运行中交换左右键，以及 Linux/macOS 的降级接口。
 
-如需手动观察三项查询，在根目录运行下面命令；打开全屏视频、按住/松开 Ctrl 或主按钮，输出应立即对应变化。按 Ctrl+C 结束。
+如需手动观察三项查询，先 `npm run build`，再在根目录运行下面命令。`isFullscreen` 要用 Electron 的 `screen` 换算坐标，所以必须在 Electron 主进程里、`app` 就绪以后运行，不能用普通 Node。脚本对每块显示器的中心各问一次全屏，猫只看自己所在的那块。打开全屏视频、按住/松开 Ctrl 或主按钮，输出应立即对应变化。按 Ctrl+C 结束。
 
 ```powershell
-node --input-type=module -e "import {createPlatform} from './app/out/main/platform.js'; const p=await createPlatform(); let last=''; setInterval(()=>{const s=JSON.stringify({fullscreen:p.isFullscreen(),ctrl:p.isCtrlDown(),leftButton:p.isLeftButtonDown()}); if(s!==last){console.log(s);last=s;}},20);"
+@'
+import { app, screen } from 'electron';
+// 不能在顶层 await app.whenReady()：Electron 要等入口模块加载完才会就绪
+void app.whenReady().then(async () => {
+  const { createPlatform } = await import('./main/platform.js');
+  const p = await createPlatform();
+  let last = '';
+  setInterval(() => {
+    const fullscreen = screen.getAllDisplays().map(({ id, workArea: a }) => ({
+      id,
+      fullscreen: p.isFullscreen({ x: a.x + a.width / 2, y: a.y + a.height / 2 }),
+    }));
+    const s = JSON.stringify({ fullscreen, ctrl: p.isCtrlDown(), leftButton: p.isLeftButtonDown() });
+    if (s !== last) { console.log(s); last = s; }
+  }, 20);
+});
+'@ | Set-Content app/out/platform-watch.mjs
+npx electron app/out/platform-watch.mjs
 ```
 
 ## 本次 Windows 实测

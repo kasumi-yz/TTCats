@@ -16,7 +16,9 @@ function mockWindow() {
   return mock.windows[0] as {
     isDestroyed: () => boolean;
     setBounds: ReturnType<typeof vi.fn>;
-    getBounds: ReturnType<typeof vi.fn>;
+    getBounds: ReturnType<
+      typeof vi.fn<() => { x: number; y: number; width: number; height: number }>
+    >;
     setIgnoreMouseEvents: ReturnType<typeof vi.fn>;
     setContentProtection: ReturnType<typeof vi.fn>;
     hide: ReturnType<typeof vi.fn>;
@@ -37,8 +39,24 @@ const mock = vi.hoisted(() => ({
   displayId: 1,
   scaleFactor: 1,
   cursor: { x: 0, y: 0 },
+  /** 主显示器以外的显示器 */
+  others: [] as MockDisplay[],
   displayListeners: new Map<string, () => void>(),
 }));
+interface MockDisplay {
+  id: number;
+  label: string;
+  size: { width: number; height: number };
+  scaleFactor: number;
+  workArea: { x: number; y: number; width: number; height: number };
+}
+const primaryDisplay = (): MockDisplay => ({
+  id: mock.displayId,
+  label: 'Primary',
+  size: { width: mock.bounds.width, height: mock.bounds.height },
+  scaleFactor: mock.scaleFactor,
+  workArea: mock.bounds,
+});
 vi.mock('electron', () => ({
   app: { commandLine: { appendSwitch: vi.fn() } },
   ipcMain: {
@@ -46,11 +64,17 @@ vi.mock('electron', () => ({
     removeListener: (name: string) => mock.ipc.delete(name),
   },
   screen: {
-    getPrimaryDisplay: () => ({
-      id: mock.displayId,
-      scaleFactor: mock.scaleFactor,
-      workArea: mock.bounds,
-    }),
+    getPrimaryDisplay: () => primaryDisplay(),
+    getAllDisplays: () => [primaryDisplay(), ...mock.others],
+    // 按矩形左上角落在哪块显示器上算，够测试用
+    getDisplayMatching: (rect: { x: number; y: number }) =>
+      mock.others.find(
+        (d) =>
+          rect.x >= d.workArea.x &&
+          rect.x < d.workArea.x + d.workArea.width &&
+          rect.y >= d.workArea.y &&
+          rect.y < d.workArea.y + d.workArea.height,
+      ) ?? primaryDisplay(),
     getCursorScreenPoint: () => mock.cursor,
     on: (event: string, listener: () => void) => mock.displayListeners.set(event, listener),
     removeListener: (event: string) => mock.displayListeners.delete(event),
@@ -65,8 +89,10 @@ vi.mock('electron', () => ({
       executeJavaScript: () => Promise.resolve(0),
     });
     dead = false;
-    constructor(readonly options: unknown) {
+    bounds: { x: number; y: number; width: number; height: number } | undefined;
+    constructor(readonly options: { x: number; y: number; width: number; height: number }) {
       super();
+      this.bounds = { x: options.x, y: options.y, width: options.width, height: options.height };
       mock.windows.push(this);
     }
     destroy() {
@@ -76,9 +102,11 @@ vi.mock('electron', () => ({
     isDestroyed() {
       return this.dead;
     }
-    getBounds = vi.fn(() => mock.bounds);
+    getBounds = vi.fn(() => this.bounds ?? mock.bounds);
     setIgnoreMouseEvents = vi.fn();
-    setBounds = vi.fn();
+    setBounds = vi.fn((bounds: { x: number; y: number; width: number; height: number }) => {
+      this.bounds = bounds;
+    });
     setContentProtection = vi.fn();
     hide = vi.fn();
     showInactive = vi.fn();
@@ -107,10 +135,119 @@ describe('桌面层重建队列', () => {
     mock.displayId = 1;
     mock.scaleFactor = 1;
     mock.cursor = { x: 0, y: 0 };
+    mock.others = [];
     mock.displayListeners.clear();
   });
   afterEach(() => {
     vi.useRealTimers();
+  });
+  it('最后一只猫要先走出去，收到空画面报告再隐藏；重新显示恢复绘制', async () => {
+    const settings = defaultSettings(['test']);
+    const overlay = await createOverlay({
+      system,
+      settings,
+      load: () => Promise.resolve(),
+      onError: vi.fn(),
+    });
+    const w = mockWindow();
+    try {
+      overlay.updateSettings({ ...settings, visibleCats: [] });
+      w.hide.mockClear();
+      w.showInactive.mockClear();
+      const send = (cats: unknown[]) =>
+        mock.ipc.get(IPC_CHANNELS.overlayToMain)?.(
+          { sender: w.webContents, senderFrame: w.webContents.mainFrame },
+          { type: 'stageDebug', report: { at: Date.now(), cats } },
+        );
+      send([{ cat: 'test' }]);
+      expect(w.hide).not.toHaveBeenCalled();
+      send([]);
+      expect(w.hide).toHaveBeenCalledOnce();
+      expect(w.webContents.send).toHaveBeenLastCalledWith(IPC_CHANNELS.mainToOverlay, {
+        type: 'paused',
+        paused: true,
+      });
+      overlay.updateSettings(settings);
+      expect(w.showInactive).toHaveBeenCalledOnce();
+    } finally {
+      await overlay.dispose();
+    }
+  });
+  it('全屏结束先恢复显示再入场，模拟结束回到系统判断，隐藏期间不会误恢复', async () => {
+    vi.useFakeTimers();
+    let fullscreen = false;
+    const overlay = await createOverlay({
+      system: { ...system, isFullscreen: () => fullscreen },
+      settings: defaultSettings(['test']),
+      load: () => Promise.resolve(),
+      onError: vi.fn(),
+    });
+    const w = mockWindow();
+    try {
+      w.webContents.send.mockClear();
+      overlay.simulateFullscreen(true);
+      expect(w.hide).toHaveBeenCalled();
+      fullscreen = true;
+      overlay.simulateFullscreen(false);
+      expect(w.webContents.send).not.toHaveBeenCalledWith(IPC_CHANNELS.stageCommand, {
+        type: 'cat/entrance',
+      });
+      fullscreen = false;
+      await vi.advanceTimersByTimeAsync(500);
+      const messages = w.webContents.send.mock.calls;
+      expect(messages.at(-2)).toEqual([
+        IPC_CHANNELS.mainToOverlay,
+        { type: 'paused', paused: false },
+      ]);
+      expect(messages.at(-1)).toEqual([IPC_CHANNELS.stageCommand, { type: 'cat/entrance' }]);
+      expect(w.showInactive).toHaveBeenCalled();
+      overlay.updateHideAll(true);
+      w.webContents.send.mockClear();
+      overlay.simulateFullscreen(true);
+      overlay.simulateFullscreen(false);
+      expect(w.webContents.send).not.toHaveBeenCalledWith(IPC_CHANNELS.stageCommand, {
+        type: 'cat/entrance',
+      });
+      overlay.updateHideAll(false);
+      expect(w.webContents.send).toHaveBeenLastCalledWith(IPC_CHANNELS.mainToOverlay, {
+        type: 'paused',
+        paused: false,
+      });
+    } finally {
+      await overlay.dispose();
+    }
+  });
+
+  it('一键隐藏立即隐藏、暂停并释放鼠标；设置刷新和重载都不能解除它', async () => {
+    vi.useFakeTimers();
+    const settings = defaultSettings(['test']);
+    const overlay = await createOverlay({
+      system,
+      settings,
+      load: () => Promise.resolve(),
+      onError: vi.fn(),
+    });
+    const w = mockWindow();
+    try {
+      mock.ipc.get(IPC_CHANNELS.overlayToMain)?.(
+        { sender: w.webContents, senderFrame: w.webContents.mainFrame },
+        { type: 'hover', onCat: true },
+      );
+      overlay.updateHideAll(true);
+      expect(w.webContents.send).toHaveBeenCalledWith(IPC_CHANNELS.mainToOverlay, {
+        type: 'paused',
+        paused: true,
+      });
+      expect(w.setIgnoreMouseEvents).toHaveBeenLastCalledWith(true, { forward: true });
+      w.showInactive.mockClear();
+      overlay.updateSettings({ ...settings, scale: 1.2 });
+      await overlay.reload();
+      expect(w.showInactive).not.toHaveBeenCalled();
+      overlay.updateHideAll(false);
+      expect(w.showInactive).toHaveBeenCalledOnce();
+    } finally {
+      await overlay.dispose();
+    }
   });
   it('穿透点击转成桌面层坐标且只发一次，不切换穿透、不抢焦点', async () => {
     vi.useFakeTimers();
@@ -652,6 +789,193 @@ describe('桌面层重建队列', () => {
       expect(w.webContents.send).not.toHaveBeenCalled();
       expect(w.hide).toHaveBeenCalledOnce();
       expect(w.setIgnoreMouseEvents).toHaveBeenLastCalledWith(true, { forward: true });
+    } finally {
+      await overlay.dispose();
+    }
+  });
+});
+
+describe('桌面层待在设置的显示器上（#65）', () => {
+  const primaryArea = { x: 0, y: 0, width: 1920, height: 1040 };
+  const secondary = (patch: Partial<MockDisplay> = {}): MockDisplay => ({
+    id: 2,
+    label: 'DELL U2720Q',
+    size: { width: 1707, height: 960 },
+    scaleFactor: 1.5,
+    workArea: { x: 1920, y: 0, width: 1707, height: 920 },
+    ...patch,
+  });
+  const ref = { id: 2, label: 'DELL U2720Q', width: 2561, height: 1440 };
+  const changed = (event = 'display-metrics-changed') => {
+    mock.displayListeners.get(event)?.();
+  };
+  beforeEach(() => {
+    mock.windows.length = 0;
+    mock.zeroWindows = 0;
+    mock.ipc.clear();
+    mock.bounds = primaryArea;
+    mock.displayId = 1;
+    mock.scaleFactor = 1;
+    mock.cursor = { x: 0, y: 0 };
+    mock.others = [secondary()];
+    mock.displayListeners.clear();
+  });
+  const start = async (display: typeof ref | null, platform = system) => {
+    const onDisplays = vi.fn();
+    const onError = vi.fn();
+    const overlay = await createOverlay({
+      system: platform,
+      settings: { ...defaultSettings(['test']), display },
+      load: () => Promise.resolve(),
+      onDisplays,
+      onError,
+    });
+    return { overlay, onDisplays, onError, window: () => mockWindow() };
+  };
+
+  it('没设置时放在主显示器上，并告诉面板全部显示器和当前那块', async () => {
+    const { overlay, onDisplays, window } = await start(null);
+    try {
+      expect(window().getBounds()).toEqual(primaryArea);
+      expect(onDisplays).toHaveBeenLastCalledWith(
+        [
+          { id: 1, label: 'Primary', width: 1920, height: 1040, scaleFactor: 1, primary: true },
+          // 两块屏缩放不同：分辨率按物理像素算（1707×1.5≈2561）
+          {
+            id: 2,
+            label: 'DELL U2720Q',
+            width: 2561,
+            height: 1440,
+            scaleFactor: 1.5,
+            primary: false,
+          },
+        ],
+        1,
+      );
+    } finally {
+      await overlay.dispose();
+    }
+  });
+
+  it('选了副屏：放在副屏的工作区上（副屏缩放和主屏不同也一样）', async () => {
+    const { overlay, onDisplays, onError, window } = await start(ref);
+    try {
+      expect(window().getBounds()).toEqual(secondary().workArea);
+      expect(onDisplays).toHaveBeenLastCalledWith(expect.any(Array), 2);
+      expect(onError).not.toHaveBeenCalled();
+    } finally {
+      await overlay.dispose();
+    }
+  });
+
+  it('副屏拔掉后回到主屏，接回来（id 变了也认得出）再回到副屏，始终只有一个窗口', async () => {
+    const { overlay, onDisplays, window } = await start(ref);
+    try {
+      mock.others = [];
+      changed('display-removed');
+      await vi.waitFor(() => {
+        expect(window().setBounds).toHaveBeenLastCalledWith(primaryArea);
+      });
+      expect(onDisplays).toHaveBeenLastCalledWith([expect.objectContaining({ id: 1 })], 1);
+      mock.others = [secondary({ id: 9 })];
+      changed('display-added');
+      await vi.waitFor(() => {
+        expect(window().setBounds).toHaveBeenLastCalledWith(secondary().workArea);
+      });
+      expect(onDisplays).toHaveBeenLastCalledWith(expect.any(Array), 9);
+      expect(mock.windows).toHaveLength(1);
+      expect(mock.zeroWindows).toBe(0);
+    } finally {
+      await overlay.dispose();
+    }
+  });
+
+  it('副屏改了缩放或分辨率时跟着重新摆放；主屏的变化不影响副屏上的猫', async () => {
+    const { overlay, window } = await start(ref);
+    try {
+      const moved = { x: 1920, y: 0, width: 1280, height: 680 };
+      mock.others = [secondary({ scaleFactor: 2, workArea: moved })];
+      changed();
+      await vi.waitFor(() => {
+        expect(window().setBounds).toHaveBeenLastCalledWith(moved);
+      });
+      const calls = window().setBounds.mock.calls.length;
+      mock.bounds = { ...primaryArea, width: 1600 };
+      changed();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(window().setBounds).toHaveBeenCalledTimes(calls);
+    } finally {
+      await overlay.dispose();
+    }
+  });
+
+  it('窗口挪不到副屏上时报错，调试台看到的是窗口实际所在的主屏，不是想去的副屏', async () => {
+    const { overlay, onDisplays, onError, window } = await start(null);
+    try {
+      window().setBounds.mockImplementation(() => undefined);
+      overlay.updateSettings({ ...defaultSettings(['test']), display: ref });
+      await vi.waitFor(() => {
+        expect(onError).toHaveBeenCalledOnce();
+      });
+      expect(window().setBounds).toHaveBeenCalledTimes(2);
+      expect(window().getBounds()).toEqual(primaryArea);
+      expect(onDisplays).toHaveBeenLastCalledWith(expect.any(Array), 1);
+      // 之后无关的显示器通知跳过重建，也不能改报成副屏
+      changed();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(onDisplays).toHaveBeenLastCalledWith(expect.any(Array), 1);
+    } finally {
+      await overlay.dispose();
+    }
+  });
+
+  it('设置里的显示器认不出来：用主显示器', async () => {
+    const { overlay, onDisplays, window } = await start({
+      id: 5,
+      label: 'LG 27GL850',
+      width: 2560,
+      height: 1440,
+    });
+    try {
+      expect(window().getBounds()).toEqual(primaryArea);
+      expect(onDisplays).toHaveBeenLastCalledWith(expect.any(Array), 1);
+    } finally {
+      await overlay.dispose();
+    }
+  });
+
+  it('设置里改了显示器就搬过去，改回"主显示器"再搬回来；别的设置改动不重新摆放', async () => {
+    const { overlay, window } = await start(null);
+    try {
+      overlay.updateSettings({ ...defaultSettings(['test']), display: ref });
+      await vi.waitFor(() => {
+        expect(window().setBounds).toHaveBeenLastCalledWith(secondary().workArea);
+      });
+      overlay.updateSettings({ ...defaultSettings(['test']), display: null });
+      await vi.waitFor(() => {
+        expect(window().setBounds).toHaveBeenLastCalledWith(primaryArea);
+      });
+      const calls = window().setBounds.mock.calls.length;
+      overlay.updateSettings({ ...defaultSettings(['test']), showInScreenCapture: false });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(window().setBounds).toHaveBeenCalledTimes(calls);
+    } finally {
+      await overlay.dispose();
+    }
+  });
+
+  it('全屏判断问的是桌面层所在那块显示器', async () => {
+    const isFullscreen = vi.fn(() => false);
+    const { overlay } = await start(ref, { ...system, isFullscreen });
+    try {
+      await vi.waitFor(() => {
+        expect(isFullscreen).toHaveBeenCalled();
+      });
+      const area = secondary().workArea;
+      expect(isFullscreen).toHaveBeenLastCalledWith({
+        x: area.x + area.width / 2,
+        y: area.y + area.height / 2,
+      });
     } finally {
       await overlay.dispose();
     }

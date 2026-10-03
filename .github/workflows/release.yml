@@ -1,0 +1,61 @@
+name: 草稿发版
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Windows 安装包与更新文件
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: 核对标签和应用版本
+        shell: pwsh
+        run: |
+          $version = (Get-Content app/package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_NAME -cne "v$version") {
+            throw "标签 $env:GITHUB_REF_NAME 与 app/package.json 的 v$version 不一致"
+          }
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+      - run: npm run test:smoke
+      - name: 打包并检查正式内容
+        run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - name: 建立草稿并上传更新文件
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $files = Get-ChildItem app/dist -File | Where-Object {
+            $_.Name -match '^TTCats-Setup-.*\.exe(\.blockmap)?$' -or $_.Name -eq 'latest.yml'
+          }
+          if (-not ($files.Name -contains 'latest.yml') -or -not ($files.Name -match '\.exe$')) {
+            throw '缺少安装包或 latest.yml，停止发版'
+          }
+          gh release view $tag --json isDraft > draft-state.json 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            if (-not (Get-Content draft-state.json -Raw | ConvertFrom-Json).isDraft) {
+              throw '这个 Release 已发布，不能覆盖'
+            }
+          } else {
+            gh release create $tag --verify-tag --draft --title "TTCats $tag" --generate-notes
+            if ($LASTEXITCODE -ne 0) { throw '创建草稿失败' }
+          }
+          gh release upload $tag @($files.FullName) --clobber
+          if ($LASTEXITCODE -ne 0) { throw '上传更新文件失败' }
