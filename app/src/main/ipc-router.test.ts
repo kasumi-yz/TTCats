@@ -11,6 +11,9 @@ vi.mock('electron', () => ({}));
 class FakeIpc extends EventEmitter {
   handlers = new Map<string, (event: IpcMainInvokeEvent) => unknown>();
   handle(channel: string, handler: (event: IpcMainInvokeEvent) => unknown) {
+    // 和 Electron 一样：同一频道注册两次直接报错
+    if (this.handlers.has(channel))
+      throw new Error(`Attempted to register a second handler for '${channel}'`);
     this.handlers.set(channel, handler);
   }
   removeHandler(channel: string) {

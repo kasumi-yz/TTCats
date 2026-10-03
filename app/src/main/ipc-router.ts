@@ -103,10 +103,6 @@ export function registerIpcRoutes(options: {
     if (!allowed(event)) throw new Error(text.unknownSender);
     return options.content;
   });
-  ipc.handle(IPC_CHANNELS.getAppStatus, (event) => {
-    if (!allowed(event)) throw new Error(text.unknownSender);
-    return options.appStatus();
-  });
   const detachCrash = attachCrashCommand(ipc, options.allowedSender, () => {
     dispatch({ type: 'debug/crashOverlay' });
   });
@@ -117,6 +113,5 @@ export function registerIpcRoutes(options: {
     ipc.removeHandler(IPC_CHANNELS.getSnapshot);
     ipc.removeHandler(IPC_CHANNELS.getAppStatus);
     ipc.removeHandler(IPC_CHANNELS.getContent);
-    ipc.removeHandler(IPC_CHANNELS.getAppStatus);
   };
 }
