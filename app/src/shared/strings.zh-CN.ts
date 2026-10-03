@@ -477,4 +477,9 @@ export const zh = {
       `照片已保存到 ${file}，但复制到剪贴板失败：${reason}`,
     noticeFailed: (reason: string) => `拍照失败通知无法显示：${reason}`,
   },
+  updater: {
+    install: (version: string) => `重启并更新到 ${version}`,
+    failed: (error: string) => `更新失败：${error}`,
+    retryLater: '检查失败，请稍后重试。',
+  },
 };

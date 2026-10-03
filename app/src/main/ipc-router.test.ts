@@ -3,6 +3,7 @@ import type { IpcMain, IpcMainInvokeEvent, WebContents } from 'electron';
 import { describe, expect, it, vi } from 'vitest';
 import { catalog, defined, snapshot, testCat } from '../core/stage/test-fixtures';
 import { IPC_CHANNELS } from '../shared/ipc';
+import type { AppStatus } from '../shared/ipc';
 import { zh } from '../shared/strings.zh-CN';
 import { registerIpcRoutes } from './ipc-router';
 
@@ -38,6 +39,14 @@ function setup() {
   const fullscreen = vi.fn();
   const fact = vi.fn();
   const getSnapshot = vi.fn(() => snapshot(['cat']));
+  const appStatus = vi.fn((): AppStatus => ({
+    revision: 1,
+    version: '0.2.0',
+    update: { state: 'unsupported' },
+    hideAllShortcut: { accelerator: '', registered: false },
+    displays: [],
+    overlayDisplayId: null,
+  }));
   const content = catalog([{ cat: testCat('cat') }]);
   const report = vi.fn();
   const detach = registerIpcRoutes({
@@ -56,6 +65,7 @@ function setup() {
     },
     fact,
     snapshot: getSnapshot,
+    appStatus,
     content,
     report,
   });
@@ -74,6 +84,7 @@ function setup() {
     fullscreen,
     fact,
     getSnapshot,
+    appStatus,
     content,
     report,
     detach,
@@ -158,7 +169,11 @@ describe('主进程 IPC 路由', () => {
       ipc.emit(IPC_CHANNELS.command, sender, { type: 'cat/sleep', cat: 'cat' });
       ipc.emit(IPC_CHANNELS.command, sender, { type: 'debug/crashOverlay' });
       ipc.emit(IPC_CHANNELS.fact, sender, { type: 'cat/poked', cat: 'cat', at: 0 });
-      for (const channel of [IPC_CHANNELS.getSnapshot, IPC_CHANNELS.getContent])
+      for (const channel of [
+        IPC_CHANNELS.getSnapshot,
+        IPC_CHANNELS.getContent,
+        IPC_CHANNELS.getAppStatus,
+      ])
         expect(() => ipc.invoke(channel, sender)).toThrow(zh.integration.unknownSender);
       expect(command).not.toHaveBeenCalled();
       expect(crash).not.toHaveBeenCalled();
@@ -180,10 +195,11 @@ describe('主进程 IPC 路由', () => {
   });
 
   it('已登记面板查询到当前快照和同一份内容目录', () => {
-    const { ipc, event, panel, getSnapshot, content } = setup();
+    const { ipc, event, panel, getSnapshot, content, appStatus } = setup();
     expect(ipc.invoke(IPC_CHANNELS.getSnapshot, event(panel))).toEqual(snapshot(['cat']));
     expect(getSnapshot).toHaveBeenCalledOnce();
     expect(ipc.invoke(IPC_CHANNELS.getContent, event(panel))).toBe(content);
+    expect(ipc.invoke(IPC_CHANNELS.getAppStatus, event(panel))).toEqual(appStatus());
   });
 
   it('格式错误先拒绝，日志包含消息类型和字段路径', () => {

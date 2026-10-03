@@ -10,7 +10,7 @@ import {
   type Locator,
 } from '@playwright/test';
 import type { ContentCatalog } from '../src/shared/core-api';
-import type { StageCommand, StageDebugReport, StateSnapshot } from '../src/shared/ipc';
+import type { AppStatus, StageCommand, StageDebugReport, StateSnapshot } from '../src/shared/ipc';
 import { IPC_CHANNELS } from '../src/shared/ipc';
 import { CURRENT_SAVE_VERSION, defaultGameState, defaultSettings } from '../src/shared/schemas';
 import { zh } from '../src/shared/strings.zh-CN';
@@ -123,6 +123,15 @@ test('正式入口：双窗口桥、三只测试猫、真实托盘与退出保�
   let app = await launch(directory);
   try {
     const settings = await pageFor(app, 'panel=settings');
+    const updateStatus = await settings.evaluate<AppStatus>('window.ttcats.getAppStatus()');
+    expect(updateStatus.update).toEqual({ state: 'unsupported' });
+    await settings.getByRole('tab', { name: zh.panels.tabs.app }).click();
+    await expect(settings.getByText(zh.panels.updateStates.unsupported)).toBeVisible();
+    await settings.evaluate("window.ttcats.sendCommand({ type: 'update/check' })");
+    expect((await settings.evaluate<AppStatus>('window.ttcats.getAppStatus()')).update.state).toBe(
+      'unsupported',
+    );
+    await settings.getByRole('tab', { name: zh.panels.tabs.cats }).click();
     const overlay = await pageFor(app, '/overlay/');
     expect((await snapshot(overlay)).settings.visibleCats.slice().sort()).toEqual(ids);
     expect((await snapshot(settings)).settings).toEqual((await snapshot(overlay)).settings);

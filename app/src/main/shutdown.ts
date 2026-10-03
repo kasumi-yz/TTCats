@@ -7,6 +7,7 @@ export function attachShutdown(options: {
   steps: readonly (() => void)[];
   disposeOverlay: () => Promise<void>;
   detachMainLog: () => void;
+  finishQuit?: () => void;
 }) {
   const text = zh.integration;
   let closing = false;
@@ -36,7 +37,8 @@ export function attachShutdown(options: {
     for (const step of options.steps) step();
     await options.disposeOverlay().finally(() => {
       options.detachMainLog();
-      app.quit();
+      if (options.finishQuit) options.finishQuit();
+      else app.quit();
     });
   };
   app.on('before-quit', (event) => {

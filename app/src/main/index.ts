@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { app, dialog, globalShortcut, ipcMain, net, protocol } from 'electron';
-import type { MainToOverlay, StageCommand, StateSnapshot } from '../shared/ipc';
+import { app, dialog, globalShortcut, ipcMain, net, protocol, screen } from 'electron';
+import type { AppStatus, MainToOverlay, StageCommand, StateSnapshot } from '../shared/ipc';
 import { CONTENT_PROTOCOL } from '../shared/content-url';
 import {
   CURRENT_SAVE_VERSION,
@@ -28,6 +28,7 @@ import { createPhoto } from './photo';
 import { attachRecovery } from './recovery';
 import { SaveStore } from './save';
 import { attachShutdown } from './shutdown';
+import { createUpdater } from './updater';
 import {
   applicationMenuSection,
   captureMenuSection,
@@ -89,6 +90,29 @@ if (!app.requestSingleInstanceLock()) {
       let tray: ReturnType<typeof createTrayMenu> | undefined;
       // eslint-disable-next-line prefer-const -- IPC 和窗口回调在退出监听器注册前已经接线。
       let shutdown: ReturnType<typeof attachShutdown> | undefined;
+      // eslint-disable-next-line prefer-const -- 状态发布回调在更新控制器创建前定义。
+      let updates: ReturnType<typeof createUpdater> | undefined;
+      let statusRevision = 0;
+      const appStatus = (): AppStatus => ({
+        revision: ++statusRevision,
+        version: app.getVersion(),
+        update: updates?.status ?? { state: 'unsupported' },
+        hideAllShortcut: {
+          accelerator: session.snapshot().settings.hideAllShortcut,
+          registered: globalShortcut.isRegistered(session.snapshot().settings.hideAllShortcut),
+        },
+        displays: screen.getAllDisplays().map((display) => ({
+          id: display.id,
+          label: display.label,
+          width: Math.round(display.size.width * display.scaleFactor),
+          height: Math.round(display.size.height * display.scaleFactor),
+          scaleFactor: display.scaleFactor,
+          primary: display.id === screen.getPrimaryDisplay().id,
+        })),
+        overlayDisplayId: overlay?.window
+          ? screen.getDisplayMatching(overlay.window.getBounds()).id
+          : null,
+      });
       const stopping = (): boolean => shutdown?.closing === true || shutdown?.quitting === true;
       const overlaySend = (channel: string, payload: StageCommand | MainToOverlay): void => {
         if (overlay?.window && !session.safeMode) sendToWindow(overlay.window, channel, payload);
@@ -100,6 +124,7 @@ if (!app.requestSingleInstanceLock()) {
       const publish = (snapshot: StateSnapshot): void => {
         panels.publish(snapshot);
         overlay?.updateSettings(snapshot.settings);
+        updates?.setEnabled(snapshot.settings.autoUpdate);
         updateTray();
       };
       const session = createGameSession({
@@ -117,6 +142,18 @@ if (!app.requestSingleInstanceLock()) {
         overlaySend,
         updateTray,
         report,
+      });
+      updates = createUpdater({
+        packaged: app.isPackaged,
+        enabled: initialState.settings.autoUpdate,
+        publish: () => {
+          panels.publishAppStatus(appStatus());
+          updateTray();
+        },
+        report,
+        quit: () => {
+          app.quit();
+        },
       });
       const photo = createPhoto({
         overlay: () => overlay,
@@ -138,11 +175,11 @@ if (!app.requestSingleInstanceLock()) {
           'diagnostics/export': (message) => {
             report(zh.interfaces.commandNotReady(message.type));
           },
-          'update/check': (message) => {
-            report(zh.interfaces.commandNotReady(message.type));
+          'update/check': () => {
+            if (!stopping()) return updates.check();
           },
-          'update/install': (message) => {
-            report(zh.interfaces.commandNotReady(message.type));
+          'update/install': () => {
+            if (!stopping()) updates.requestInstall();
           },
           'debug/simulateFullscreen': (message) => {
             report(zh.interfaces.commandNotReady(message.type));
@@ -155,6 +192,7 @@ if (!app.requestSingleInstanceLock()) {
           session.fact(message);
         },
         snapshot: session.snapshot,
+        appStatus,
         content,
         report,
       });
@@ -226,7 +264,13 @@ if (!app.requestSingleInstanceLock()) {
             app.quit();
           },
         }),
-        sections: [catMenuSection, captureMenuSection, photo.menuSection, applicationMenuSection],
+        sections: [
+          catMenuSection,
+          captureMenuSection,
+          photo.menuSection,
+          updates.menuSection,
+          applicationMenuSection,
+        ],
         openSettings: () => {
           panels.openPanel('settings');
         },
@@ -252,6 +296,9 @@ if (!app.requestSingleInstanceLock()) {
         report,
         steps: [
           () => {
+            updates.dispose();
+          },
+          () => {
             recovery?.dispose();
           },
           detachIpc,
@@ -276,6 +323,9 @@ if (!app.requestSingleInstanceLock()) {
         ],
         disposeOverlay: () => overlay.dispose(),
         detachMainLog,
+        finishQuit: () => {
+          updates.finishQuit();
+        },
       });
       if (process.argv.includes('--settings')) panels.openPanel('settings');
     })
