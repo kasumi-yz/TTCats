@@ -2,6 +2,44 @@
 import koffi from 'koffi';
 import type { WindowRect } from '../types';
 
+/** 独立读取真实按钮的命中区域，供不暴露标题栏 UI Automation 的应用截图核对。 */
+export function captionHitBounds(
+  outer: WindowRect,
+  scale: number,
+  hit: (x: number, y: number) => number,
+): WindowRect {
+  const codes = [8, 9, 20, 21];
+  const row = outer.top + Math.round(20 * scale);
+  const positions = new Map<number, number[]>();
+  for (let x = outer.left; x < outer.right; x++) {
+    const code = hit(x, row);
+    if (codes.includes(code)) {
+      const xs = positions.get(code) ?? [];
+      xs.push(x);
+      positions.set(code, xs);
+    }
+  }
+  if (!positions.has(20)) throw new Error('系统命中测试没有找到关闭按钮，不能据此核对截图。');
+  const rectangles: WindowRect[] = [];
+  for (const [code, xs] of positions) {
+    const left = Math.min(...xs),
+      right = Math.max(...xs) + 1;
+    const x = Math.floor((left + right) / 2);
+    const ys: number[] = [];
+    for (let y = outer.top; y < Math.min(outer.bottom, outer.top + 100 * scale); y++)
+      if (hit(x, y) === code) ys.push(y);
+    if (!ys.length || right - left !== xs.length)
+      throw new Error('系统按钮命中区域不连续，不能作为矩形参考。');
+    rectangles.push({ left, right, top: Math.min(...ys), bottom: Math.max(...ys) + 1 });
+  }
+  return {
+    left: Math.min(...rectangles.map((r) => r.left)),
+    right: Math.max(...rectangles.map((r) => r.right)),
+    top: Math.min(...rectangles.map((r) => r.top)),
+    bottom: Math.max(...rectangles.map((r) => r.bottom)),
+  };
+}
+
 export function createWindowLedgeTest() {
   const user = koffi.load('user32.dll');
   const point = koffi.struct('LedgeTestPoint', { x: 'long', y: 'long' });
@@ -68,6 +106,20 @@ export function createWindowLedgeTest() {
   const alpha = user.func(
     'bool __stdcall SetLayeredWindowAttributes(intptr_t window, uint key, uint8 alpha, uint flags)',
   ) as (window: bigint, key: number, alpha: number, flags: number) => boolean;
+  const visible = user.func('bool __stdcall IsWindowVisible(intptr_t window)') as (
+    window: bigint,
+  ) => boolean;
+  const hitTest = user.func(
+    'intptr_t __stdcall SendMessageTimeoutW(intptr_t window, uint message, uintptr_t wParam, intptr_t lParam, uint flags, uint timeout, _Out_ intptr_t *result)',
+  ) as (
+    window: bigint,
+    message: number,
+    parameter: number,
+    coordinates: number,
+    flags: number,
+    timeout: number,
+    result: (number | bigint)[],
+  ) => number | bigint;
   const fixtures: bigint[] = [];
   const previous = context(-4);
   if (BigInt(previous) === 0n) throw new Error('无法设置真机核对的物理坐标。');
@@ -103,6 +155,7 @@ export function createWindowLedgeTest() {
     },
     prepare(id: string) {
       const hwnd = BigInt(id);
+      const wasVisible = visible(hwnd);
       const placement = {
         length: koffi.sizeof('LedgeTestPlacement'),
         flags: 0,
@@ -134,6 +187,7 @@ export function createWindowLedgeTest() {
         restore(): void {
           if (!setPlacement(hwnd, placement))
             throw new Error(`无法恢复窗口 ${id} 的原位置和状态。`);
+          if (!wasVisible) show(hwnd, 0);
         },
       };
     },
@@ -141,6 +195,19 @@ export function createWindowLedgeTest() {
       const bounds = { left: 0, top: 0, right: 0, bottom: 0 };
       if (!outer(BigInt(id), bounds)) throw new Error(`无法读取窗口 ${id} 的外框。`);
       return bounds;
+    },
+    captionBounds(id: string, scale: number): WindowRect {
+      const bounds = { left: 0, top: 0, right: 0, bottom: 0 };
+      const hwnd = BigInt(id);
+      if (!outer(hwnd, bounds)) throw new Error('无法读取截图核对窗口的外框。');
+      return captionHitBounds(bounds, scale, (x, y) => {
+        const value = [0];
+        if (
+          BigInt(hitTest(hwnd, 0x84, 0, ((y & 0xffff) << 16) | (x & 0xffff), 0x22, 8, value)) === 0n
+        )
+          throw new Error('窗口没有及时回应按钮命中测试。');
+        return Number(value[0]);
+      });
     },
     closeFixture(id: string): void {
       const hwnd = BigInt(id);

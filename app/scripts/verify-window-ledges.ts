@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { hostname, cpus } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { app, screen } from 'electron';
+import { app, desktopCapturer, screen } from 'electron';
 import type { WindowInfo, WindowRect } from '../src/main/platform/types';
 import { readWindows } from '../src/main/platform/win/windows';
 import { captionButtonsMatch } from '../src/main/platform/win/window-geometry';
@@ -103,6 +103,7 @@ async function main(): Promise<void> {
     throw new Error(
       '必须先向用户说明本机、显示配置、时长和独占要求，取得明确同意后才能加 --approved。',
     );
+  mkdirSync(output, { recursive: true });
   exclusivity([process.pid]);
   const native = createWindowLedgeTest();
   const evidence: unknown[] = [];
@@ -134,6 +135,7 @@ async function main(): Promise<void> {
         original.find(
           (w) =>
             ['Chrome_WidgetWin_1', 'MozillaWindowClass'].includes(w.className) &&
+            (w.visible || w.minimized) &&
             /^(chrome|msedge|firefox|brave|vivaldi|opera)\.exe$/i.test(
               processNames.get(w.pid) ?? '',
             ),
@@ -188,10 +190,61 @@ async function main(): Promise<void> {
         const a = read().find((w) => w.id === window.id);
         if (!a?.eligible)
           throw new Error(`${name}恢复后没有可靠的窗口顶边（${a?.reason ?? 'closed'}）。`);
-        const uia = await uiCaption(a.id);
-        if (!captionButtonsMatch(a.buttons, uia.bounds))
+        let reference: {
+          method: string;
+          bounds: WindowRect;
+          screenshot?: string;
+          uiaFailure?: string;
+          buttons?: unknown;
+        };
+        try {
+          reference = { method: 'UI Automation', ...(await uiCaption(a.id)) };
+        } catch (error) {
+          // WinUI 记事本不暴露非客户区按钮时，按 issue 的另一条路径保存真实截图。
+          const bounds = native.captionBounds(a.id, primary.scaleFactor);
+          const monitor = physical(primary.bounds);
+          const sources = await desktopCapturer.getSources({
+            types: ['screen'],
+            thumbnailSize: {
+              width: monitor.right - monitor.left,
+              height: monitor.bottom - monitor.top,
+            },
+          });
+          const source = sources.find((s) => s.display_id === String(primary.id));
+          if (!source || source.thumbnail.isEmpty())
+            throw new Error('无法捕获实际屏幕按钮截图。', { cause: error });
+          const size = source.thumbnail.getSize();
+          if (
+            size.width !== monitor.right - monitor.left ||
+            size.height !== monitor.bottom - monitor.top
+          )
+            throw new Error('实际屏幕截图尺寸与物理显示器不一致。', { cause: error });
+          const caption = source.thumbnail.crop({
+            x: bounds.left - monitor.left,
+            y: bounds.top - monitor.top,
+            width: bounds.right - bounds.left,
+            height: bounds.bottom - bounds.top,
+          });
+          const pixels = caption.toBitmap();
+          if (!pixels.some((value, index) => value !== pixels[index % 4]))
+            throw new Error('按钮截图是纯色，不能作为视觉证据。', { cause: error });
+          mkdirSync(output, { recursive: true });
+          const screenshot = `caption-${label}-${a.id}-${Date.now()}.png`;
+          writeFileSync(join(output, screenshot), caption.toPNG());
+          reference = {
+            method: '实际屏幕截图与独立 WM_NCHITTEST 命中区域',
+            bounds,
+            screenshot,
+            uiaFailure: error instanceof Error ? error.message : String(error),
+          };
+        }
+        writeFileSync(
+          join(output, `caption-${a.id}.json`),
+          JSON.stringify({ name, predicted: a.buttons, reference }, null, 2),
+        );
+        if (!captionButtonsMatch(a.buttons, reference.bounds))
           throw new Error(
-            `${name}的按钮区与 UI Automation 不一致：${JSON.stringify({ actual: a.buttons, reference: uia.bounds })}`,
+            `${name}的按钮区与独立参考不一致：${JSON.stringify({ actual: a.buttons, reference: reference.bounds })}`,
           );
         const delays: number[] = [];
         for (let i = 0; i < 5; i++) {
@@ -241,7 +294,7 @@ async function main(): Promise<void> {
           evidence.push({
             name,
             window: a,
-            uia,
+            reference,
             movementToUpdateMs: delays,
             occlusion: { zOrderVerified: true, blocker: blocker.bounds, ledges },
           });
