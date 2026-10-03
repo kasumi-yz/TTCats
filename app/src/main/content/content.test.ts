@@ -91,6 +91,31 @@ describe('运行时猫咪包加载', () => {
     expect(catalog.cats['test-calm']).toBeUndefined();
     expect(catalog.disabled[0]?.problems[0]).toContain('片段「walk」的版本 1 重复');
   });
+
+  it('通过校验的事件放进内容目录；不合格的事件只跳过它自己，并说清楚是哪个事件', () => {
+    mkdirSync(join(dir(), 'events'));
+    const event = {
+      schemaVersion: 1,
+      id: 'good-morning',
+      name: '早安',
+      trigger: { type: 'firstLaunchOfDay' },
+      cooldownMinutes: 0,
+      cats: { pick: 'all' },
+      requiredClips: [],
+      steps: [{ do: 'sound', slot: 'meow' }],
+    };
+    writeFileSync(join(dir(), 'events/good-morning.json'), JSON.stringify(event));
+    writeFileSync(
+      join(dir(), 'events/broken.json'),
+      JSON.stringify({ ...event, id: 'broken', trigger: { type: 'feedingTime' } }),
+    );
+    const log = vi.fn();
+    const catalog = loadContent(dir(), log);
+    expect(Object.keys(catalog.events)).toEqual(['good-morning']);
+    expect(catalog.events['good-morning']).toEqual(event);
+    expect(Object.keys(catalog.cats)).toHaveLength(3);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('事件配置「broken」'));
+  });
 });
 
 describe('猫咪包文件协议', () => {

@@ -125,7 +125,8 @@ describe('validate:content', () => {
       name: '早安',
       trigger: { type: 'firstLaunchOfDay' },
       cooldownMinutes: 0,
-      cats: { min: 1, max: 3 },
+      cats: { pick: 'all' },
+      requiredClips: [],
       steps: [{ do: 'sound', slot: 'meow' }],
     });
     expect(validateContentDir(root).problems).toEqual([

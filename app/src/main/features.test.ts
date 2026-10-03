@@ -11,6 +11,7 @@ const otherCommands = {
   'update/install': vi.fn(),
   'debug/crashOverlay': vi.fn(),
   'debug/simulateFullscreen': vi.fn(),
+  'debug/ledgeLines': vi.fn(),
 } satisfies Partial<MainCommandHandlers>;
 
 describe('主进程功能登记', () => {

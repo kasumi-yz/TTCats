@@ -77,6 +77,7 @@ if (!app.requestSingleInstanceLock()) {
           },
           displays: [],
           overlayDisplayId: null,
+          ledgeLines: false,
         },
         (status) => {
           panels.publishAppStatus(status);

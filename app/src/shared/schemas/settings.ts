@@ -1,10 +1,10 @@
-// 设置：只由主进程修改并存档（ADR-0004）。M1 定稿（#18），M2 新增（#52）。
-// 只放已经要做的设置项。设计方案 D13 里的其他设置项（喂饭时间、生日和到家日、久坐提醒、窗口模式等），
-// 等对应功能做出来时再加，靠存档迁移补上默认值（硬性规则 8）。
+// 设置：只由主进程修改并存档（ADR-0004）。M1 定稿（#18），M2 新增（#52），M3、M4 新增（#106）。
+// 只放已经要做的设置项（硬性规则 8）。喂饭时间已取消（2026-10-03 用户决定）。
 // 新增设置项时：在 save.ts 加一个迁移步骤补上默认值，并在 strings.zh-CN.ts 的 fields 里加上中文名。
 import { z } from 'zod';
 import { hideAllShortcutProblem } from '../accelerator';
-import { IdSchema, TimeOfDaySchema, UnitSchema } from './common';
+import type { Cat } from './cat';
+import { DateSchema, IdSchema, TimeOfDaySchema, UnitSchema } from './common';
 
 /** 活跃度（ActivityLevel）：安静、慵懒、自然、活泼、闹腾。 */
 export const ActivityLevelSchema = z.enum(['quiet', 'lazy', 'natural', 'lively', 'rowdy']);
@@ -36,6 +36,26 @@ export const HideAllShortcutSchema = z.string().superRefine((value, ctx) => {
  * 避开了 QQ、微信的 Ctrl+Alt+字母，以及调试台的 Ctrl+Shift+F10。
  */
 export const DEFAULT_HIDE_ALL_SHORTCUT = 'CommandOrControl+Alt+Shift+H';
+
+/** 活动模式（D4）：地板模式（FloorMode）只在地板上活动；窗口模式（WindowMode）还会跳上窗口顶边。 */
+export const SurfaceModeSchema = z.enum(['floor', 'window']);
+export type SurfaceMode = z.infer<typeof SurfaceModeSchema>;
+
+/** 猫的纪念日：生日、到家日（和 cat.json 的字段同名）。 */
+export const CatDateKindSchema = z.enum(['birthday', 'homeDate']);
+export type CatDateKind = z.infer<typeof CatDateKindSchema>;
+
+/**
+ * 用户给一只猫填的生日和到家日（D13）。每一项有三种情况：
+ * - 不写这个字段：用猫咪包 cat.json 里的（恢复默认就是删掉这个字段）；
+ * - 日期 YYYY-MM-DD：用用户填的，覆盖猫咪包里的；
+ * - null：用户清掉了，当作不知道，即使猫咪包里写了也不用。
+ */
+export const CatDatesOverrideSchema = z.strictObject({
+  birthday: DateSchema.nullable().optional(),
+  homeDate: DateSchema.nullable().optional(),
+});
+export type CatDatesOverride = z.infer<typeof CatDatesOverrideSchema>;
 
 export const SettingsSchema = z.strictObject({
   /**
@@ -82,8 +102,39 @@ export const SettingsSchema = z.strictObject({
    * 设置的那块认不出来（比如拔掉了）时用主显示器，但不改这里，接回来以后猫回到它上面。
    */
   display: DisplayRefSchema.nullable(),
+
+  // ---------- M3、M4（#106） ----------
+
+  /** 活动模式（D4）。默认地板模式。托盘的"切换模式"和设置窗口改的都是这里。 */
+  surfaceMode: SurfaceModeSchema,
+  /**
+   * 久坐提醒（D6、D13）：连续用电脑太久时猫冒气泡提醒休息。默认开。
+   * 多久算久坐由 core/game 定成常量，不做成设置项。关掉时触发条件为 userState sedentary 的事件不触发。
+   */
+  sedentaryReminder: z.boolean(),
+  /**
+   * 用户改过的生日和到家日，键是猫 id（D13）。没改过的猫不在这里，用猫咪包里的日期。
+   * 猫咪包被停用或删掉时，这里的值保留。改的时候用 settings/update 发整份新的 catDates。
+   * 实际用哪个日期，统一用下面的 catDate() 算，core/game 和面板不要各算各的。
+   */
+  catDates: z.record(IdSchema, CatDatesOverrideSchema),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
+
+/**
+ * 一只猫实际用的生日或到家日：用户在设置里填了就用用户的（清掉了就是没有），没动过就用猫咪包里的。
+ * 返回 YYYY-MM-DD；没有时返回 undefined。
+ */
+export function catDate(
+  settings: Pick<Settings, 'catDates'>,
+  cat: Pick<Cat, 'id' | CatDateKind>,
+  kind: CatDateKind,
+): string | undefined {
+  const override = Object.hasOwn(settings.catDates, cat.id)
+    ? settings.catDates[cat.id]?.[kind]
+    : undefined;
+  return override === undefined ? cat[kind] : (override ?? undefined);
+}
 
 /** 第一次运行时的设置。allCats 是已经加载成功的全部猫。 */
 export function defaultSettings(allCats: readonly string[]): Settings {
@@ -103,5 +154,8 @@ export function defaultSettings(allCats: readonly string[]): Settings {
     launchAtLogin: true,
     autoUpdate: true,
     display: null,
+    surfaceMode: 'floor',
+    sedentaryReminder: true,
+    catDates: {},
   };
 }

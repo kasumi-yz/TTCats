@@ -48,6 +48,7 @@ function setup() {
     hideAllShortcut: { accelerator: '', registered: false },
     displays: [{ id: 7, label: 'DELL', width: 2560, height: 1440, scaleFactor: 1, primary: true }],
     overlayDisplayId: 7,
+    ledgeLines: false,
   };
   const getAppStatus = vi.fn(() => status);
   const content = catalog([{ cat: testCat('cat') }]);
@@ -65,6 +66,7 @@ function setup() {
       'update/check': checkUpdate,
       'update/install': installUpdate,
       'debug/simulateFullscreen': fullscreen,
+      'debug/ledgeLines': vi.fn(),
     },
     fact,
     snapshot: getSnapshot,
