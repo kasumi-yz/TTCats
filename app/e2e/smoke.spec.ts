@@ -901,6 +901,11 @@ test('声音：真实解码、调试命令、呼噜停止与空闲挂起', async
   const app = await launch(directory);
   try {
     const overlay = await pageFor(app, '/overlay/');
+    // 播放验收不能依赖机器是否正在默认安静时段内；用正式设置命令排除静音前置条件。
+    await overlay.evaluate(
+      'window.ttcats.sendCommand({type:"settings/update",patch:{quietHoursStart:"00:00",quietHoursEnd:"00:00"}})',
+    );
+    await expect.poll(async () => (await snapshot(overlay)).silencedBy).toEqual([]);
     const debug = await openDebug(app);
     const audible = () =>
       app.evaluate(({ BrowserWindow }) =>
