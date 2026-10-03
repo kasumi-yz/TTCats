@@ -9,8 +9,10 @@ const otherCommands = {
   'diagnostics/export': vi.fn(),
   'update/check': vi.fn(),
   'update/install': vi.fn(),
+  'debug/simulateIdle': vi.fn(),
   'debug/crashOverlay': vi.fn(),
   'debug/simulateFullscreen': vi.fn(),
+  'debug/ledgeLines': vi.fn(),
 } satisfies Partial<MainCommandHandlers>;
 
 describe('主进程功能登记', () => {

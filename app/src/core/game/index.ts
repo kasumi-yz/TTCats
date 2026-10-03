@@ -6,6 +6,7 @@ import {
   SettingsSchema,
   validateWith,
   type DoNotDisturb,
+  type EventState,
   type Settings,
 } from '../../shared/schemas';
 import { zh } from '../../shared/strings.zh-CN';
@@ -15,7 +16,14 @@ function copySettings(settings: Settings): Settings {
     ...settings,
     visibleCats: [...settings.visibleCats],
     display: settings.display && { ...settings.display },
+    catDates: Object.fromEntries(
+      Object.entries(settings.catDates).map(([cat, dates]) => [cat, { ...dates }]),
+    ),
   };
+}
+
+function copyEvents(events: EventState): EventState {
+  return { ...events, lastTriggeredAt: { ...events.lastTriggeredAt } };
 }
 
 /** 设置项的值只有 JSON 能表示的类型（数组、对象、基本类型），按内容比较。 */
@@ -49,6 +57,10 @@ export const createGameCore: CreateGameCore = ({
   // 始终保存真实结束时刻；快进直接减少它，重启清零偏移也不会延长勿扰。
   let doNotDisturb: DoNotDisturb = state ? { ...state.doNotDisturb } : { mode: 'off' };
   if (doNotDisturb.mode === 'timed' && now >= doNotDisturb.until) doNotDisturb = { mode: 'off' };
+  // 事件调度由 #107 实现；这里先原样保留存档里的记录。
+  const events: EventState = state
+    ? copyEvents(state.events)
+    : { lastTriggeredAt: {}, firstLaunchHandledOn: null };
   let hideAll = false;
   let clockOffsetMs = 0;
   let startupQuietUntil = startupQuiet ? now + STARTUP_QUIET_MS : undefined;
@@ -183,6 +195,13 @@ export const createGameCore: CreateGameCore = ({
         result.snapshotChanged = true;
         return result;
       }
+      if (
+        command.type === 'debug/triggerEvent' ||
+        command.type === 'debug/resetCooldowns' ||
+        command.type === 'debug/userState'
+      ) {
+        return output([], [zh.interfaces.commandNotReady(command.type)]);
+      }
       if (command.type === 'debug/startupQuiet') {
         startupQuietUntil = now + clockOffsetMs + STARTUP_QUIET_MS;
         return finish(output(), now);
@@ -210,6 +229,15 @@ export const createGameCore: CreateGameCore = ({
 
     tick,
 
+    // 用户状态和全屏由 #107 实现。
+    handleUserState() {
+      return output();
+    },
+
+    setFullscreen() {
+      return output();
+    },
+
     snapshot(now) {
       return {
         revision: ++revision,
@@ -219,11 +247,16 @@ export const createGameCore: CreateGameCore = ({
         hideAll,
         silencedBy: silenceReasons(now),
         clockOffsetMs,
+        events: copyEvents(events),
       };
     },
 
     exportState() {
-      return { settings: copySettings(settings), doNotDisturb: { ...doNotDisturb } };
+      return {
+        settings: copySettings(settings),
+        doNotDisturb: { ...doNotDisturb },
+        events: copyEvents(events),
+      };
     },
   };
 };

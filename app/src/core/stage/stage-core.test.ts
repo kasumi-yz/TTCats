@@ -10,7 +10,7 @@ import {
 } from './actor';
 import { Floor } from './floor';
 import { clipDurationMs } from './pose-graph';
-import { createStageCore, CUT_EFFECT_MS, Stage } from './stage-core';
+import { createStageCore, CUT_EFFECT_MS, DEBUG_EFFECT_MS, Stage } from './stage-core';
 import {
   at,
   catalog,
@@ -808,5 +808,30 @@ describe('接口', () => {
     expect(core.update(T0 + 33).cats).toHaveLength(1);
     expect(core.drainFacts()).toEqual([]);
     expect(core.debugReport(T0 + 33).cats[0]).toMatchObject({ cat: 'a', pose: 'stand' });
+  });
+});
+
+describe('调试台放事件特效（#106，给 #110 看效果）', () => {
+  it('在猫身上放特效：地板装饰在脚边，其余在身体中间；持续 DEBUG_EFFECT_MS 后消失', () => {
+    const { stage } = setup();
+    const p = placementOf(stage.update(T0 + 33));
+    stage.handleCommand({ type: 'debug/effect', cat: 'a', effect: 'lantern' }, T0 + 33);
+    stage.handleCommand({ type: 'debug/effect', cat: 'a', effect: 'confetti' }, T0 + 33);
+    const frame = stage.update(T0 + 66);
+    const lantern = frame.effects.find((e) => e.effect === 'lantern');
+    const confetti = frame.effects.find((e) => e.effect === 'confetti');
+    expect(lantern).toMatchObject({ x: p.x, y: p.y, ageMs: 33, durationMs: DEBUG_EFFECT_MS });
+    expect(confetti?.y).toBeLessThan(p.y);
+    expect(stage.update(T0 + 33 + DEBUG_EFFECT_MS).effects).toEqual([]);
+  });
+
+  it('没有这只猫时什么也不做；调试台画面状态里每只猫都在地板上、不在事件里', () => {
+    const { stage } = setup();
+    stage.handleCommand({ type: 'debug/effect', cat: 'missing', effect: 'bug' }, T0 + 33);
+    expect(stage.update(T0 + 66).effects).toEqual([]);
+    expect(stage.debugReport(T0 + 66).cats[0]).toMatchObject({
+      event: null,
+      surface: { type: 'floor' },
+    });
   });
 });

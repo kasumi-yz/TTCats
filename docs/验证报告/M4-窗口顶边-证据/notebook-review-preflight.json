@@ -1,8 +1,8 @@
 {
-  "status": "failed",
+  "status": "passed",
   "kind": "preflight",
   "machine": "Zephyr",
-  "capturedAt": "2026-10-03T15:49:04.885Z",
+  "capturedAt": "2026-10-03T16:05:39.519Z",
   "label": "2880x1800-150pct",
   "displays": [
     {
@@ -209,46 +209,56 @@
         "pid": 25732,
         "className": "Chrome_WidgetWin_1",
         "bounds": {
-          "left": 0,
-          "top": 0,
-          "right": 2880,
-          "bottom": 1728
+          "left": 289,
+          "top": 206,
+          "right": 2881,
+          "bottom": 1752
         },
-        "buttons": null,
-        "buttonsSource": "none",
+        "buttons": {
+          "left": 2675,
+          "right": 2880,
+          "top": 208,
+          "bottom": 266
+        },
+        "buttonsSource": "hit-test",
         "dpiAwareness": "per-monitor",
         "windowDpi": 144,
         "visible": true,
         "minimized": false,
-        "maximized": true,
+        "maximized": false,
         "fullscreen": false,
         "cloaked": false,
         "occludes": true,
-        "eligible": false,
-        "reason": "maximized"
+        "eligible": true,
+        "reason": ""
       },
       "window": {
         "id": "198178",
         "pid": 25732,
         "className": "Chrome_WidgetWin_1",
         "bounds": {
-          "left": 0,
-          "top": 0,
-          "right": 2880,
-          "bottom": 1728
+          "left": 289,
+          "top": 206,
+          "right": 2881,
+          "bottom": 1752
         },
-        "buttons": null,
-        "buttonsSource": "none",
+        "buttons": {
+          "left": 2675,
+          "right": 2880,
+          "top": 208,
+          "bottom": 266
+        },
+        "buttonsSource": "hit-test",
         "dpiAwareness": "per-monitor",
         "windowDpi": 144,
         "visible": true,
         "minimized": false,
-        "maximized": true,
+        "maximized": false,
         "fullscreen": false,
         "cloaked": false,
         "occludes": true,
-        "eligible": false,
-        "reason": "maximized"
+        "eligible": true,
+        "reason": ""
       },
       "checks": [
         {
@@ -258,13 +268,8 @@
         },
         {
           "name": "只读按钮与截图路径",
-          "status": "failed",
-          "errorMessages": [
-            "浏览器按钮核对失败。",
-            "正式按钮算法没有有效矩形。",
-            "按钮横向范围与 UI Automation 不一致：{\"predicted\":null,\"reference\":{\"left\":2675,\"right\":2880,\"top\":0,\"bottom\":60}}",
-            "按钮横向范围与 WM_NCHITTEST 扫描 不一致：{\"predicted\":null,\"reference\":{\"left\":2675,\"right\":2880,\"top\":0,\"bottom\":60}}"
-          ]
+          "status": "passed",
+          "errorMessages": []
         }
       ],
       "capabilities": {
@@ -272,8 +277,13 @@
         "canMaximize": true
       },
       "caption": {
-        "predicted": null,
-        "predictionSource": "非站立窗口的同一 titlebarButtons 纯函数；不是可站顶边",
+        "predicted": {
+          "left": 2675,
+          "right": 2880,
+          "top": 208,
+          "bottom": 266
+        },
+        "predictionSource": "readWindows",
         "titlebarPrediction": null,
         "uia": {
           "canMaximize": true,
@@ -287,24 +297,24 @@
           "buttons": [
             {
               "left": 2675,
-              "bottom": 60,
-              "top": 0,
+              "bottom": 266,
+              "top": 207,
               "right": 2743,
               "kind": "minimize",
               "frameworkId": "Chrome"
             },
             {
               "left": 2742,
-              "bottom": 60,
-              "top": 0,
+              "bottom": 266,
+              "top": 207,
               "right": 2811,
               "kind": "maximize",
               "frameworkId": "Chrome"
             },
             {
               "left": 2811,
-              "bottom": 60,
-              "top": 0,
+              "bottom": 266,
+              "top": 207,
               "right": 2880,
               "kind": "close",
               "frameworkId": "Chrome"
@@ -314,8 +324,8 @@
         "hitBounds": {
           "left": 2675,
           "right": 2880,
-          "top": 0,
-          "bottom": 60
+          "top": 208,
+          "bottom": 266
         },
         "hitErrorMessage": null,
         "comparisons": [
@@ -324,34 +334,34 @@
             "bounds": {
               "left": 2675,
               "right": 2880,
-              "top": 0,
-              "bottom": 60
+              "top": 207,
+              "bottom": 266
             },
-            "horizontalMatch": false,
-            "topDifference": null,
-            "bottomDifference": null
+            "horizontalMatch": true,
+            "topDifference": 1,
+            "bottomDifference": 0
           },
           {
             "source": "WM_NCHITTEST 扫描",
             "bounds": {
               "left": 2675,
               "right": 2880,
-              "top": 0,
-              "bottom": 60
+              "top": 208,
+              "bottom": 266
             },
-            "horizontalMatch": false,
-            "topDifference": null,
-            "bottomDifference": null
+            "horizontalMatch": true,
+            "topDifference": 0,
+            "bottomDifference": 0
           }
         ],
         "captureMethod": "PrintWindow",
         "capturePlan": {
           "windowDpi": 144,
           "outer": {
-            "left": -11,
-            "right": 2891,
-            "bottom": 1739,
-            "top": -11
+            "left": 280,
+            "right": 2890,
+            "bottom": 1761,
+            "top": 206
           },
           "awareness": 2,
           "regionVisible": true,
@@ -366,16 +376,16 @@
         "pid": 16584,
         "className": "CabinetWClass",
         "bounds": {
-          "left": 935,
-          "top": 540,
-          "right": 2726,
-          "bottom": 1696
+          "left": 934,
+          "top": 95,
+          "right": 2725,
+          "bottom": 1251
         },
         "buttons": {
-          "left": 2513,
-          "top": 541,
-          "right": 2725,
-          "bottom": 585
+          "left": 2512,
+          "top": 96,
+          "right": 2724,
+          "bottom": 140
         },
         "buttonsSource": "titlebar",
         "dpiAwareness": "per-monitor",
@@ -394,16 +404,16 @@
         "pid": 16584,
         "className": "CabinetWClass",
         "bounds": {
-          "left": 935,
-          "top": 540,
-          "right": 2726,
-          "bottom": 1696
+          "left": 934,
+          "top": 95,
+          "right": 2725,
+          "bottom": 1251
         },
         "buttons": {
-          "left": 2513,
-          "top": 541,
-          "right": 2725,
-          "bottom": 585
+          "left": 2512,
+          "top": 96,
+          "right": 2724,
+          "bottom": 140
         },
         "buttonsSource": "titlebar",
         "dpiAwareness": "per-monitor",
@@ -435,17 +445,17 @@
       },
       "caption": {
         "predicted": {
-          "left": 2513,
-          "top": 541,
-          "right": 2725,
-          "bottom": 585
+          "left": 2512,
+          "top": 96,
+          "right": 2724,
+          "bottom": 140
         },
         "predictionSource": "readWindows",
         "titlebarPrediction": {
-          "left": 2513,
-          "top": 541,
-          "right": 2725,
-          "bottom": 585
+          "left": 2512,
+          "top": 96,
+          "right": 2724,
+          "bottom": 140
         },
         "uia": {
           "canMaximize": true,
@@ -458,26 +468,26 @@
           "valid": true,
           "buttons": [
             {
-              "left": 2654,
-              "bottom": 585,
-              "top": 541,
-              "right": 2725,
+              "left": 2653,
+              "bottom": 140,
+              "top": 96,
+              "right": 2724,
               "kind": "close",
               "frameworkId": ""
             },
             {
-              "left": 2584,
-              "bottom": 585,
-              "top": 541,
-              "right": 2654,
+              "left": 2583,
+              "bottom": 140,
+              "top": 96,
+              "right": 2653,
               "kind": "maximize",
               "frameworkId": ""
             },
             {
-              "left": 2513,
-              "bottom": 585,
-              "top": 541,
-              "right": 2584,
+              "left": 2512,
+              "bottom": 140,
+              "top": 96,
+              "right": 2583,
               "kind": "minimize",
               "frameworkId": ""
             }
@@ -489,10 +499,10 @@
           {
             "source": "UI Automation",
             "bounds": {
-              "left": 2513,
-              "right": 2725,
-              "top": 541,
-              "bottom": 585
+              "left": 2512,
+              "right": 2724,
+              "top": 96,
+              "bottom": 140
             },
             "horizontalMatch": true,
             "topDifference": 0,
@@ -503,10 +513,10 @@
         "capturePlan": {
           "windowDpi": 144,
           "outer": {
-            "left": 926,
-            "right": 2735,
-            "bottom": 1705,
-            "top": 540
+            "left": 925,
+            "right": 2734,
+            "bottom": 1260,
+            "top": 95
           },
           "awareness": 2,
           "regionVisible": true,
@@ -639,8 +649,8 @@
     {
       "name": "独立 Legacy 回归窗口",
       "original": {
-        "id": "5179444",
-        "pid": 58208,
+        "id": "12521206",
+        "pid": 26572,
         "className": "TTCatsLegacyFixture",
         "bounds": {
           "left": 7331,
@@ -667,8 +677,8 @@
         "reason": ""
       },
       "window": {
-        "id": "5179444",
-        "pid": 58208,
+        "id": "12521206",
+        "pid": 26572,
         "className": "TTCatsLegacyFixture",
         "bounds": {
           "left": 7331,
@@ -784,17 +794,5 @@
     "独立 Legacy 回归窗口"
   ],
   "phases": [],
-  "failures": [
-    {
-      "scope": "浏览器",
-      "name": "只读按钮与截图路径",
-      "status": "failed",
-      "errorMessages": [
-        "浏览器按钮核对失败。",
-        "正式按钮算法没有有效矩形。",
-        "按钮横向范围与 UI Automation 不一致：{\"predicted\":null,\"reference\":{\"left\":2675,\"right\":2880,\"top\":0,\"bottom\":60}}",
-        "按钮横向范围与 WM_NCHITTEST 扫描 不一致：{\"predicted\":null,\"reference\":{\"left\":2675,\"right\":2880,\"top\":0,\"bottom\":60}}"
-      ]
-    }
-  ]
+  "failures": []
 }

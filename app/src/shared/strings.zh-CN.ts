@@ -4,7 +4,11 @@
 // 按模块分段：每个模块一段，键名用模块名（比如 save、overlay、panels、stage）。
 // 各个 issue 只加自己模块的那一段、不改别人的，这样并行开发时不容易冲突。
 // 新的一段加在文件末尾、`};` 的前面。
+import type { StageEffect } from './core-api';
+import type { EventOutcome } from './ipc';
+import type { EventTrigger } from './schemas/event';
 import type { Pose } from './schemas/pose';
+import type { CatDateKind, SurfaceMode } from './schemas/settings';
 
 export const zh = {
   app: {
@@ -94,9 +98,50 @@ export const zh = {
     doNotDisturb: '勿扰模式',
     mode: '模式',
     until: '结束时间',
+    surfaceMode: '活动模式',
+    sedentaryReminder: '久坐提醒',
+    catDates: '生日和到家日',
+    events: '事件记录',
+    lastTriggeredAt: '上次触发时刻',
+    firstLaunchHandledOn: '处理过早安的日期',
+    type: '类型',
+    perHour: '每小时几次',
+    from: '开始时刻',
+    to: '结束时刻',
+    date: '日期',
+    pick: '怎么挑猫',
+    by: '按哪项性格参数',
+    prefer: '偏好高还是低',
+    requiredClips: '必需片段',
+    do: '做什么',
+    pose: '姿势',
+    times: '播放次数',
+    target: '目标',
+    gait: '走还是跑',
+    texts: '气泡文字',
+    durationMs: '持续时间（毫秒）',
+    effect: '特效',
+    slot: '声音位',
+    minMs: '最短（毫秒）',
+    maxMs: '最长（毫秒）',
+    candidateManifestSha256: '候选清单校验值',
+    source: '原始素材信息',
+    sha256: '原始视频校验值',
+    selection: '人工挑选参数',
+    trimStart: '裁剪开始帧',
+    trimEnd: '裁剪结束帧',
+    loopStart: '循环开始帧',
+    loopEnd: '循环结束帧',
+    accepted: '是否人工确认合格',
+    note: '挑选备注',
+    manualSeconds: '人工用时',
+    assessment: '自动初筛参考',
+    score: '参考分数',
+    reasons: '评分原因',
   } as Readonly<Record<string, string>>,
 
   validation: {
+    emptyAssessmentReason: '评分原因不能为空',
     wholeFile: '（整个文件）',
     catPack: (catId: string) => `猫咪包「${catId}」`,
     eventFile: (file: string) => `事件配置「${file}」`,
@@ -135,6 +180,15 @@ export const zh = {
     frameOutOfRange: (frame: number, frameCount: number) =>
       `第 ${frame} 帧超出了范围（片段只有 ${frameCount} 帧，从 0 算起）`,
     maxBelowMin: '最多几只猫不能小于最少几只猫',
+    lunarMonthDayFormat: '农历日期格式应为 MM-DD：月是 01～12，日是 01～30',
+    unknownPlaceholder: (name: string) =>
+      `气泡文字里的占位「{${name}}」不认识，只能用 {name}（这只猫的名字）`,
+    dateOwnerNeedsCatDate:
+      '"今天过纪念日的猫"（dateOwner）只能用在猫的生日或到家纪念日（catDate）触发的事件里',
+    emptyTimeRange: '时间段的开始和结束不能一样',
+    stayMustBeLast: '"保持不动"（stay）只能是最后一步',
+    maxMsBelowMinMs: '最长等待时间不能小于最短等待时间',
+    effectTargetFirst: '目标是特效（effect），但前面的步骤里还没有放特效',
     acceleratorFormat:
       '快捷键写法不对：应写成"修饰键+按键"，比如 Ctrl+Alt+Shift+H。修饰键可以用 Ctrl、Alt、Shift、Super（Win 键），不能重复；按键只能有一个，可以是字母、数字、F1～F24、方向键等',
     acceleratorNeedsModifier:
@@ -536,5 +590,58 @@ export const zh = {
     install: (version: string) => `重启并更新到 ${version}`,
     failed: (error: string) => `更新失败：${error}`,
     retryLater: '检查失败，请稍后重试。',
+  },
+  reviewResult: {
+    sha256Format: '校验值必须是 64 位小写十六进制 SHA-256',
+    trimRange: '裁剪区间必须有帧且不超过原始帧数，结束帧不包含在区间内',
+    loopRange: '循环区间必须有帧且位于裁剪区间内，结束帧不包含在区间内',
+    soundRange: '声音起始帧必须位于实际导出的区间内，使用原始帧号',
+    pointBounds: (width: number, height: number, count: number, firstFrame: number) =>
+      `有 ${count} 帧超出原始画面，第一处是第 ${firstFrame} 帧；坐标须在原始画面内：0 ≤ x < ${width}，0 ≤ y < ${height}`,
+    context: (cat: string, candidateId: string) => `猫「${cat}」候选「${candidateId}」：`,
+    identityMismatch: '挑选结果的猫或候选 id 与正在处理的候选不符',
+    kindMismatch: '挑选结果的片段类型与候选清单不符',
+  },
+  /** M3、M4 共享接口（#106）：新设置项、事件相关的中文名。面板、调试台、托盘共用，各自的说明文字放在自己那一段。 */
+  eventInterfaces: {
+    surfaceModes: { floor: '地板模式', window: '窗口模式' } satisfies Record<SurfaceMode, string>,
+    surfaceModeHelp: '窗口模式下，猫除了在地板上走，还会跳到窗口顶上，跟着窗口移动。',
+    sedentaryReminder: '久坐提醒',
+    sedentaryReminderHelp: '连续用电脑太久时，猫会冒气泡提醒你起来活动一下。',
+    catDateKinds: { birthday: '生日', homeDate: '到家日' } satisfies Record<CatDateKind, string>,
+    userStates: { away: '你离开了', back: '你回来了', sedentary: '你坐太久了' },
+    /** 调试台里显示的触发条件。 */
+    trigger: (trigger: EventTrigger): string => {
+      switch (trigger.type) {
+        case 'random':
+          return `随机，平均每小时 ${trigger.perHour} 次`;
+        case 'firstLaunchOfDay':
+          return '当天第一次开机';
+        case 'timeOfDay':
+          return `每天 ${trigger.from}～${trigger.to}`;
+        case 'userState':
+          return zh.eventInterfaces.userStates[trigger.state];
+        case 'catDate':
+          return `猫的${zh.eventInterfaces.catDateKinds[trigger.date]}`;
+        case 'holiday':
+          return `每年公历 ${trigger.date}`;
+        case 'lunarHoliday':
+          return `每年农历 ${trigger.date}`;
+      }
+    },
+    outcomes: {
+      completed: '演完了',
+      interrupted: '被打断',
+      missingClip: '缺片段',
+      unavailable: '没法参加',
+    } satisfies Record<EventOutcome, string>,
+    effects: {
+      cut: '打断遮挡',
+      hearts: '爱心',
+      bug: '飞虫',
+      confetti: '彩纸',
+      lantern: '灯笼',
+      gift: '礼物盒',
+    } satisfies Record<StageEffect, string>,
   },
 };

@@ -122,7 +122,7 @@ describe('开机启动', () => {
     const publish = vi.fn();
     let now = 0;
     const session = createGameSession({
-      content: { cats: {}, disabled: [] },
+      content: { cats: {}, disabled: [], events: {} },
       state,
       save,
       now: () => now,

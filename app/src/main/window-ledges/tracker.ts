@@ -1,10 +1,11 @@
 import type { WindowInfo } from '../platform/types';
-import { computeLedges, type Ledge, type LedgeScreen } from './compute';
+import { computeLedges, type LedgeScreen } from './compute';
+import type { Ledges } from '../../shared/core-api';
 
 export interface WindowLedgeUpdate {
   at: number;
   windows: WindowInfo[];
-  ledges: Ledge[];
+  ledges: Ledges;
   /** 位移是桌面层 CSS 像素，时间是两次实际采样间隔；快速移动的玩法阈值归 #115。 */
   moved: { id: string; dx: number; dy: number; elapsedMs: number }[];
   /** 不再可站立（关闭、隐藏、最小化、最大化等）的窗口。 */
@@ -35,6 +36,7 @@ export function createWindowLedgeTracker(options: {
   const sample = (): void => {
     const screen = options.screen();
     const at = now();
+    const timestamp = Date.now();
     const windows = options.readWindows();
     const ledges = computeLedges(windows, screen);
     const before = new Map(previous?.windows.map((w) => [w.id, w]));
@@ -51,7 +53,7 @@ export function createWindowLedgeTracker(options: {
         if (dx || dy) moved.push({ id, dx, dy, elapsedMs: at - previous.at });
       }
     }
-    previous = { at, windows, ledges, moved, unavailable };
+    previous = { at, windows, ledges: { at: timestamp, windows: ledges }, moved, unavailable };
     options.onUpdate(previous);
   };
   const tick = (): void => {
@@ -66,7 +68,13 @@ export function createWindowLedgeTracker(options: {
           .filter((w) => w.eligible)
           .map((w) => ({ id: w.id, reason: 'query-failed' })) ?? [];
       previous = undefined;
-      options.onUpdate({ at: now(), windows: [], ledges: [], moved: [], unavailable });
+      options.onUpdate({
+        at: now(),
+        windows: [],
+        ledges: { at: Date.now(), windows: [] },
+        moved: [],
+        unavailable,
+      });
       options.onError(error);
     } finally {
       schedule();
@@ -86,7 +94,13 @@ export function createWindowLedgeTracker(options: {
       if (mode) tick();
       else {
         previous = undefined;
-        options.onUpdate({ at: now(), windows: [], ledges: [], moved: [], unavailable: [] });
+        options.onUpdate({
+          at: now(),
+          windows: [],
+          ledges: { at: Date.now(), windows: [] },
+          moved: [],
+          unavailable: [],
+        });
       }
     },
     /** 调试或屏幕配置改变时立即读取一次，地板模式下仍然不读。 */

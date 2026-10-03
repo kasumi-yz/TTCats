@@ -42,7 +42,7 @@ it('记录回调时刻，不把 Promise 等待及后续调度时间混入跟随�
   probe.update({
     at: 130,
     windows: [],
-    ledges: [],
+    ledges: { at: 1000, windows: [] },
     unavailable: [],
     moved: [{ id: '7', dx: 20, dy: 0, elapsedMs: 46 }],
   });
@@ -60,7 +60,7 @@ it('其他窗口的更新不冒充本次移动；超时计为失败且清除等�
   probe.update({
     at: 100,
     windows: [],
-    ledges: [],
+    ledges: { at: 1000, windows: [] },
     unavailable: [],
     moved: [{ id: '8', dx: 20, dy: 0, elapsedMs: 46 }],
   });

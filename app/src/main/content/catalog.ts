@@ -42,7 +42,7 @@ export function validateContentDir(contentDir: string, requireClips = false): Co
   const report: ContentReport = {
     checkedFiles: 0,
     problems: [],
-    catalog: { cats: {}, disabled: [] },
+    catalog: { cats: {}, disabled: [], events: {} },
   };
   const rel = (file: string) => relative(join(contentDir, '..'), file).replaceAll('\\', '/');
 
@@ -155,6 +155,8 @@ export function validateContentDir(contentDir: string, requireClips = false): Co
     const event = check(EventSchema, eventFile, who);
     if (event !== undefined && event.id !== expectedId) {
       report.problems.push(`${who} ${rel(eventFile)}：${v.idMismatch(event.id, expectedId)}`);
+    } else if (event !== undefined) {
+      report.catalog.events[event.id] = event;
     }
   }
 

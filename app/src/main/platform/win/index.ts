@@ -1,28 +1,14 @@
 import { screen } from 'electron';
 import koffi from 'koffi';
 import type { Platform, ScreenPoint } from '../types';
-
+import { isFullscreenWindow, type Rect } from './fullscreen';
+export { FULLSCREEN_IGNORED_PROCESSES } from './fullscreen';
 export { readWindows } from './windows';
-
-/**
- * 系统报告"有全屏程序"、但其实不该让猫躲起来的程序（按可执行文件名，不区分大小写）。
- * NVIDIA App 的游戏内悬浮层常驻两个铺满屏幕的隐形窗口，系统会因此一直报告"忙碌"（#29 验收时发现）。
- */
-export const FULLSCREEN_IGNORED_PROCESSES = ['nvidia overlay.exe'];
-/** 桌面和任务栏本身也会铺满屏幕，点一下桌面不能算进入全屏。 */
-const SHELL_WINDOW_CLASSES = ['Progman', 'WorkerW', 'Shell_TrayWnd'];
 const QUNS_BUSY = 2;
 const QUNS_RUNNING_D3D_FULL_SCREEN = 3;
 const QUNS_PRESENTATION_MODE = 4;
 const MONITOR_DEFAULTTONEAREST = 2;
 const PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
-
-interface Rect {
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
-}
 
 export function createWindowsPlatform(): Platform {
   const user32 = koffi.load('user32.dll');
@@ -58,6 +44,13 @@ export function createWindowsPlatform(): Platform {
   const getWindowRect = user32.func(
     'bool __stdcall GetWindowRect(intptr_t window, _Out_ PlatformRect *rect)',
   ) as (window: number, rect: Rect) => boolean;
+  const getWindowLongPtr = user32.func(
+    'intptr_t __stdcall GetWindowLongPtrW(intptr_t window, int index)',
+  ) as (window: number, index: number) => number | bigint;
+  const setLastError = kernel32.func('void __stdcall SetLastError(uint error)') as (
+    error: number,
+  ) => void;
+  const getLastError = kernel32.func('uint __stdcall GetLastError()') as () => number;
   const monitorFromWindow = user32.func(
     'intptr_t __stdcall MonitorFromWindow(intptr_t window, uint flags)',
   ) as (window: number, flags: number) => number | bigint;
@@ -85,6 +78,12 @@ export function createWindowsPlatform(): Platform {
     const length = getClassName(window, buffer, 256);
     return buffer.toString('utf16le', 0, Math.max(0, length) * 2);
   };
+  const windowStyle = (window: number): number | null => {
+    // 返回 0 既可能是合法的无样式窗口，也可能是失败；按 Win32 约定清除再读错误码。
+    setLastError(0);
+    const style = Number(getWindowLongPtr(window, -16)); // GWL_STYLE
+    return style === 0 && getLastError() !== 0 ? null : style;
+  };
   /** 窗口所属程序的可执行文件名（小写）。没有权限读（比如管理员程序）时返回空字符串。 */
   const processName = (window: number): string => {
     const pid = [0];
@@ -107,7 +106,7 @@ export function createWindowsPlatform(): Platform {
    */
   const foregroundCoversMonitor = (display: ScreenPoint): boolean => {
     const window = Number(getForegroundWindow());
-    if (window === 0 || SHELL_WINDOW_CLASSES.includes(windowClass(window))) return false;
+    if (window === 0) return false;
     const bounds = { left: 0, top: 0, right: 0, bottom: 0 };
     // 窗口刚好关掉时读不到位置，此时它显然不在全屏
     if (!getWindowRect(window, bounds)) return false;
@@ -119,13 +118,14 @@ export function createWindowsPlatform(): Platform {
     const info = { cbSize: koffi.sizeof('PlatformMonitorInfo'), rcMonitor: { ...bounds } };
     if (!getMonitorInfo(monitor, info))
       throw new Error('GetMonitorInfoW 失败，无法判断前台窗口是否全屏');
-    const area = info.rcMonitor;
-    const covers =
-      bounds.left <= area.left &&
-      bounds.top <= area.top &&
-      bounds.right >= area.right &&
-      bounds.bottom >= area.bottom;
-    return covers && !FULLSCREEN_IGNORED_PROCESSES.includes(processName(window));
+    return isFullscreenWindow({
+      className: windowClass(window),
+      style: windowStyle(window),
+      bounds,
+      monitorBounds: info.rcMonitor,
+      sameMonitor: true,
+      processName: processName(window),
+    });
   };
 
   return {

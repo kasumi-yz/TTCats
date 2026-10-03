@@ -79,19 +79,6 @@
           "properties": {
             "type": {
               "type": "string",
-              "const": "feedingTime"
-            }
-          },
-          "required": [
-            "type"
-          ],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string",
               "const": "userState"
             },
             "state": {
@@ -147,6 +134,24 @@
             "date"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "lunarHoliday"
+            },
+            "date": {
+              "type": "string",
+              "pattern": "^(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|30)(?![\\s\\S])"
+            }
+          },
+          "required": [
+            "type",
+            "date"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -155,24 +160,85 @@
       "minimum": 0
     },
     "cats": {
-      "type": "object",
-      "properties": {
-        "min": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 9007199254740991
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "pick": {
+              "type": "string",
+              "const": "all"
+            }
+          },
+          "required": [
+            "pick"
+          ],
+          "additionalProperties": false
         },
-        "max": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 9007199254740991
+        {
+          "type": "object",
+          "properties": {
+            "pick": {
+              "type": "string",
+              "const": "dateOwner"
+            }
+          },
+          "required": [
+            "pick"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "pick": {
+              "type": "string",
+              "const": "weighted"
+            },
+            "by": {
+              "type": "string",
+              "enum": [
+                "activity",
+                "clinginess",
+                "initiative",
+                "dominance",
+                "patience"
+              ]
+            },
+            "prefer": {
+              "type": "string",
+              "enum": [
+                "high",
+                "low"
+              ]
+            },
+            "min": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "pick",
+            "by",
+            "prefer",
+            "min",
+            "max"
+          ],
+          "additionalProperties": false
         }
-      },
-      "required": [
-        "min",
-        "max"
-      ],
-      "additionalProperties": false
+      ]
+    },
+    "requiredClips": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])"
+      }
     },
     "steps": {
       "minItems": 1,
@@ -191,10 +257,7 @@
                 "enum": [
                   "stand",
                   "sit",
-                  "sleep",
-                  "dangle",
-                  "crouch",
-                  "airborne"
+                  "sleep"
                 ]
               }
             },
@@ -232,11 +295,67 @@
             "properties": {
               "do": {
                 "type": "string",
+                "const": "moveTo"
+              },
+              "target": {
+                "type": "string",
+                "enum": [
+                  "random",
+                  "oppositeSide",
+                  "pointer",
+                  "effect"
+                ]
+              },
+              "gait": {
+                "type": "string",
+                "enum": [
+                  "walk",
+                  "run"
+                ]
+              }
+            },
+            "required": [
+              "do",
+              "target",
+              "gait"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "face"
+              },
+              "target": {
+                "type": "string",
+                "enum": [
+                  "pointer",
+                  "effect"
+                ]
+              }
+            },
+            "required": [
+              "do",
+              "target"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
                 "const": "bubble"
               },
-              "text": {
-                "type": "string",
-                "minLength": 1
+              "texts": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
               },
               "durationMs": {
                 "type": "integer",
@@ -246,7 +365,7 @@
             },
             "required": [
               "do",
-              "text",
+              "texts",
               "durationMs"
             ],
             "additionalProperties": false
@@ -260,12 +379,24 @@
               },
               "effect": {
                 "type": "string",
-                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])"
+                "enum": [
+                  "hearts",
+                  "bug",
+                  "confetti",
+                  "lantern",
+                  "gift"
+                ]
+              },
+              "durationMs": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
               }
             },
             "required": [
               "do",
-              "effect"
+              "effect",
+              "durationMs"
             ],
             "additionalProperties": false
           },
@@ -297,7 +428,12 @@
                 "type": "string",
                 "const": "wait"
               },
-              "ms": {
+              "minMs": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "maxMs": {
                 "type": "integer",
                 "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
@@ -305,7 +441,21 @@
             },
             "required": [
               "do",
-              "ms"
+              "minMs",
+              "maxMs"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "stay"
+              }
+            },
+            "required": [
+              "do"
             ],
             "additionalProperties": false
           }
@@ -320,6 +470,7 @@
     "trigger",
     "cooldownMinutes",
     "cats",
+    "requiredClips",
     "steps"
   ],
   "additionalProperties": false

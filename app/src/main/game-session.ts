@@ -26,6 +26,7 @@ export function createGameSession(options: {
     now: now(),
     utcOffsetMinutes,
     startupQuiet: options.startupQuiet,
+    random: Math.random,
   });
   let revision = 0;
   let safeMode = false;
@@ -75,7 +76,13 @@ export function createGameSession(options: {
         content.disabled.push({ cat: id, problems: [problem] });
         log(problem);
       }
-      game = createGameCore({ content, state: result.state, now: now(), utcOffsetMinutes });
+      game = createGameCore({
+        content,
+        state: result.state,
+        now: now(),
+        utcOffsetMinutes,
+        random: Math.random,
+      });
       publish(snapshot());
     },
     flush(): void {

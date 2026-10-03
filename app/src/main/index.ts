@@ -77,6 +77,7 @@ if (!app.requestSingleInstanceLock()) {
           },
           displays: [],
           overlayDisplayId: null,
+          ledgeLines: false,
         },
         (status) => {
           panels.publishAppStatus(status);
@@ -179,6 +180,13 @@ if (!app.requestSingleInstanceLock()) {
           report,
         }),
         updates,
+        {
+          mainCommands: {
+            'debug/simulateIdle': (message) => {
+              report(zh.interfaces.commandNotReady(message.type));
+            },
+          },
+        },
         overlay,
         { mainCommands: { 'diagnostics/export': exportDiagnostics } },
         createDebugShortcut({ openPanel: panels.openPanel, report }),

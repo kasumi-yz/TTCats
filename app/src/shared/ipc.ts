@@ -1,4 +1,4 @@
-// 窗口之间的消息。M1 定稿（#18），M2 新增（#52）。只放已经要做的；事件等到 M3 再加（硬性规则 8）。
+// 窗口之间的消息。M1 定稿（#18），M2 新增（#52），M3、M4 新增（#106）。只放已经要做的（硬性规则 8）。
 //
 // 和需要存档的状态有关的消息只有三类（ADR-0004）：
 // - 命令（Command）：要求对方做一件事。面板、托盘、右键菜单 → 主进程；主进程 → 桌面层。
@@ -14,12 +14,15 @@
 // 所有时间都是 Unix 毫秒（真实时间），不按帧数累加（ADR-0004）。调试台快进的偏移只在 core/game 内部用，
 // 消息和存档里的时刻都不带偏移（见 core-api.ts 的 GameCore）。
 // 所有坐标都是桌面层里的 CSS 像素，原点在桌面层左上角。
-import type { ContentCatalog } from './core-api';
+import type { ContentCatalog, Ledges, UserStateSignal } from './core-api';
 import type { DisplayInfo } from './display';
 import type { CatSound } from './schemas/cat';
 import type { Point } from './schemas/common';
 import type { DoNotDisturb, DoNotDisturbDuration } from './schemas/do-not-disturb';
+import type { EventEffect } from './schemas/event';
+import type { EventState } from './schemas/save';
 import type { Settings } from './schemas/settings';
+import type { ReviewStationBridge } from './review-station';
 
 /** IPC 通道名。 */
 export const IPC_CHANNELS = {
@@ -59,7 +62,10 @@ export type SimulatedInteraction = 'poke' | 'pet' | 'pickUp' | 'drop' | 'nearbyC
 
 /** 由 core/game 处理的命令。 */
 export type GameCommand =
-  /** 改设置。改完的整份设置必须通过 SettingsSchema，否则整条命令被拒绝。 */
+  /**
+   * 改设置。改完的整份设置必须通过 SettingsSchema，否则整条命令被拒绝。
+   * 补丁是浅合并：改某只猫的生日或到家日时，发整份新的 catDates（M3）。
+   */
   | { type: 'settings/update'; patch: Partial<Settings> }
   /**
    * 召唤（Summon）：不写 cat 表示召唤全部显示中的猫。
@@ -95,7 +101,27 @@ export type GameCommand =
   /** 让全部显示中的猫重新入场（core/game 原样转成 StageCommand 的 cat/entrance）。 */
   | { type: 'debug/entrance' }
   /** 让某只猫发出喵叫或呼噜（core/game 原样转成 StageCommand）。照样受声音开关、安静时段、勿扰的限制。 */
-  | { type: 'debug/sound'; cat: CatId; sound: CatSound };
+  | { type: 'debug/sound'; cat: CatId; sound: CatSound }
+  /**
+   * 马上触发某个事件（M3），不管触发条件和冷却。cats 写了就用这几只猫（必须显示中、有事件 requiredClips 里的片段；
+   * 事件的 cats 是 dateOwner 时，就当它们是今天过纪念日的猫），没写就按事件的 cats 规则挑。
+   * 指定的猫已经在别的事件里时，被这个事件接管。照常记下触发时刻（开始冷却，要存档）。
+   * 勿扰、一键隐藏、全屏时拒绝，猫凑不够时也拒绝，problems 里写清楚原因（比如哪只猫缺了哪个片段）。
+   */
+  | { type: 'debug/triggerEvent'; event: string; cats?: CatId[] }
+  /** 清空全部事件的冷却，也忘掉今天已经处理过的早安（M3）。要存档。 */
+  | { type: 'debug/resetCooldowns' }
+  /**
+   * 模拟一条用户状态信号（M3），和主进程从系统读到的一样处理。比如发 idle 10 分钟模拟"你离开了"；
+   * 之后主进程读到真实的空闲时间照常生效（人正在操作调试台，所以很快会变成"你回来了"）。
+   * 想测"坐太久"，用 debug/advanceClock 快进。
+   */
+  | { type: 'debug/userState'; signal: UserStateSignal }
+  /**
+   * 在某只猫身上放一个事件特效（M3），不用等事件触发，给桌面层画特效（#110）看效果用。
+   * core/game 原样转成 StageCommand。位置和动法和事件里一样（见 schemas/event.ts 的 EventEffectSchema），持续几秒，时长由 core/stage 定。
+   */
+  | { type: 'debug/effect'; cat: CatId; effect: EventEffect };
 
 /** 由主进程自己处理、不经过 core/game 的命令。 */
 export type MainCommand =
@@ -107,13 +133,20 @@ export type MainCommand =
   | { type: 'update/check' }
   /** 重启并安装已经下好的更新（#68）。没有下好的更新时什么也不做。 */
   | { type: 'update/install' }
+  /** 调试台：假装电脑已闲置够久，立刻按闲置自动安装规则判断一次；其他条件照常检查（#95）。 */
+  | { type: 'debug/simulateIdle' }
   /** 调试台：让桌面层的渲染进程崩溃，用来测试崩溃恢复和安全模式（D13）。 */
   | { type: 'debug/crashOverlay' }
   /**
    * 调试台：模拟前台有全屏程序（D10）。true：和真的全屏一样隐藏桌面层；false：结束模拟，回到按系统判断；
    * 如果因此不再算全屏，猫从屏幕边走回来（和真的全屏结束一样，主进程发 cat/entrance）。
    */
-  | { type: 'debug/simulateFullscreen'; active: boolean };
+  | { type: 'debug/simulateFullscreen'; active: boolean }
+  /**
+   * 调试台：在桌面层上画出或收起窗口顶边的调试线（M4）。主进程转成 MainToOverlay 的 ledgeLines，
+   * 并记进 AppStatus.ledgeLines。不存档，重启后收起。调试线只画、不挡鼠标。
+   */
+  | { type: 'debug/ledgeLines'; visible: boolean };
 
 export type ToMainCommand = GameCommand | MainCommand;
 
@@ -123,8 +156,10 @@ export const MAIN_COMMAND_TYPES = [
   'diagnostics/export',
   'update/check',
   'update/install',
+  'debug/simulateIdle',
   'debug/crashOverlay',
   'debug/simulateFullscreen',
+  'debug/ledgeLines',
 ] as const satisfies readonly MainCommand['type'][];
 
 // 漏写了某个 MainCommand 的 type 时，这里会报类型错误。
@@ -151,15 +186,46 @@ export type StageCommand =
   | { type: 'debug/playClip'; cat: CatId; clip: string; variant?: number }
   | { type: 'debug/simulate'; cat: CatId; interaction: SimulatedInteraction }
   /** 喵叫：发一次；呼噜：响几秒后自己停（时长由 core/stage 定）。 */
-  | { type: 'debug/sound'; cat: CatId; sound: CatSound };
+  | { type: 'debug/sound'; cat: CatId; sound: CatSound }
+  /** 在这只猫身上放一个事件特效，持续几秒（时长由 core/stage 定）。 */
+  | { type: 'debug/effect'; cat: CatId; effect: EventEffect }
+  /**
+   * 开始一个事件（M3）：cats 里的猫按 content.events[event] 的步骤各自演，执行规则见 core-api.ts 的 StageCore。
+   * run 是 core/game 给这一次触发编的号（程序运行期间递增，不存档），事实里原样带回，用来对上是哪一次。
+   * cats 里已经在别的事件里的猫，先退出原来的事件（那一次发 ended: interrupted），再开始这个。
+   */
+  | { type: 'event/start'; run: number; event: string; cats: CatId[] };
 
 // ---------- 事实：桌面层发给主进程 ----------
+
+/**
+ * 一只猫的一次事件是怎么结束的（M3）：
+ * - completed：演完了全部步骤
+ * - interrupted：被打断或被新的事件接管（打断的情况见 core-api.ts 的 StageCore）
+ * - missingClip：缺了事件 requiredClips 里的片段（core/game 挑猫时已经排除，这里是兜底）
+ * - unavailable：收到命令时这只猫没法参加（不在桌面上、正在入场或出场、悬空或下落）
+ */
+export type EventOutcome = 'completed' | 'interrupted' | 'missingClip' | 'unavailable';
 
 export type Fact = { at: number } & (
   | { type: 'cat/petted'; cat: CatId; durationMs: number }
   | { type: 'cat/poked'; cat: CatId }
   | { type: 'cat/pickedUp'; cat: CatId }
   | { type: 'cat/dropped'; cat: CatId }
+  /**
+   * 桌面层新建了 StageCore（M3）：程序启动、桌面层崩溃后重新加载时各一次，是新 StageCore 的第一条事实。
+   * 新的 StageCore 里没有任何正在演的事件，之前发出的事件不会再有 ended，core/game 收到后清掉全部事件记录
+   * （规则见 core-api.ts 的 GameCore）。core/game 在收到第一条之前不触发事件。
+   * #111 要测：桌面层崩溃重新加载后，这条事实能交到 core/game，之后事件能重新触发。
+   */
+  | { type: 'stage/created' }
+  /** 事件开始演了（M3）。cats 是真的开始演的猫；event/start 里一只都没开始时不发。 */
+  | { type: 'event/started'; run: number; event: string; cats: CatId[] }
+  /**
+   * 一只猫结束了这一次事件（M3）。event/start 里的每只猫最后都有且只有一条，包括没能开始的。
+   * 停在 stay 这一步的猫只会以 interrupted 结束。
+   */
+  | { type: 'event/ended'; run: number; event: string; cat: CatId; outcome: EventOutcome }
 );
 
 // ---------- 状态快照：主进程推送给所有窗口 ----------
@@ -196,6 +262,11 @@ export interface StateSnapshot {
    * 没快进过是 0，重启后清零。快照里其他时刻都不带这个偏移。
    */
   clockOffsetMs: number;
+  /**
+   * 事件的冷却和早安记录（M3），和存档里的一样，时刻都是真实时间。给调试台显示：
+   * 某个事件的冷却还剩 lastTriggeredAt[id] + cooldownMinutes × 60000 − at 毫秒，小于等于 0 就是冷却好了。
+   */
+  events: EventState;
 }
 
 // ---------- 程序状态：主进程推送给面板 ----------
@@ -240,6 +311,8 @@ export interface AppStatus {
   displays: DisplayInfo[];
   /** 桌面层现在在哪块显示器上（DisplayInfo.id）；桌面层还没建好时是 null。 */
   overlayDisplayId: number | null;
+  /** 窗口顶边的调试线现在画着没有（M4，MainCommand 的 debug/ledgeLines）。重启后是 false。 */
+  ledgeLines: boolean;
 }
 
 // ---------- 桌面层的窗口控制 ----------
@@ -302,7 +375,14 @@ export type MainToOverlay =
       type: 'photo';
       thumbnail: string;
       area: { x: number; y: number; width: number; height: number };
-    };
+    }
+  /**
+   * 最新的窗口顶边（M4，#116），桌面层原样交给 StageCore.setLedges。只在窗口模式、桌面层在显示时推送，
+   * 每次都是完整的一份；地板模式、暂停绘制（全屏、一键隐藏、一只猫都不显示、安全模式）时不推。
+   */
+  | { type: 'ledges'; ledges: Ledges }
+  /** 画出或收起窗口顶边的调试线（M4，调试台的 debug/ledgeLines）。调试线只画、不挡鼠标。 */
+  | { type: 'ledgeLines'; visible: boolean };
 
 /** 桌面层上报的画面状态。只用于调试台显示，不存档。 */
 export interface StageDebugReport {
@@ -317,6 +397,13 @@ export interface StageDebugReport {
     behavior: string;
     x: number;
     y: number;
+    /**
+     * 正在演的事件（M3）：哪个事件、第几次触发（run），正在做第几步（从 0 算，对应事件配置 steps 的下标）。
+     * 不在事件里是 null。
+     */
+    event: { event: string; run: number; step: number } | null;
+    /** 站在哪个表面上（M4）：地板，或者某个窗口（LedgeWindow.id）的顶边。被拎着、下落、跳跃途中是 null。 */
+    surface: { type: 'floor' } | { type: 'ledge'; window: string } | null;
   }[];
   /**
    * 桌面层的声音播放情况（M2 #61）。core/stage 的 debugReport 不填，由桌面层在上报前填上。
@@ -334,6 +421,8 @@ export type Unsubscribe = () => void;
 
 /** 面板（设置、资料卡、调试台）用的桥。 */
 export interface PanelsBridge {
+  /** 挑片台（#104）：仅开发模式注入，安装版不提供。 */
+  reviewStation?: ReviewStationBridge;
   sendCommand(command: ToMainCommand): void;
   getSnapshot(): Promise<StateSnapshot>;
   getContent(): Promise<ContentCatalog>;

@@ -7,7 +7,13 @@ import {
   DoNotDisturbSchema,
 } from './do-not-disturb';
 import { CURRENT_SAVE_VERSION, defaultGameState, GameStateSchema, SAVE_MIGRATIONS } from './save';
-import { DEFAULT_HIDE_ALL_SHORTCUT, defaultSettings, SettingsSchema } from './settings';
+import {
+  catDate,
+  DEFAULT_HIDE_ALL_SHORTCUT,
+  defaultSettings,
+  SettingsSchema,
+  type Settings,
+} from './settings';
 import { validateWith } from './validate';
 
 function problemsOf(schema: z.ZodType, data: unknown): string[] {
@@ -41,16 +47,15 @@ function migrate(state: unknown, from: number): unknown {
 
 describe('存档迁移', () => {
   it('每个旧版本都有升到下一版的迁移步骤', () => {
-    expect(CURRENT_SAVE_VERSION).toBe(2);
+    expect(CURRENT_SAVE_VERSION).toBe(3);
     for (let version = 1; version < CURRENT_SAVE_VERSION; version++) {
       expect(SAVE_MIGRATIONS[version]).toBeTypeOf('function');
     }
   });
 
   it('版本 1 升到 2：原来的设置不变，补上新设置的默认值，勿扰为没开', () => {
-    const migrated = migrate(v1State(), 1);
-    expect(problemsOf(GameStateSchema, migrated)).toEqual([]);
-    expect(migrated).toEqual({
+    expect(problemsOf(GameStateSchema, migrate(v1State(), 1))).toEqual([]);
+    expect(SAVE_MIGRATIONS[1]?.(v1State())).toEqual({
       settings: {
         ...v1State().settings,
         purrEnabled: true,
@@ -75,6 +80,7 @@ describe('存档迁移', () => {
       ...v1State().settings,
     });
     expect(migrated.doNotDisturb).toEqual(defaultGameState([]).doNotDisturb);
+    expect(migrated.events).toEqual(defaultGameState([]).events);
   });
 
   it('迁移是纯函数，不改传进来的对象', () => {
@@ -204,9 +210,12 @@ describe('勿扰模式', () => {
   });
 
   it('存档里缺了勿扰状态时报出字段', () => {
-    expect(problemsOf(GameStateSchema, { settings: defaultSettings([]) })).toEqual([
-      '缺少必填字段 doNotDisturb（勿扰模式）',
-    ]);
+    expect(
+      problemsOf(GameStateSchema, {
+        settings: defaultSettings([]),
+        events: defaultGameState([]).events,
+      }),
+    ).toEqual(['缺少必填字段 doNotDisturb（勿扰模式）']);
   });
 
   it('可选时长：30 分钟、1 小时、2 小时、直到关掉', () => {
@@ -222,5 +231,127 @@ describe('勿扰模式', () => {
     const state = defaultGameState(['test-a']);
     expect(problemsOf(GameStateSchema, state)).toEqual([]);
     expect(state.doNotDisturb).toEqual({ mode: 'off' });
+  });
+});
+
+/** M2（存档版本 2）写出的状态。 */
+function v2State() {
+  const settings: Record<string, unknown> = { ...defaultSettings(['doudou']), scale: 1.2 };
+  delete settings.surfaceMode;
+  delete settings.sedentaryReminder;
+  delete settings.catDates;
+  return { settings, doNotDisturb: { mode: 'timed', until: 1_800_000_000_000 } };
+}
+
+describe('存档版本 2 → 3（M3、M4）', () => {
+  it('原来的设置和勿扰不变；补上活动模式（地板）、久坐提醒（开）、没改过的生日和到家日；事件都没触发过', () => {
+    const migrated = migrate(v2State(), 2);
+    expect(problemsOf(GameStateSchema, migrated)).toEqual([]);
+    expect(migrated).toEqual({
+      settings: {
+        ...v2State().settings,
+        surfaceMode: 'floor',
+        sedentaryReminder: true,
+        catDates: {},
+      },
+      doNotDisturb: { mode: 'timed', until: 1_800_000_000_000 },
+      events: { lastTriggeredAt: {}, firstLaunchHandledOn: null },
+    });
+  });
+
+  it('补上的值和现在的默认值一样', () => {
+    const migrated = GameStateSchema.parse(migrate(v2State(), 2));
+    expect(migrated.settings).toEqual({ ...defaultSettings(['doudou']), scale: 1.2 });
+    expect(migrated.events).toEqual(defaultGameState([]).events);
+  });
+
+  it('迁移是纯函数，不改传进来的对象', () => {
+    const input = v2State();
+    migrate(input, 2);
+    expect(input).toEqual(v2State());
+  });
+
+  it.each([null, 'text', [], {}, { settings: null }])(
+    '版本 2 的状态格式不对时抛出中文错误：%j',
+    (state) => {
+      expect(() => SAVE_MIGRATIONS[2]?.(state)).toThrow(zh.interfaces.migrationBadShape(2));
+    },
+  );
+});
+
+describe('事件的存档状态', () => {
+  it('记下每个事件上次触发的真实时刻和处理过早安的日期', () => {
+    const state = {
+      ...defaultGameState([]),
+      events: {
+        lastTriggeredAt: { 'good-morning': 1_800_000_000_000, parkour: 1_799_999_000_000 },
+        firstLaunchHandledOn: '2026-10-03',
+      },
+    };
+    expect(problemsOf(GameStateSchema, state)).toEqual([]);
+  });
+
+  it.each([
+    [{ lastTriggeredAt: { 'Bad Id': 1 }, firstLaunchHandledOn: null }, 'events.lastTriggeredAt'],
+    [{ lastTriggeredAt: {}, firstLaunchHandledOn: '2026/10/03' }, 'firstLaunchHandledOn'],
+    [{ lastTriggeredAt: {} }, 'firstLaunchHandledOn（处理过早安的日期）'],
+  ])('%j 不合法，中文报错说清楚是哪个字段', (events, field) => {
+    const problems = problemsOf(GameStateSchema, { ...defaultGameState([]), events });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain(field);
+  });
+});
+
+describe('M3、M4 的设置项', () => {
+  it('默认：地板模式、久坐提醒开、生日和到家日都用猫咪包里的', () => {
+    expect(defaultSettings([])).toMatchObject({
+      surfaceMode: 'floor',
+      sedentaryReminder: true,
+      catDates: {},
+    });
+  });
+
+  it.each([
+    [{ surfaceMode: 'desk' }, 'surfaceMode（活动模式）'],
+    [{ sedentaryReminder: 'on' }, 'sedentaryReminder（久坐提醒）'],
+    [{ catDates: { doudou: { birthday: '2024/10/30' } } }, 'catDates.doudou.birthday（生日）'],
+    [{ catDates: { doudou: { feedingTime: '08:00' } } }, 'feedingTime'],
+    [{ catDates: { 'Dou Dou': {} } }, 'catDates'],
+  ])('%j 不合法，中文报错说清楚是哪个字段', (patch, field) => {
+    const problems = problemsOf(SettingsSchema, { ...defaultSettings([]), ...patch });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain(field);
+  });
+
+  const doudou = { id: 'doudou', birthday: '2024-10-30', homeDate: undefined };
+
+  it('生日和到家日：没改过用猫咪包里的，改了用用户的，清掉了就没有', () => {
+    const settings = (catDates: Settings['catDates']) => ({ catDates });
+    expect(catDate(settings({}), doudou, 'birthday')).toBe('2024-10-30');
+    expect(catDate(settings({}), doudou, 'homeDate')).toBeUndefined();
+    expect(catDate(settings({ doudou: {} }), doudou, 'birthday')).toBe('2024-10-30');
+    expect(catDate(settings({ doudou: { birthday: '2024-11-01' } }), doudou, 'birthday')).toBe(
+      '2024-11-01',
+    );
+    expect(catDate(settings({ doudou: { birthday: null } }), doudou, 'birthday')).toBeUndefined();
+    expect(catDate(settings({ doudou: { homeDate: '2025-01-15' } }), doudou, 'homeDate')).toBe(
+      '2025-01-15',
+    );
+    // 别的猫填的值不影响豆豆；停用的猫填的值留在设置里
+    expect(catDate(settings({ kubo: { birthday: '2023-05-01' } }), doudou, 'birthday')).toBe(
+      '2024-10-30',
+    );
+    expect(
+      problemsOf(SettingsSchema, {
+        ...defaultSettings([]),
+        catDates: { removed: { birthday: '2020-01-01', homeDate: null } },
+      }),
+    ).toEqual([]);
+  });
+
+  it('猫 id 碰巧是对象原型上的名字时不会读到原型', () => {
+    expect(
+      catDate({ catDates: {} }, { id: 'constructor', birthday: '2024-10-30' }, 'birthday'),
+    ).toBe('2024-10-30');
   });
 });

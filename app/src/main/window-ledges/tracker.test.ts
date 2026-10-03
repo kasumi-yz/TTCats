@@ -56,7 +56,7 @@ describe('窗口顶边读取频率和窗口变化', () => {
       readWindows.mockReturnValue([windowInfo('target', { eligible: false, reason })]);
       vi.advanceTimersByTime(33);
       expect(updates.at(-1)?.unavailable).toEqual([{ id: 'target', reason }]);
-      expect(updates.at(-1)?.ledges).toEqual([]);
+      expect(updates.at(-1)?.ledges.windows).toEqual([]);
       readWindows.mockReturnValue([windowInfo()]);
       tracker.refresh();
       readWindows.mockReturnValue([]);
@@ -81,13 +81,44 @@ describe('窗口顶边读取频率和窗口变化', () => {
       throw new Error('系统查询失败');
     });
     vi.advanceTimersByTime(33);
-    expect(updates.at(-1)?.ledges).toEqual([]);
+    expect(updates.at(-1)?.ledges.windows).toEqual([]);
     expect(updates.at(-1)?.unavailable).toEqual([{ id: 'target', reason: 'query-failed' }]);
     expect(onError).toHaveBeenCalledTimes(1);
     vi.advanceTimersByTime(33);
-    expect(updates.at(-1)?.ledges).not.toEqual([]);
+    expect(updates.at(-1)?.ledges.windows).not.toEqual([]);
     tracker.dispose();
     vi.advanceTimersByTime(10000);
     expect(vi.getTimerCount()).toBe(0);
+  });
+  it('窗口已跨出左边界后继续移动，完整边界与位移不被可站段的裁剪吞掉', () => {
+    const { tracker, readWindows, updates } = setup();
+    readWindows.mockReturnValue([
+      windowInfo('target', {
+        bounds: { left: -150, top: 200, right: 750, bottom: 600 },
+        buttons: null,
+      }),
+    ]);
+    tracker.setMode(true, true);
+    const first = updates.at(-1);
+    expect(first?.ledges.at).toBe(Date.now());
+    expect(first?.ledges.windows[0]).toMatchObject({
+      left: -100,
+      right: 500,
+      segments: [{ left: 0, right: 500 }],
+    });
+    readWindows.mockReturnValue([
+      windowInfo('target', {
+        bounds: { left: -300, top: 200, right: 600, bottom: 600 },
+        buttons: null,
+      }),
+    ]);
+    vi.advanceTimersByTime(33);
+    expect(updates.at(-1)?.ledges.windows[0]).toMatchObject({
+      left: -200,
+      right: 400,
+      segments: [{ left: 0, right: 400 }],
+    });
+    expect(updates.at(-1)?.moved).toEqual([{ id: 'target', dx: -100, dy: 0, elapsedMs: 33 }]);
+    expect((updates.at(-1)?.ledges.at ?? 0) - (first?.ledges.at ?? 0)).toBe(33);
   });
 });

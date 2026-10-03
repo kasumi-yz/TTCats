@@ -1,0 +1,303 @@
+{
+  "timestamp": "2026-10-03T10:58:03.665Z",
+  "machine": "ZEPHYR",
+  "windows": "10.0.26200",
+  "electron": "44.5.1",
+  "display": {
+    "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1200
+    },
+    "workArea": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1152
+    },
+    "scaleFactor": 1.5
+  },
+  "taskbar": {
+    "changedWithPermission": true,
+    "originalTaskbarState": 0,
+    "restoredTaskbarState": 0
+  },
+  "rows": [
+    {
+      "name": "普通窗口",
+      "expected": false,
+      "state": 2,
+      "className": "Chrome_WidgetWin_1",
+      "style": 382664704,
+      "bounds": {
+        "left": 840,
+        "top": 489,
+        "right": 2040,
+        "bottom": 1239
+      },
+      "actual": false,
+      "legacy": false,
+      "passed": true,
+      "samples": 1
+    },
+    {
+      "name": "真实最大化（当前工作区）",
+      "expected": false,
+      "state": 2,
+      "className": "Chrome_WidgetWin_1",
+      "style": 399441920,
+      "bounds": {
+        "left": -11,
+        "top": -11,
+        "right": 2891,
+        "bottom": 1739
+      },
+      "actual": false,
+      "legacy": false,
+      "passed": true,
+      "samples": 1
+    },
+    {
+      "name": "带标题栏最大化且盖满屏幕（等价几何）",
+      "expected": false,
+      "state": 2,
+      "className": "Chrome_WidgetWin_1",
+      "style": 399441920,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "actual": false,
+      "legacy": true,
+      "passed": true,
+      "samples": 1
+    },
+    {
+      "name": "真实任务栏自动隐藏下的最大化窗口",
+      "expected": false,
+      "state": 2,
+      "className": "Chrome_WidgetWin_1",
+      "style": 399441920,
+      "bounds": {
+        "left": -11,
+        "top": -11,
+        "right": 2891,
+        "bottom": 1811
+      },
+      "actual": false,
+      "legacy": true,
+      "passed": true,
+      "samples": 1
+    },
+    {
+      "name": "按 F11 进入全屏",
+      "expected": true,
+      "state": 2,
+      "className": "Chrome_WidgetWin_1",
+      "style": 369819648,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "actual": true,
+      "legacy": true,
+      "passed": true,
+      "samples": 1
+    },
+    {
+      "name": "按 F11 退出全屏",
+      "expected": false,
+      "state": 2,
+      "className": "Chrome_WidgetWin_1",
+      "style": 382664704,
+      "bounds": {
+        "left": 840,
+        "top": 489,
+        "right": 2040,
+        "bottom": 1239
+      },
+      "actual": false,
+      "legacy": false,
+      "passed": true,
+      "samples": 1
+    },
+    {
+      "name": "无边框演示窗口（等价全屏）",
+      "expected": true,
+      "state": 2,
+      "className": "Chrome_WidgetWin_1",
+      "style": 369819648,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "actual": true,
+      "legacy": true,
+      "passed": true,
+      "samples": 1
+    },
+    {
+      "name": "退出无边框演示窗口",
+      "expected": false,
+      "state": 2,
+      "className": "Chrome_WidgetWin_1",
+      "style": 382664704,
+      "bounds": {
+        "left": 840,
+        "top": 489,
+        "right": 2040,
+        "bottom": 1239
+      },
+      "actual": false,
+      "legacy": false,
+      "passed": true,
+      "samples": 1
+    },
+    {
+      "name": "Alt+Tab",
+      "expected": false,
+      "state": 2,
+      "className": "XamlExplorerHostIslandWindow",
+      "style": 2214592512,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "actual": false,
+      "legacy": true,
+      "passed": true,
+      "samples": 1
+    },
+    {
+      "name": "Alt+Tab",
+      "expected": false,
+      "state": 2,
+      "className": "XamlExplorerHostIslandWindow",
+      "style": 2483027968,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "actual": false,
+      "legacy": true,
+      "passed": true,
+      "samples": 14
+    },
+    {
+      "name": "任务视图",
+      "expected": false,
+      "state": 2,
+      "className": "ForegroundStaging",
+      "style": 2214592512,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "actual": false,
+      "legacy": false,
+      "passed": true,
+      "samples": 2
+    },
+    {
+      "name": "任务视图",
+      "expected": false,
+      "state": 2,
+      "className": "XamlExplorerHostIslandWindow",
+      "style": 2483027968,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "actual": false,
+      "legacy": true,
+      "passed": true,
+      "samples": 13
+    },
+    {
+      "name": "贴靠布局",
+      "expected": false,
+      "state": 2,
+      "className": "XamlExplorerHostIslandWindow",
+      "style": 2483027968,
+      "bounds": {
+        "left": 1666,
+        "top": 534,
+        "right": 2182,
+        "bottom": 900
+      },
+      "actual": false,
+      "legacy": false,
+      "passed": true,
+      "samples": 15
+    },
+    {
+      "name": "表情面板",
+      "expected": false,
+      "state": 2,
+      "className": "Chrome_WidgetWin_1",
+      "style": 382664704,
+      "bounds": {
+        "left": 840,
+        "top": 489,
+        "right": 2040,
+        "bottom": 1239
+      },
+      "actual": false,
+      "legacy": false,
+      "passed": true,
+      "samples": 15
+    },
+    {
+      "name": "剪贴板面板",
+      "expected": false,
+      "state": 2,
+      "className": "Chrome_WidgetWin_1",
+      "style": 382664704,
+      "bounds": {
+        "left": 840,
+        "top": 489,
+        "right": 2040,
+        "bottom": 1239
+      },
+      "actual": false,
+      "legacy": false,
+      "passed": true,
+      "samples": 15
+    },
+    {
+      "name": "显示桌面",
+      "expected": false,
+      "state": 2,
+      "className": "Progman",
+      "style": 2516582400,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "right": 2880,
+        "bottom": 1800
+      },
+      "actual": false,
+      "legacy": false,
+      "passed": true,
+      "samples": 1
+    }
+  ],
+  "error": null,
+  "sampleCount": 84,
+  "grouping": "合并完全相同的采样行，samples 为重复次数；没有删除不同的观测值"
+}

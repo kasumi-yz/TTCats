@@ -74,6 +74,7 @@ describe('M1 存档升级到当前版本', () => {
     expect(loaded.state).toEqual({
       settings: { ...defaultSettings(['doudou']), ...v1Settings },
       doNotDisturb: { mode: 'off' },
+      events: defaultGameState([]).events,
     });
     expect(logs).toContain(zh.save.migrated(file, 1, CURRENT_SAVE_VERSION));
     expect(fs.readFileSync(file, 'utf8')).toBe(original);

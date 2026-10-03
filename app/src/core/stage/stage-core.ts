@@ -3,6 +3,7 @@
 import type {
   ContentCatalog,
   CreateStageCore,
+  Ledges,
   PointerInput,
   StageBounds,
   StageCore,
@@ -11,7 +12,12 @@ import type {
   SoundCue,
 } from '../../shared/core-api';
 import type { Fact, StageCommand, StageDebugReport, StateSnapshot } from '../../shared/ipc';
-import { missingRequiredClips, type Point, type Settings } from '../../shared/schemas';
+import {
+  missingRequiredClips,
+  type EventEffect,
+  type Point,
+  type Settings,
+} from '../../shared/schemas';
 import { zh } from '../../shared/strings.zh-CN';
 import { CatActor, type ActorEnv, type StageObserver } from './actor';
 import type { Behavior } from './behavior';
@@ -26,6 +32,8 @@ import { HEARTS_MS, PointerReactions } from './pointer-reactions';
 export const LONG_GAP_MS = 1_000;
 /** 打断时盖住切换处的小特效持续多久（M0-A 用的是 260ms 的烟团）。 */
 export const CUT_EFFECT_MS = 300;
+/** 调试台 debug/effect 放的事件特效持续多久。 */
+export const DEBUG_EFFECT_MS = 5_000;
 /** 召唤时，离鼠标最近的猫停在鼠标旁边多远（标准猫身高的几倍）。 */
 const SUMMON_SIDE_RATIO = 0.7;
 /** 召唤多只猫时，同一侧相邻两只猫之间至少隔多远（标准猫身高的几倍）。 */
@@ -116,6 +124,12 @@ export class Stage implements StageCore {
       );
       return;
     }
+    // 事件执行由 #108 实现。
+    if (command.type === 'event/start') return;
+    if (command.type === 'debug/effect') {
+      this.debugEffect(command.cat, command.effect, now);
+      return;
+    }
     if ('cat' in command && this.actor(command.cat)?.isExiting()) return;
     if (command.type === 'debug/sound') {
       const actor = this.actor(command.cat);
@@ -168,12 +182,15 @@ export class Stage implements StageCore {
     this.syncCorner(now);
   }
 
+  // 窗口模式由 #115 实现；现在只有地板。
+  setLedges(_ledges: Ledges, now: number): void {
+    this.advanceTo(now);
+  }
+
   update(now: number): StageFrame {
     this.advanceTo(now);
     this.pointerReactions.refresh(now);
-    this.effects = this.effects.filter(
-      (e) => now - e.at < (e.effect === 'hearts' ? HEARTS_MS : CUT_EFFECT_MS),
-    );
+    this.effects = this.effects.filter((e) => now - e.at < effectDurationMs(e.effect));
     const cats = this.actors
       .map((actor, order) => ({ placement: actor.placement(), order }))
       // 离得远的先画，离得近的后画、挡住远的；一样远时按显示顺序
@@ -188,6 +205,7 @@ export class Stage implements StageCore {
         x: e.x,
         y: e.y,
         ageMs: Math.max(0, now - e.at),
+        durationMs: effectDurationMs(e.effect),
       })),
       sounds: this.drainSounds(now),
     };
@@ -210,12 +228,27 @@ export class Stage implements StageCore {
           behavior: describeBehavior(actor.behavior),
           x: placement.x,
           y: placement.y,
+          // 事件（#108）和窗口顶边（#115）还没做：不在事件里，没悬空就站在地板上。
+          event: null,
+          surface: actor.isAirborne() ? null : { type: 'floor' },
         };
       }),
     };
   }
 
   // ---------- 内部 ----------
+
+  /**
+   * 调试台：在猫身上放一个事件特效，给桌面层画特效（#110）看效果。地板装饰放在脚边，其余放在身体中间。
+   * 飞虫的飞行路线由 #108 实现，现在原地不动。
+   */
+  private debugEffect(cat: string, effect: EventEffect, now: number): void {
+    const actor = this.actor(cat);
+    if (actor === undefined) return;
+    const p = actor.placement();
+    const onFloor = effect === 'lantern' || effect === 'gift';
+    this.env.addEffect(effect, p.x, onFloor ? p.y : p.y - STANDARD_CAT_HEIGHT * p.scale * 0.5, now);
+  }
 
   /** 把所有猫推进到 now。时间倒退（比如改了系统时间）时不推进，从新的时间接着算。 */
   private advanceTo(now: number): void {
@@ -418,6 +451,12 @@ export class Stage implements StageCore {
       }
     }
   }
+}
+
+/** 事件里的特效由 #108 按步骤里的 durationMs 放；现在只有撸猫的爱心、打断遮挡和调试台放的特效。 */
+function effectDurationMs(effect: StageEffect): number {
+  if (effect === 'hearts') return HEARTS_MS;
+  return effect === 'cut' ? CUT_EFFECT_MS : DEBUG_EFFECT_MS;
 }
 
 function describeBehavior(behavior: Behavior): string {

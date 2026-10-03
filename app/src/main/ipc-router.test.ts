@@ -48,6 +48,7 @@ function setup() {
     hideAllShortcut: { accelerator: '', registered: false },
     displays: [{ id: 7, label: 'DELL', width: 2560, height: 1440, scaleFactor: 1, primary: true }],
     overlayDisplayId: 7,
+    ledgeLines: false,
   };
   const getAppStatus = vi.fn(() => status);
   const content = catalog([{ cat: testCat('cat') }]);
@@ -64,7 +65,11 @@ function setup() {
       'diagnostics/export': diagnostics,
       'update/check': checkUpdate,
       'update/install': installUpdate,
+      'debug/simulateIdle': (message) => {
+        report(zh.interfaces.commandNotReady(message.type));
+      },
       'debug/simulateFullscreen': fullscreen,
+      'debug/ledgeLines': vi.fn(),
     },
     fact,
     snapshot: getSnapshot,
@@ -99,6 +104,27 @@ function setup() {
 }
 
 describe('主进程 IPC 路由', () => {
+  it('闲置模拟接口先合并：只记录功能未就绪，不交给游戏规则或启动更新', () => {
+    const { ipc, event, panel, command, checkUpdate, installUpdate, report } = setup();
+    ipc.emit(IPC_CHANNELS.command, event(panel), { type: 'debug/simulateIdle' });
+    expect(report).toHaveBeenCalledExactlyOnceWith(
+      zh.interfaces.commandNotReady('debug/simulateIdle'),
+    );
+    expect(command).not.toHaveBeenCalled();
+    expect(checkUpdate).not.toHaveBeenCalled();
+    expect(installUpdate).not.toHaveBeenCalled();
+  });
+
+  it('闲置模拟不能携带绕过安装条件的字段', () => {
+    const { ipc, event, command, installUpdate, report } = setup();
+    ipc.emit(IPC_CHANNELS.command, event(), { type: 'debug/simulateIdle', force: true });
+    expect(report).toHaveBeenCalledOnce();
+    expect(report.mock.calls[0]?.[0]).toContain('debug/simulateIdle');
+    expect(report.mock.calls[0]?.[0]).not.toBe(zh.interfaces.commandNotReady('debug/simulateIdle'));
+    expect(command).not.toHaveBeenCalled();
+    expect(installUpdate).not.toHaveBeenCalled();
+  });
+
   it('M2 的 MainCommand 逐项分发，不能误交给游戏规则或其他功能', () => {
     const {
       ipc,

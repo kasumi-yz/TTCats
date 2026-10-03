@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import { createInterface } from 'node:readline/promises';
 import { app, nativeImage, screen } from 'electron';
 import type { WindowInfo, WindowRect } from '../src/main/platform/types';
+import type { Ledges } from '../src/shared/core-api';
 import { readWindows } from '../src/main/platform/win/windows';
 import { captionButtonsMatch, titlebarButtons } from '../src/main/platform/win/window-geometry';
 import { createWindowLedgeTest } from '../src/main/platform/win/test-window-ledges';
@@ -66,6 +67,7 @@ type AppRecord = {
   movementErrors: unknown[];
   observedSampleIntervalsMs: number[];
   occlusion?: unknown;
+  crossing?: Ledges[];
   capabilities?: { canMinimize: boolean; canMaximize: boolean };
 };
 
@@ -566,7 +568,9 @@ async function runConfiguration(isPreflight: boolean): Promise<boolean> {
               const b = config.read().find((w) => w.id === window.id);
               if (
                 !b ||
-                !computeLedges(config.read(), config.ledgeScreen).some((l) => l.id === b.id)
+                !computeLedges(config.read(), config.ledgeScreen).some(
+                  (l) => l.id === b.id && l.segments.length,
+                )
               )
                 throw new Error('遮挡前没有可见顶边，不能以空线段验收。');
               const coverPlacement = testApi.prepare(cover);
@@ -585,17 +589,48 @@ async function runConfiguration(isPreflight: boolean): Promise<boolean> {
                 const blocker = windows[above];
                 if (!blocker || below < 0 || above >= below)
                   throw new Error('已知上层窗口 Z 序无效。');
-                const ledges = computeLedges(windows, config.ledgeScreen).filter(
-                  (l) => l.id === b.id,
-                );
-                record.occlusion = { zOrderVerified: true, blocker: blocker.bounds, ledges };
+                const ledge = computeLedges(windows, config.ledgeScreen).find((l) => l.id === b.id);
+                record.occlusion = { zOrderVerified: true, blocker: blocker.bounds, ledge };
                 const left =
                     (blocker.bounds.left - config.ledgeScreen.workArea.left) / config.scale,
                   right = (blocker.bounds.right - config.ledgeScreen.workArea.left) / config.scale;
-                if (!ledges.length || ledges.some((l) => l.left < right && l.right > left))
+                if (
+                  !ledge?.segments.length ||
+                  ledge.segments.some((l) => l.left < right && l.right > left)
+                )
                   throw new Error('局部遮挡未正确扣除并保留未遮住的顶边。');
               } finally {
                 coverPlacement.hide();
+              }
+            });
+            await checks.run('跨出左边界后继续移动', async () => {
+              const snapshots: Ledges[] = [];
+              record.crossing = snapshots;
+              try {
+                for (const offset of [100, 200]) {
+                  test.move(
+                    Math.round(config.ledgeScreen.workArea.left - offset * config.scale),
+                    y + 30,
+                  );
+                  await sleep(150);
+                  const at = Date.now();
+                  snapshots.push({ at, windows: computeLedges(config.read(), config.ledgeScreen) });
+                }
+                const first = snapshots[0]?.windows.find((w) => w.id === window.id);
+                const second = snapshots[1]?.windows.find((w) => w.id === window.id);
+                if (
+                  !first ||
+                  !second ||
+                  first.left >= 0 ||
+                  second.left >= 0 ||
+                  Math.abs(second.left - first.left + 100) > 2 / config.scale ||
+                  !first.segments.length ||
+                  !second.segments.length ||
+                  [...first.segments, ...second.segments].some((s) => s.left < 0)
+                )
+                  throw new Error('跨屏移动的完整左边界被裁剪，或可站段未正确保留。');
+              } finally {
+                test.move(x, y + 30);
               }
             });
             await checks.run('最小化', async () => {
