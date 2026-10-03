@@ -156,7 +156,8 @@ describe('事件配置', () => {
     name: '深夜犯困',
     trigger: { type: 'timeOfDay', from: '23:00', to: '05:00' },
     cooldownMinutes: 60,
-    cats: { min: 1, max: 1 },
+    cats: { pick: 'weighted', by: 'activity', prefer: 'low', min: 1, max: 1 },
+    requiredClips: [],
     steps: [
       { do: 'goToPose', pose: 'sit' },
       { do: 'playClip', clip: 'yawn' },
@@ -175,7 +176,7 @@ describe('事件配置', () => {
     '节日日期 %s 不存在，会被拒绝',
     (date) => {
       expect(problemsOf(EventTriggerSchema, { type: 'holiday', date })).toEqual([
-        `字段 date 不对：${zh.validation.monthDayFormat}`,
+        `字段 date（日期） 不对：${zh.validation.monthDayFormat}`,
       ]);
     },
   );
@@ -194,7 +195,7 @@ describe('事件配置', () => {
   });
 
   it('参与猫数的上下限要合理', () => {
-    expect(problemsOf(EventSchema, { ...event, cats: { min: 2, max: 1 } })).toEqual([
+    expect(problemsOf(EventSchema, { ...event, cats: { ...event.cats, min: 2, max: 1 } })).toEqual([
       '字段 cats.max（最多几只） 不对：最多几只猫不能小于最少几只猫',
     ]);
   });

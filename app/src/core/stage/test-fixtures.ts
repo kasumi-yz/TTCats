@@ -79,6 +79,7 @@ export function catalog(entries: { cat: Cat; clips?: Clip[] }[]): ContentCatalog
       entries.map((e) => [e.cat.id, { cat: e.cat, clips: e.clips ?? testClips() }]),
     ),
     disabled: [],
+    events: {},
   };
 }
 
@@ -95,6 +96,7 @@ export function snapshot(
     hideAll: false,
     silencedBy: [],
     clockOffsetMs: 0,
+    events: { lastTriggeredAt: {}, firstLaunchHandledOn: null },
   };
 }
 

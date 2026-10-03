@@ -3,9 +3,19 @@ import type { Fact, ToMainCommand } from '../shared/ipc';
 import { CatSoundSchema } from '../shared/schemas/cat';
 import { IdSchema, PointSchema } from '../shared/schemas/common';
 import { DoNotDisturbDurationSchema } from '../shared/schemas/do-not-disturb';
+import { EventEffectSchema } from '../shared/schemas/event';
 import { SettingsSchema } from '../shared/schemas/settings';
 
 // 只校验已有 IPC 消息，不增加共享命令或存档字段。
+
+/** 用户状态的信号（core-api.ts 的 UserStateSignal），调试台的 debug/userState 用。 */
+const UserStateSignalSchema = z.discriminatedUnion('type', [
+  z.strictObject({ type: z.literal('idle'), idleMs: z.number().nonnegative() }),
+  ...(['locked', 'unlocked', 'suspended', 'resumed'] as const).map((type) =>
+    z.strictObject({ type: z.literal(type) }),
+  ),
+]);
+
 export const CommandSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('settings/update'), patch: SettingsSchema.partial() }),
   z.strictObject({
@@ -39,6 +49,14 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('debug/startupQuiet') }),
   z.strictObject({ type: z.literal('debug/entrance') }),
   z.strictObject({ type: z.literal('debug/sound'), cat: IdSchema, sound: CatSoundSchema }),
+  z.strictObject({
+    type: z.literal('debug/triggerEvent'),
+    event: IdSchema,
+    cats: z.array(IdSchema).optional(),
+  }),
+  z.strictObject({ type: z.literal('debug/resetCooldowns') }),
+  z.strictObject({ type: z.literal('debug/userState'), signal: UserStateSignalSchema }),
+  z.strictObject({ type: z.literal('debug/effect'), cat: IdSchema, effect: EventEffectSchema }),
   z.strictObject({ type: z.literal('photo/take') }),
   z.strictObject({ type: z.literal('diagnostics/export') }),
   z.strictObject({ type: z.literal('update/check') }),
@@ -46,6 +64,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('debug/simulateIdle') }),
   z.strictObject({ type: z.literal('debug/crashOverlay') }),
   z.strictObject({ type: z.literal('debug/simulateFullscreen'), active: z.boolean() }),
+  z.strictObject({ type: z.literal('debug/ledgeLines'), visible: z.boolean() }),
 ]);
 
 export const FactSchema = z.discriminatedUnion('type', [
@@ -58,6 +77,22 @@ export const FactSchema = z.discriminatedUnion('type', [
   ...(['cat/poked', 'cat/pickedUp', 'cat/dropped'] as const).map((type) =>
     z.strictObject({ type: z.literal(type), cat: IdSchema, at: z.number() }),
   ),
+  z.strictObject({ type: z.literal('stage/created'), at: z.number() }),
+  z.strictObject({
+    type: z.literal('event/started'),
+    at: z.number(),
+    run: z.int().nonnegative(),
+    event: IdSchema,
+    cats: z.array(IdSchema),
+  }),
+  z.strictObject({
+    type: z.literal('event/ended'),
+    at: z.number(),
+    run: z.int().nonnegative(),
+    event: IdSchema,
+    cat: IdSchema,
+    outcome: z.enum(['completed', 'interrupted', 'missingClip', 'unavailable']),
+  }),
 ]);
 
 // 双向可赋值检查字段类型与必填性；逐消息比较字段名，补上可选字段遗漏。

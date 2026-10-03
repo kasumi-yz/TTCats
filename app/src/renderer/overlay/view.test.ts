@@ -124,6 +124,7 @@ function setup() {
     hideAll: false,
     silencedBy: [],
     clockOffsetMs: 0,
+    events: { lastTriggeredAt: {}, firstLaunchHandledOn: null },
   };
   let onSnapshot: ((snapshot: StateSnapshot) => void) | undefined;
   let onCommand: ((command: StageCommand) => void) | undefined;
@@ -135,7 +136,7 @@ function setup() {
     sendFact: vi.fn(),
     sendOverlay,
     getSnapshot: () => Promise.resolve(snapshot),
-    getContent: () => Promise.resolve({ cats: {}, disabled: [] }),
+    getContent: () => Promise.resolve({ cats: {}, disabled: [], events: {} }),
     onSnapshot: (listener) => {
       onSnapshot = listener;
       return off;
@@ -158,6 +159,7 @@ function setup() {
     handlePointer,
     setGhostMode: vi.fn(),
     setBounds: vi.fn(),
+    setLedges: vi.fn(),
     update: () => ({ cats: [], bubbles: [], effects: [], sounds: [] }),
     drainFacts: () => [],
     debugReport: (at) => ({ at, cats: [] }),
@@ -374,7 +376,7 @@ describe('桌面层审查回归', () => {
     const frame: StageFrame = {
       cats: [p],
       bubbles: [{ cat: 'test', text: '喵', ageMs: 150 }],
-      effects: [{ id: 7, effect: 'hearts', x: 100, y: 70, ageMs: 150 }],
+      effects: [{ id: 7, effect: 'hearts', x: 100, y: 70, ageMs: 150, durationMs: 1200 }],
       sounds: [],
     };
     fixture.stage.update = () => frame;
@@ -434,7 +436,11 @@ describe('桌面层启动时序', () => {
       ready = resolve;
     });
     const fixture = setup();
-    const starting = createOverlayView({ cats: {}, disabled: [] }, fixture.stage, fixture.bridge);
+    const starting = createOverlayView(
+      { cats: {}, disabled: [], events: {} },
+      fixture.stage,
+      fixture.bridge,
+    );
     fixture.pushSnapshot();
     fixture.pushCommand();
     expect(fixture.applySnapshot).toHaveBeenCalledWith(fixture.snapshot, expect.any(Number));
@@ -451,7 +457,7 @@ describe('桌面层启动时序', () => {
     mock.ready = Promise.reject(new Error('WebGL unavailable'));
     const fixture = setup();
     await expect(
-      createOverlayView({ cats: {}, disabled: [] }, fixture.stage, fixture.bridge),
+      createOverlayView({ cats: {}, disabled: [], events: {} }, fixture.stage, fixture.bridge),
     ).rejects.toThrow('WebGL unavailable');
     expect(fixture.off).toHaveBeenCalledTimes(2);
   });

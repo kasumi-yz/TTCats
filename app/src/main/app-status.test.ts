@@ -8,6 +8,7 @@ const initial = {
   hideAllShortcut: { accelerator: 'Ctrl+Alt+H', registered: false },
   displays: [],
   overlayDisplayId: null,
+  ledgeLines: false,
 };
 
 describe('程序状态', () => {

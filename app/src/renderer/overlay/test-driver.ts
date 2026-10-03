@@ -34,6 +34,9 @@ export function createTestDriver(content: ContentCatalog, initial: StateSnapshot
     setBounds(next) {
       bounds = next;
     },
+    setLedges() {
+      // 测试驱动只有地板。
+    },
     setGhostMode(active) {
       ghost = active;
     },

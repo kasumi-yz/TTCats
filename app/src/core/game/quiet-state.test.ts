@@ -9,10 +9,11 @@ const hour = 60 * minute;
 const day = 24 * hour;
 // UTC 正午，时区由测试明确传入，不依赖机器时区。
 const noon = 12 * hour;
-const content = { cats: {}, disabled: [] };
+const content = { cats: {}, disabled: [], events: {} };
 const utcOffsetMinutes = () => 0;
+const random = () => 0.5;
 const create = (now = noon, startupQuiet = false) =>
-  createGameCore({ content, now, utcOffsetMinutes, startupQuiet });
+  createGameCore({ content, now, utcOffsetMinutes, startupQuiet, random });
 const changed = { stateChanged: true, snapshotChanged: true, stageCommands: [], problems: [] };
 const snapshotOnly = { ...changed, stateChanged: false };
 const unchanged = { ...snapshotOnly, snapshotChanged: false };
@@ -22,6 +23,7 @@ function restore(doNotDisturb: DoNotDisturb, now = noon) {
     content,
     now,
     utcOffsetMinutes,
+    random,
     state: { ...defaultGameState([]), doNotDisturb },
   });
 }
@@ -81,6 +83,7 @@ describe('勿扰模式 DoNotDisturb 的时间和存档', () => {
         state: game.exportState(),
         now: restartAt,
         utcOffsetMinutes,
+        random,
       });
       expect(restarted.snapshot(restartAt).doNotDisturb).toEqual(
         restartAt < noon + 30 * minute
@@ -100,7 +103,7 @@ describe('勿扰模式 DoNotDisturb 的时间和存档', () => {
       ...defaultGameState([]),
       doNotDisturb: { mode: 'timed' as const, until: noon + hour },
     };
-    const timed = createGameCore({ content, state, now: noon, utcOffsetMinutes });
+    const timed = createGameCore({ content, state, now: noon, utcOffsetMinutes, random });
     state.doNotDisturb.until = 0;
     const exported = timed.exportState();
     if (exported.doNotDisturb.mode === 'timed') exported.doNotDisturb.until = 0;
@@ -136,7 +139,13 @@ describe('勿扰模式 DoNotDisturb 的时间和存档', () => {
       const remaining = (order === 'advance-first' ? 30 : 20) * minute;
       expect(state.doNotDisturb).toEqual({ mode: 'timed', until: noon + remaining });
       expect(game.snapshot(noon).doNotDisturb).toEqual(state.doNotDisturb);
-      const restarted = createGameCore({ content, state, now: noon + minute, utcOffsetMinutes });
+      const restarted = createGameCore({
+        content,
+        state,
+        now: noon + minute,
+        utcOffsetMinutes,
+        random,
+      });
       expect(restarted.snapshot(noon + minute).clockOffsetMs).toBe(0);
       expect(restarted.snapshot(noon + minute).doNotDisturb).toEqual(state.doNotDisturb);
       expect(restarted.tick(noon + remaining - 1)).toEqual(unchanged);
@@ -201,12 +210,17 @@ describe('安静时段 QuietHours 和开机静默', () => {
 
   it('本地时间使用注入的偏移，并按快进后的日期重新取时区以支持夏令时', () => {
     const offset = vi.fn((at: number) => (at < day ? -300 : -240));
-    const game = createGameCore({ content, now: 12 * hour, utcOffsetMinutes: offset });
+    const game = createGameCore({ content, now: 12 * hour, utcOffsetMinutes: offset, random });
     expect(game.snapshot(12 * hour).silencedBy).toEqual(['quietHours']);
     game.handleCommand({ type: 'debug/advanceClock', minutes: 1440 }, 12 * hour);
     expect(offset).toHaveBeenLastCalledWith(day + 12 * hour);
     expect(game.snapshot(12 * hour).silencedBy).toEqual([]);
-    const beijing = createGameCore({ content, now: 15 * hour, utcOffsetMinutes: () => 480 });
+    const beijing = createGameCore({
+      content,
+      now: 15 * hour,
+      utcOffsetMinutes: () => 480,
+      random,
+    });
     expect(beijing.snapshot(15 * hour).silencedBy).toEqual(['quietHours']);
   });
 
@@ -238,6 +252,7 @@ describe('安静时段 QuietHours 和开机静默', () => {
       state: game.exportState(),
       now: noon,
       utcOffsetMinutes,
+      random,
     });
     expect(restarted.snapshot(noon).silencedBy).toEqual([]);
   });
