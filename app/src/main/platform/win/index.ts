@@ -2,6 +2,8 @@ import { screen } from 'electron';
 import koffi from 'koffi';
 import type { Platform, ScreenPoint } from '../types';
 
+export { readWindows } from './windows';
+
 /**
  * 系统报告"有全屏程序"、但其实不该让猫躲起来的程序（按可执行文件名，不区分大小写）。
  * NVIDIA App 的游戏内悬浮层常驻两个铺满屏幕的隐形窗口，系统会因此一直报告"忙碌"（#29 验收时发现）。

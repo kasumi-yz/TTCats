@@ -24,3 +24,36 @@ export interface SystemInfo {
   cpu: { model: string | null; cores: number };
   memory: { totalBytes: number; freeBytes: number };
 }
+
+/** Windows 查询使用的物理像素，不是 Electron 的 DIP。 */
+export interface WindowRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+export interface WindowMonitor {
+  bounds: WindowRect;
+  scaleFactor: number;
+}
+
+/** 从上到下的窗口快照。不能站立的窗口可能仍然遮挡其他窗口。 */
+export interface WindowInfo {
+  id: string;
+  pid: number;
+  className: string;
+  bounds: WindowRect;
+  buttons: WindowRect | null;
+  buttonsSource: 'titlebar' | 'dwm' | 'fallback' | 'none';
+  dpiAwareness: 'unaware' | 'system' | 'per-monitor';
+  windowDpi: number;
+  visible: boolean;
+  minimized: boolean;
+  maximized: boolean;
+  fullscreen: boolean;
+  cloaked: boolean;
+  occludes: boolean;
+  eligible: boolean;
+  reason: string;
+}
