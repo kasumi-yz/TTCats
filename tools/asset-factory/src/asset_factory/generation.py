@@ -48,8 +48,10 @@ def recover_submission(client, run_id):
     if len(matches) != 1:
         raise FactoryError(
             "提交状态尚不确定，未重复生成。请在 ComfyUI 查找 client_id="
-            f"{run_id}；找到后用 batch --adopt-task <片段-种子>=<任务号> 继续。"
-            "确认从未提交才使用 --retry-uncertain <片段-种子>。"
+            f"{run_id}。请保持生成服务可访问，再重跑原命令自动查询。"
+            f"若服务重启导致历史丢失，先查 ComfyUI 输出目录 TTCats/{run_id}*。"
+            "有视频结果时保留原片和生成档案，作为新批次 inputs 加工；"
+            "无法确认时停止，不重提。确认从未提交才使用 --retry-uncertain <片段-种子>。"
         )
     return matches.pop()
 
@@ -119,7 +121,16 @@ def generate(root, config, clip, seed, base, task, save):
         task.phase = "submitting"
         save()
         # 不重试 POST。即使响应丢失，下次只查询这个 run_id。
-        reply = client.json("/prompt", {"prompt": workflow, "client_id": run_id})
+        try:
+            reply = client.json("/prompt", {"prompt": workflow, "client_id": run_id})
+        except module.RetryableQueryError:
+            raise  # 网络/响应中断不能证明未提交，保留 submitting。
+        except module.GeneratorError as error:
+            log.update(status="failed", error=str(error))
+            write_json(Path(task.generator_log), log)
+            task.phase = "failed"
+            save()
+            raise FactoryError(f"猫「{config.cat.name}」：H3 明确拒绝提交：{error}") from error
         if reply.get("node_errors") or not reply.get("prompt_id"):
             log.update(status="failed", error=str(reply))
             write_json(Path(task.generator_log), log)

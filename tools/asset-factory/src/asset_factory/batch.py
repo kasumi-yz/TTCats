@@ -5,6 +5,7 @@ import json
 import os
 from contextlib import contextmanager
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from uuid import uuid4
 
 from jsonschema import Draft202012Validator
@@ -115,16 +116,42 @@ def load_config(path):
     return config, digest
 
 
-def verify_artifacts(task, cat):
+def owns_finalized_file(path):
+    """只保护工厂发布的候选；同目录的人工作业和锁属于挑片台。"""
+    return path in (Path("manifest.json"), Path("export-log.json")) or (
+        len(path.parts) == 2
+        and (
+            (path.parts[0] == "aligned" and path.suffix == ".png")
+            or (path.parts[0] == "clips" and path.suffix in (".json", ".webm", ".bin"))
+        )
+    )
+
+
+def verify_artifacts(task, cat, directory):
+    # 兼容旧续跑记录：删除早期误收的人工作业哈希，不能修改工厂产物的预期哈希。
+    finalize = directory / "finalize"
+    task.artifacts = {
+        name: expected
+        for name, expected in task.artifacts.items()
+        if not Path(name).is_relative_to(finalize)
+        or owns_finalized_file(Path(name).relative_to(finalize))
+    }
     for name, expected in task.artifacts.items():
         path = Path(name)
         if not path.is_file() or sha256(path) != expected:
-            raise FactoryError(f"猫「{cat}」：续跑结果已变化或缺失：{path}，请用新的批次 id 重跑")
+            raise FactoryError(
+                f"猫「{cat}」：续跑结果已变化或缺失：{path}。"
+                "请用 reuse-generated 将原片转入新批次重新加工，避免重复生成。"
+            )
 
 
 def checkpoint_stage(task, directory, stage, save):
     target = directory / stage
+    if any(Path(name) == target or Path(name).is_relative_to(target) for name in task.artifacts):
+        return  # 已发布阶段只校验旧快照，不能吸收后续写入或覆盖预期哈希。
     paths = [target] if target.is_file() else [p for p in target.rglob("*") if p.is_file()]
+    if stage == "finalize":
+        paths = [p for p in paths if owns_finalized_file(p.relative_to(target))]
     for path in paths:
         task.artifacts[str(path)] = sha256(path)
     save()
@@ -241,7 +268,7 @@ def process(root, config, clip, task, base, save):
     }
 
 
-def run_batch(root: Path, path: Path, *, adopt=None, retry_uncertain=None, retry_failed=False):
+def run_batch(root: Path, path: Path, *, retry_uncertain=None, retry_failed=False):
     path = path.resolve()
     config, digest = load_config(path)
     folder = root / "batches" / config.id
@@ -250,7 +277,10 @@ def run_batch(root: Path, path: Path, *, adopt=None, retry_uncertain=None, retry
         if state_path.exists():
             state = load_record(state_path, BatchState, config.cat.name)
             if state.config_sha256 != digest:
-                raise FactoryError(f"猫「{config.cat.name}」：配置或输入已变化，请用新的批次 id")
+                raise FactoryError(
+                    f"猫「{config.cat.name}」：配置或输入已变化（包括处理程序版本）。"
+                    "请用 reuse-generated 将已生成原片转入新批次，避免重复生成。"
+                )
         else:
             tasks = {}
             for clip in config.clips:
@@ -263,18 +293,6 @@ def run_batch(root: Path, path: Path, *, adopt=None, retry_uncertain=None, retry
             write_json(state_path, state.model_dump(mode="json"))
 
         save()
-        for key, prompt_id in (adopt or {}).items():
-            if key not in state.tasks or state.tasks[key].phase != "submitting":
-                raise FactoryError(f"不能恢复 {key}：只允许补充提交状态不确定的任务号")
-            task = state.tasks[key]
-            # 验证 server 的任务确实属于持久 client_id，不能认领别人的生成。
-            client = generation.generator_module().ComfyClient(config.comfy_url)
-            log = json.loads(Path(task.generator_log).read_text(encoding="utf-8"))
-            recovered = generation.recover_submission(client, log["run_id"])
-            if recovered != prompt_id:
-                raise FactoryError("任务号与当前批次的 client_id 不符")
-            task.prompt_id, task.phase = prompt_id, "queued"
-            save()
         for key in retry_uncertain or []:
             if key not in state.tasks or state.tasks[key].phase != "submitting":
                 raise FactoryError(f"不能重提 {key}：它不是提交状态不确定的任务")
@@ -293,7 +311,8 @@ def run_batch(root: Path, path: Path, *, adopt=None, retry_uncertain=None, retry
                 key, task = f"{clip.name}-{seed}", state.tasks[f"{clip.name}-{seed}"]
                 print(f"猫「{config.cat.name}」：{key}（{task.phase}）", flush=True)
                 try:
-                    verify_artifacts(task, config.cat.name)
+                    directory = job_path(root, task.job) if task.job else root / "factory"
+                    verify_artifacts(task, config.cat.name, directory)
                     if task.phase == "failed":
                         if not retry_failed:
                             raise FactoryError("已记录生成失败，显式加 --retry-failed 才重新生成")
@@ -314,7 +333,8 @@ def run_batch(root: Path, path: Path, *, adopt=None, retry_uncertain=None, retry
                         generation.generate(root, config, clip, seed, path.parent, task, save)
                     results.append(process(root, config, clip, task, path.parent, save))
                 except Exception as error:
-                    task.error = f"猫「{config.cat.name}」：{key}：{error}"
+                    prefix = f"猫「{config.cat.name}」："
+                    task.error = f"{prefix}{key}：{str(error).removeprefix(prefix)}"
                     save()
                     failures.append({"task": key, "error": task.error})
                     print(task.error, flush=True)
@@ -336,3 +356,72 @@ def run_batch(root: Path, path: Path, *, adopt=None, retry_uncertain=None, retry
                 f"猫「{config.cat.name}」：有任务尚未完成，详情见 {folder / 'report.json'}"
             )
         return folder / "report.json"
+
+
+def reuse_generated(root: Path, path: Path, new_id: str, output: Path):
+    """程序升级或加工损坏后，将已下载且哈希未变的原片导出为新批次 inputs。"""
+    path, output = path.resolve(), output.resolve()
+    config, _ = load_config(path)
+    if new_id == config.id or output == path or output.exists():
+        raise FactoryError(f"猫「{config.cat.name}」：需要新的批次 id 和尚不存在的配置文件")
+    if (root / "batches" / new_id).exists():
+        raise FactoryError(f"猫「{config.cat.name}」：新批次 id 已被使用，请换一个")
+    value = config.model_dump(mode="json")
+    value["id"] = new_id
+    value["cat"]["poses"] = {
+        pose: str((path.parent / name).resolve()) for pose, name in config.cat.poses.items()
+    }
+    clips, skipped = [], []
+    with batch_lock(root / "batches" / config.id):
+        state = load_record(
+            root / "batches" / config.id / "state.json", BatchState, config.cat.name
+        )
+        for clip in config.clips:
+            copied = clip.model_dump(mode="json")
+            copied["inputs"] = []
+            for field in ("first_frame", "last_frame"):
+                if copied[field]:
+                    copied[field] = str((path.parent / copied[field]).resolve())
+            for seed in [source.seed for source in clip.inputs] if clip.inputs else clip.seeds:
+                key = f"{clip.name}-{seed}"
+                task = state.tasks.get(key)
+                if not task or task.phase not in ("generated", "complete"):
+                    skipped.append(key)
+                    continue
+                if (
+                    not task.source
+                    or not task.source_sha256
+                    or not Path(task.source).is_file()
+                    or sha256(Path(task.source)) != task.source_sha256
+                ):
+                    raise FactoryError(
+                        f"猫「{config.cat.name}」：{key} 原片缺失或哈希变化，不能复用"
+                    )
+                copied["inputs"].append(
+                    {
+                        "seed": seed,
+                        "path": task.source,
+                        "asset_log": task.asset_log,
+                        "generator_log": task.generator_log,
+                    }
+                )
+            if copied["inputs"]:
+                clips.append(copied)
+        if not clips:
+            raise FactoryError(f"猫「{config.cat.name}」：尚无已下载的原片可复用，请先恢复在途任务")
+        value["clips"] = clips
+        # 在发布前用新配置的实际路径校验全部输入、AssetLog 和共享片段约束。
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with TemporaryDirectory(prefix=".reuse-", dir=output.parent) as temporary:
+            check_path = Path(temporary) / output.name
+            write_json(check_path, value)
+            load_config(check_path)
+            if output.exists():
+                raise FactoryError(f"猫「{config.cat.name}」：新配置文件已存在，未覆盖")
+            check_path.replace(output)
+    if skipped:
+        print(
+            f"猫「{config.cat.name}」：仅复用已下载原片，跳过未完成项：{', '.join(skipped)}",
+            flush=True,
+        )
+    return output

@@ -46,7 +46,6 @@ def track_landmark(paths, landmark, cat):
 
 
 def automatic_selection(paths, record, profile, clip):
-    selection = make_suggestion(paths, record.fps, record.cat)
     rear_foot = clip.rear_foot or profile.rear_foot
     centers, signatures = [], []
     for path in paths:
@@ -54,8 +53,13 @@ def automatic_selection(paths, record, profile, clip):
             # 排除很淡的残余 alpha，避免边界被背景噪声拉到整幅画布。
             alpha = np.asarray(image.getchannel("A"))
             _, xs = np.where(alpha >= 128)
+            if not xs.size:
+                raise FactoryError(
+                    f"猫「{record.cat}」：{path.name} 没有足够不透明的主体，请检查抠图"
+                )
             centers.append((int(xs.min()) + int(xs.max()) + 1) / 2)
             signatures.append(silhouette(image, record.cat)[1])
+    selection = make_suggestion(paths, record.fps, record.cat)
     centers = np.asarray(centers)
     if clip.anchor_mode == "fixed":
         selection.foot_anchors = [Point(x=rear_foot.x, y=profile.ground_y)] * len(paths)

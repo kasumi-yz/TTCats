@@ -4,16 +4,17 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 from PIL import Image, ImageDraw
 from test_pipeline import FakeBiRefNet
 
-from asset_factory import batch, generation, pipeline
-from asset_factory.automation import display_height, track_landmark
-from asset_factory.batch_models import Landmark
+from asset_factory import batch, cli, generation, pipeline
+from asset_factory.automation import assess, automatic_selection, display_height, track_landmark
+from asset_factory.batch_models import Landmark, TaskState
 from asset_factory.derivation import derive_land, land_indices, pickup_map
-from asset_factory.models import Point
-from asset_factory.storage import FactoryError, run_tool, sha256, write_json
+from asset_factory.models import IngestRecord, Point
+from asset_factory.storage import FactoryError, load_record, run_tool, sha256, write_json
 
 
 @pytest.fixture
@@ -151,6 +152,51 @@ def test_input_changes_and_corrupt_outputs_are_refused(example):
         batch.run_batch(root, path)
 
 
+@pytest.mark.parametrize("legacy_snapshot", [False, True])
+def test_review_files_can_change_between_resumes(example, legacy_snapshot):
+    root, path, _, _ = example
+    report = json.loads(batch.run_batch(root, path).read_text(encoding="utf-8"))
+    directory = Path(report["candidates"][0]["manifest"]).parent
+    review = directory / "review-result.json"
+    lock = directory / ".review-lock"
+    write_json(review, {"revision": 1})
+    lock.write_text("reviewer", encoding="utf-8")
+    if legacy_snapshot:
+        state_path = root / "batches/synthetic-batch/state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["tasks"]["walk-42"]["artifacts"].update(
+            {str(review): sha256(review), str(lock): sha256(lock)}
+        )
+        write_json(state_path, state)
+    assert json.loads(batch.run_batch(root, path).read_text(encoding="utf-8")) == report
+    state = json.loads((root / "batches/synthetic-batch/state.json").read_text(encoding="utf-8"))
+    assert str(review) not in state["tasks"]["walk-42"]["artifacts"]
+    assert str(lock) not in state["tasks"]["walk-42"]["artifacts"]
+    write_json(directory / "review-result.backup.json", {"revision": 1})
+    write_json(review, {"revision": 2})
+    lock.unlink()
+    assert json.loads(batch.run_batch(root, path).read_text(encoding="utf-8")) == report
+
+
+def test_review_files_created_before_finalize_checkpoint_are_not_absorbed(example, monkeypatch):
+    root, path, _, _ = example
+    original = batch.finalize
+
+    def published(*args, **kwargs):
+        result = original(*args, **kwargs)
+        write_json(result.parent.parent / "review-result.json", {"revision": 1})
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(batch, "finalize", published)
+    with pytest.raises(KeyboardInterrupt):
+        batch.run_batch(root, path)
+    monkeypatch.setattr(batch, "finalize", original)
+    report = json.loads(batch.run_batch(root, path).read_text(encoding="utf-8"))
+    review = Path(report["candidates"][0]["manifest"]).parent / "review-result.json"
+    write_json(review, {"revision": 2})
+    assert json.loads(batch.run_batch(root, path).read_text(encoding="utf-8")) == report
+
+
 def test_config_validation_names_the_cat(example):
     _, path, config, _ = example
     del config["cat"]["stand_height"]
@@ -193,8 +239,8 @@ def test_os_lock_released_after_process_exit(tmp_path):
         assert (tmp_path / "batch.lock").exists()
 
 
-@pytest.mark.parametrize("lost_response", [False, True])
-def test_generation_resume_does_not_resubmit(example, monkeypatch, lost_response):
+@pytest.fixture
+def fake_generator(example, monkeypatch):
     root, path, config, source = example
     config["clips"][0].pop("inputs")
     config["clips"][0].update(prompt="原文 {appearance}", seeds=[42])
@@ -202,6 +248,7 @@ def test_generation_resume_does_not_resubmit(example, monkeypatch, lost_response
     write_json(path, config)
     module = generation.generator_module()
     submitted, client_ids = [], []
+    errors, interruptions = [], []
     workflow = json.loads(module.WORKFLOW.read_text(encoding="utf-8"))
     info = {node["class_type"]: {"input": {"required": {}}} for node in workflow.values()}
     for node in workflow.values():
@@ -226,18 +273,22 @@ def test_generation_resume_does_not_resubmit(example, monkeypatch, lost_response
             if route == "/prompt":
                 submitted.append(payload)
                 client_ids.append(payload["client_id"])
-                if lost_response:
-                    raise module.GeneratorError("模拟服务端收到提交，但响应丢失")
-                return {"prompt_id": "stable-id"}
+                if errors:
+                    raise errors.pop(0)
+                return {"prompt_id": f"stable-id-{len(submitted)}"}
             if route == "/queue":
-                return {"queue_running": [[1, "stable-id", {}, {"client_id": client_ids[0]}]]}
+                return {
+                    "queue_running": [
+                        [1, f"stable-id-{index + 1}", {}, {"client_id": run_id}]
+                        for index, run_id in enumerate(client_ids)
+                    ]
+                }
             return {}
 
         def request(self, route, **kwargs):
             return io.BytesIO(source.read_bytes())
 
     monkeypatch.setattr(module, "ComfyClient", Client)
-    interruptions = [] if lost_response else [True]
 
     def wait(*args):
         if interruptions:
@@ -246,8 +297,18 @@ def test_generation_resume_does_not_resubmit(example, monkeypatch, lost_response
         return {"outputs": {"16": {"images": [{"type": "output", "filename": "clip.mp4"}]}}}
 
     monkeypatch.setattr(module, "wait_for_result", wait)
+    return module, submitted, errors, interruptions
+
+
+@pytest.mark.parametrize("lost_response", [False, True])
+def test_generation_resume_does_not_resubmit(example, fake_generator, lost_response):
+    root, path, _, source = example
+    module, submitted, errors, interruptions = fake_generator
+    if lost_response:
+        errors.append(module.RetryableQueryError("模拟服务端收到提交，但响应丢失"))
+    else:
+        interruptions.append(True)
     parsed, _ = batch.load_config(path)
-    from asset_factory.batch_models import TaskState
 
     task = TaskState(key="walk-42")
     checkpoints = []
@@ -259,12 +320,95 @@ def test_generation_resume_does_not_resubmit(example, monkeypatch, lost_response
         generation.generate(root, parsed, parsed.clips[0], 42, path.parent, task, save)
     assert task.phase == ("submitting" if lost_response else "queued")
     if not lost_response:
-        assert task.prompt_id == "stable-id"
+        assert task.prompt_id == "stable-id-1"
     generation.generate(root, parsed, parsed.clips[0], 42, path.parent, task, save)
     assert len(submitted) == 1 and task.phase == "generated"
     assert task.asset_log["prompt"] == "原文 测试外貌"
     assert task.asset_log["attempt"] == 1 and task.source_sha256 == sha256(source)
     assert "workflow" in task.asset_log and "modelFiles" in task.asset_log
+
+
+def test_definite_submit_rejection_is_failed(example, fake_generator):
+    root, path, _, _ = example
+    module, submitted, errors, _ = fake_generator
+    errors.append(module.GeneratorError("ComfyUI 拒绝请求（400）：invalid_prompt"))
+    parsed, _ = batch.load_config(path)
+    task = TaskState(key="walk-42")
+    with pytest.raises(FactoryError, match="明确拒绝提交.*400"):
+        generation.generate(root, parsed, parsed.clips[0], 42, path.parent, task, lambda: None)
+    assert task.phase == "failed" and task.prompt_id is None and len(submitted) == 1
+    log = json.loads(Path(task.generator_log).read_text(encoding="utf-8"))
+    assert log["status"] == "failed" and "400" in log["error"]
+
+
+@pytest.mark.parametrize("uncertain", [False, True])
+def test_explicit_retries_at_batch_level(example, fake_generator, monkeypatch, uncertain):
+    root, path, _, _ = example
+    module, submitted, errors, _ = fake_generator
+    errors.append(
+        module.RetryableQueryError("模拟响应丢失")
+        if uncertain
+        else module.GeneratorError("ComfyUI 拒绝请求（400）：invalid_prompt")
+    )
+
+    def processed(root, config, clip, task, base, save):
+        assert task.phase == "generated" and Path(task.source).is_file()
+        task.phase = "complete"
+        save()
+        return {"task": task.key}
+
+    monkeypatch.setattr(batch, "process", processed)
+    with pytest.raises(FactoryError, match="尚未完成"):
+        batch.run_batch(root, path)
+    state_path = root / "batches/synthetic-batch/state.json"
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    old_log = Path(state["tasks"]["walk-42"]["generator_log"])
+    if uncertain:
+        assert state["tasks"]["walk-42"]["phase"] == "submitting"
+        # 丢失响应，但客户端身份仍存在：普通续跑自动查询，不再提交。
+        report = json.loads(batch.run_batch(root, path).read_text(encoding="utf-8"))
+        assert report["complete"] and len(submitted) == 1
+        state["tasks"]["walk-42"]["phase"] = "submitting"
+        state["tasks"]["walk-42"]["prompt_id"] = None
+        write_json(state_path, state)
+        report_path = batch.run_batch(root, path, retry_uncertain=["walk-42"])
+        assert json.loads(old_log.read_text(encoding="utf-8"))["status"] == "abandoned-uncertain"
+    else:
+        assert state["tasks"]["walk-42"]["phase"] == "failed"
+        with pytest.raises(FactoryError, match="尚未完成"):
+            batch.run_batch(root, path)
+        assert len(submitted) == 1
+        report_path = batch.run_batch(root, path, retry_failed=True)
+        assert json.loads(old_log.read_text(encoding="utf-8"))["status"] == "failed"
+    assert json.loads(report_path.read_text(encoding="utf-8"))["complete"]
+    assert len(submitted) == 2
+    assert submitted[0]["client_id"] != submitted[1]["client_id"]
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert Path(state["tasks"]["walk-42"]["generator_log"]) != old_log
+    assert state["tasks"]["walk-42"]["asset_log"]["attempt"] == 2
+
+
+def test_offline_resume_returns_chinese_cli_error(example, fake_generator, monkeypatch, capsys):
+    root, path, _, _ = example
+    module, _, errors, _ = fake_generator
+    errors.append(module.RetryableQueryError("模拟响应丢失"))
+    with pytest.raises(FactoryError):
+        batch.run_batch(root, path)
+
+    class Offline:
+        def __init__(self, url):
+            pass
+
+        def json(self, route):
+            raise module.RetryableQueryError("无法连接 ComfyUI")
+
+    monkeypatch.setattr(module, "ComfyClient", Offline)
+    monkeypatch.setenv("TTCATS_ASSET_ROOT", str(root))
+    monkeypatch.setattr(sys, "argv", ["asset-factory", "batch", "--config", str(path)])
+    assert cli.main() == 1
+    output = capsys.readouterr()
+    assert "素材处理失败" in output.err and "无法连接 ComfyUI" in output.out
+    assert "Traceback" not in output.out + output.err
 
 
 def test_lost_submit_response_uses_client_identity():
@@ -279,6 +423,165 @@ def test_lost_submit_response_uses_client_identity():
     assert generation.recover_submission(Client(), "mine") == "task-1"
     with pytest.raises(FactoryError, match="未重复生成"):
         generation.recover_submission(Client(), "other")
+
+
+@pytest.mark.parametrize("matches", [0, 2])
+def test_uncertain_recovery_has_no_circular_adopt_advice(matches):
+    class Client:
+        def json(self, route):
+            return (
+                {
+                    "queue_pending": [
+                        [1, f"task-{i}", {}, {"client_id": "mine"}] for i in range(matches)
+                    ]
+                }
+                if route == "/queue"
+                else {}
+            )
+
+    with pytest.raises(FactoryError) as caught:
+        generation.recover_submission(Client(), "mine")
+    assert "--adopt-task" not in str(caught.value)
+    assert "TTCats/mine*" in str(caught.value) and "确认从未提交" in str(caught.value)
+
+
+def test_reuse_generated_survives_processor_changes_without_resubmitting(example, monkeypatch):
+    root, path, config, source = example
+    original = json.loads(batch.run_batch(root, path).read_text(encoding="utf-8"))
+    manifest = Path(original["candidates"][0]["manifest"])
+    manifest_hash = sha256(manifest)
+    state_path = root / "batches/synthetic-batch/state.json"
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    # 旧程序指纹失配，另一个种子尚未生成；复用命令不要求加工版本相同。
+    state["config_sha256"] = "old-processor-fingerprint"
+    state["tasks"]["walk-43"] = TaskState(key="walk-43").model_dump(mode="json")
+    config["clips"][0]["inputs"].append({**config["clips"][0]["inputs"][0], "seed": 43})
+    write_json(path, config)
+    write_json(state_path, state)
+    state_hash = sha256(state_path)
+    with pytest.raises(FactoryError, match="reuse-generated"):
+        batch.run_batch(root, path)
+    output = path.parent / "new-location/new-config.json"
+    batch.reuse_generated(root, path, "reprocessed-batch", output)
+    copied = json.loads(output.read_text(encoding="utf-8"))
+    assert copied["clips"][0]["inputs"] == [
+        {**config["clips"][0]["inputs"][0], "generator_log": None}
+    ]
+    assert sha256(state_path) == state_hash
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("复用原片不应再访问生成服务")
+
+    monkeypatch.setattr(generation, "generate", forbidden)
+    report = json.loads(batch.run_batch(root, output).read_text(encoding="utf-8"))
+    assert report["complete"] and len(report["candidates"]) == 1
+    assert report["candidates"][0]["job"] != original["candidates"][0]["job"]
+    assert sha256(manifest) == manifest_hash
+    assert json.loads(Path(report["candidates"][0]["manifest"]).read_text(encoding="utf-8"))[
+        "assetLog"
+    ]["rawVideo"] == str(source)
+    with pytest.raises(FactoryError, match="尚不存在"):
+        batch.reuse_generated(root, path, "another-id", output)
+    source.write_bytes(b"corrupt")
+    with pytest.raises(FactoryError, match="哈希变化"):
+        batch.reuse_generated(root, path, "corrupt-batch", path.parent / "corrupt-config.json")
+
+
+@pytest.fixture
+def assessment_inputs(example):
+    root, path, _, _ = example
+    report = json.loads(batch.run_batch(root, path).read_text(encoding="utf-8"))
+    directory = Path(report["candidates"][0]["manifest"]).parent.parent
+    parsed, _ = batch.load_config(path)
+    record = load_record(directory / "ingest.json", IngestRecord, parsed.cat.name)
+    raw = pipeline.frame_paths(directory, record, "frames")
+    matte = pipeline.frame_paths(directory, record, "matte")
+    selection, _, signatures = automatic_selection(matte, record, parsed.cat, parsed.clips[0])
+    poses = {"first": raw[0], "last": raw[-1]}
+    return raw, matte, record, parsed.cat, parsed.clips[0], selection, signatures, poses
+
+
+def test_bad_pose_background_and_edges_reduce_assessment(assessment_inputs, tmp_path):
+    raw, matte, record, profile, clip, selection, signatures, poses = assessment_inputs
+    good = assess(raw, matte, record, profile, clip, selection, {}, signatures, poses)
+    bad_raw, bad_matte = [], []
+    for index, (raw_path, matte_path) in enumerate(zip(raw, matte, strict=True)):
+        with Image.open(raw_path) as image:
+            image = image.copy()
+            draw = ImageDraw.Draw(image)
+            if index in (0, len(raw) - 1):
+                draw.rectangle((10, 10, 36, 35), fill=(0, 255, 255))
+            draw.point((0, 0), fill=(255, 255, 255))
+            destination = tmp_path / f"bad-raw-{index}.png"
+            image.save(destination)
+            bad_raw.append(destination)
+        with Image.open(matte_path) as image:
+            image = image.copy()
+            ImageDraw.Draw(image).rectangle((0, 0, 3, 47), fill=(*profile.background, 100))
+            destination = tmp_path / f"bad-matte-{index}.png"
+            image.save(destination)
+            bad_matte.append(destination)
+    bad = assess(bad_raw, bad_matte, record, profile, clip, selection, {}, signatures, poses)
+    assert good["score"] > 95 and bad["score"] < good["score"] - 60
+    for name in (
+        "first_pose_rgb_error",
+        "last_pose_rgb_error",
+        "background_corner_error",
+        "edge_background_fraction",
+    ):
+        assert bad["metrics"][name]["value"] > bad["metrics"][name]["threshold"]
+        assert good["metrics"][name]["value"] == pytest.approx(0)
+    assert "首帧与姿势帧主体颜色差" in " ".join(bad["reasons"])
+    assert "软毛边接近背景色" in " ".join(bad["reasons"])
+
+
+def test_action_duration_is_measured_and_affects_score(assessment_inputs):
+    raw, matte, record, profile, clip, selection, signatures, poses = assessment_inputs
+    clip = clip.model_copy(update={"kind": "action", "action_seconds": 1.0, "seconds": 30.0})
+    steady = np.zeros_like(signatures)
+    moving = steady.copy()
+    moving[1::2] = 1
+    good = assess(raw, matte, record, profile, clip, selection, {}, steady, poses)
+    bad = assess(raw, matte, record, profile, clip, selection, {}, moving, poses)
+    assert good["metrics"]["action_seconds"]["value"] == 0
+    assert bad["metrics"]["action_seconds"]["value"] == pytest.approx(9 / 8)
+    assert bad["metrics"]["action_duration_ratio"]["value"] == pytest.approx(9 / 8)
+    assert bad["score"] < good["score"]
+    assert "不使用请求总时长" in " ".join(bad["reasons"])
+
+
+def test_rear_toe_slip_lowers_score_and_missing_track_is_unmeasured(assessment_inputs):
+    raw, matte, record, profile, clip, selection, signatures, poses = assessment_inputs
+    clip = clip.model_copy(update={"anchor_mode": "fixed"})
+    stationary = [Point(x=12.0, y=35.0)] * len(raw)
+    slipping = [Point(x=float(12 + i), y=float(35 + i)) for i in range(len(raw))]
+    good = assess(
+        raw, matte, record, profile, clip, selection, {"rear-toe": stationary}, signatures, poses
+    )
+    bad = assess(
+        raw, matte, record, profile, clip, selection, {"rear-toe": slipping}, signatures, poses
+    )
+    assert good["metrics"]["rear_toe_x_range"]["value"] == 0
+    assert bad["metrics"]["rear_toe_x_range"]["value"] == 9
+    assert bad["metrics"]["rear_toe_ground_error"]["value"] == 9
+    assert bad["score"] < good["score"] - 20
+    assert "后脚趾水平变化" in " ".join(bad["reasons"])
+    stationary[4] = None
+    unknown = assess(
+        raw, matte, record, profile, clip, selection, {"rear-toe": stationary}, signatures, poses
+    )
+    assert "rear_toe_x_range" not in unknown["metrics"]
+    assert "未取得完整、可信肉垫轨迹" in " ".join(unknown["reasons"])
+
+
+def test_low_alpha_frame_has_chinese_error(assessment_inputs):
+    _, matte, record, profile, clip, _, _, _ = assessment_inputs
+    with Image.open(matte[4]) as image:
+        image = image.copy()
+        image.putalpha(64)
+        image.save(matte[4])
+    with pytest.raises(FactoryError, match="测试猫.*000004.png.*主体"):
+        automatic_selection(matte, record, profile, clip)
 
 
 def test_land_derivation_and_pickup_map(example):

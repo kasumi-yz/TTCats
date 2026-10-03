@@ -7,7 +7,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from .batch import run_batch
+from .batch import reuse_generated, run_batch
 from .derivation import derive_land, pickup_map
 from .export import finalize
 from .matting import MODEL_FILE, MODEL_MD5, MODEL_URL
@@ -72,7 +72,6 @@ def parser():
     export.add_argument("--options", type=Path, required=True)
     batch = commands.add_parser("batch", help="串行批量生成、初筛、处理为待挑选候选；同命令续跑")
     batch.add_argument("--config", type=Path, required=True)
-    batch.add_argument("--adopt-task", action="append", default=[], metavar="片段-种子=任务号")
     batch.add_argument(
         "--retry-uncertain",
         action="append",
@@ -81,6 +80,12 @@ def parser():
         help="仅在本人确认从未提交后重新生成；可能重复生成，请先查 ComfyUI",
     )
     batch.add_argument("--retry-failed", action="store_true", help="明确重试已记录的生成失败")
+    reuse = commands.add_parser(
+        "reuse-generated", help="将旧批次已下载原片转为新批次配置，无需重新生成"
+    )
+    reuse.add_argument("--config", type=Path, required=True, help="旧批次的原配置")
+    reuse.add_argument("--id", required=True, help="未使用过的新批次 id")
+    reuse.add_argument("--output", type=Path, required=True, help="尚不存在的新配置文件")
     pickup = commands.add_parser("pickup-map", help="根据完整 scruff 轨迹建议鼠标高度到帧号映射")
     pickup.add_argument("job")
     pickup.add_argument("--options", type=Path)
@@ -135,21 +140,16 @@ def main() -> int:
         elif args.command == "finalize":
             print(finalize(root, args.job, args.options))
         elif args.command == "batch":
-            adopted = {}
-            for value in args.adopt_task:
-                if "=" not in value:
-                    raise FactoryError("补充任务号应写成 片段-种子=任务号")
-                key, prompt_id = value.split("=", 1)
-                adopted[key] = prompt_id
             print(
                 run_batch(
                     root,
                     args.config,
-                    adopt=adopted,
                     retry_uncertain=args.retry_uncertain,
                     retry_failed=args.retry_failed,
                 )
             )
+        elif args.command == "reuse-generated":
+            print(reuse_generated(root, args.config, args.id, args.output))
         elif args.command == "pickup-map":
             print(pickup_map(root, args.job, args.options))
         elif args.command == "derive-land":
