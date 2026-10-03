@@ -94,6 +94,20 @@ export const zh = {
     doNotDisturb: '勿扰模式',
     mode: '模式',
     until: '结束时间',
+    candidateManifestSha256: '候选清单校验值',
+    source: '原始素材信息',
+    sha256: '原始视频校验值',
+    selection: '人工挑选参数',
+    trimStart: '裁剪开始帧',
+    trimEnd: '裁剪结束帧',
+    loopStart: '循环开始帧',
+    loopEnd: '循环结束帧',
+    accepted: '是否人工确认合格',
+    note: '挑选备注',
+    manualSeconds: '人工用时',
+    assessment: '自动初筛参考',
+    score: '参考分数',
+    reasons: '评分原因',
   } as Readonly<Record<string, string>>,
 
   validation: {
@@ -536,5 +550,16 @@ export const zh = {
     install: (version: string) => `重启并更新到 ${version}`,
     failed: (error: string) => `更新失败：${error}`,
     retryLater: '检查失败，请稍后重试。',
+  },
+  reviewResult: {
+    sha256Format: '校验值必须是 64 位小写十六进制 SHA-256',
+    emptyReason: '评分原因不能为空',
+    trimRange: '裁剪区间必须有帧且不超过原始帧数，结束帧不包含在区间内',
+    loopRange: '循环区间必须有帧且位于裁剪区间内，结束帧不包含在区间内',
+    soundRange: '声音起始帧必须位于实际导出的区间内，使用原始帧号',
+    pointBounds: (width: number, height: number) =>
+      `坐标必须位于原始画面内：0 ≤ x < ${width}，0 ≤ y < ${height}`,
+    context: (cat: string, candidateId: string) => `猫「${cat}」候选「${candidateId}」：`,
+    identityMismatch: '挑选结果的猫或候选 id 与正在处理的候选不符',
   },
 };

@@ -2,6 +2,7 @@
 // 素材工厂（AssetFactory）的输出格式：每个候选（Candidate）文件夹里的 manifest.json（ADR-0006）。
 // 素材工厂是 Python 写的，用 schemas/candidate-manifest.schema.json 校验这份文件。
 import { z } from 'zod';
+import { zh } from '../strings.zh-CN';
 import { IdSchema, JsonSchemaRefField, SchemaVersionSchema } from './common';
 import { ClipSchema } from './clip';
 
@@ -29,6 +30,13 @@ export const AssetLogSchema = z.strictObject({
 });
 export type AssetLog = z.infer<typeof AssetLogSchema>;
 
+/** 自动初筛仅供人参考；没有评分的旧候选保持兼容。 */
+export const CandidateAssessmentSchema = z.strictObject({
+  score: z.number().min(0).max(100),
+  reasons: z.array(z.string().regex(/\S/, { error: zh.reviewResult.emptyReason })).min(1),
+});
+export type CandidateAssessment = z.infer<typeof CandidateAssessmentSchema>;
+
 export const CandidateManifestSchema = z.strictObject({
   ...JsonSchemaRefField,
   schemaVersion: SchemaVersionSchema,
@@ -44,6 +52,8 @@ export const CandidateManifestSchema = z.strictObject({
   status: z.enum(['pending', 'accepted', 'rejected']),
   /** 不合格的原因，或者挑选时的备注。 */
   note: z.string().optional(),
+  /** 0～100，越高越好；必须给出原因，不自动决定 status 或人工确认。 */
+  assessment: CandidateAssessmentSchema.optional(),
   assetLog: AssetLogSchema,
   /**
    * 片段元数据。pending 时是工具给的建议（裁剪、循环点、落脚锚点、步速），

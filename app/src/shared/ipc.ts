@@ -20,6 +20,7 @@ import type { CatSound } from './schemas/cat';
 import type { Point } from './schemas/common';
 import type { DoNotDisturb, DoNotDisturbDuration } from './schemas/do-not-disturb';
 import type { Settings } from './schemas/settings';
+import type { ReviewStationBridge } from './review-station';
 
 /** IPC 通道名。 */
 export const IPC_CHANNELS = {
@@ -334,6 +335,8 @@ export type Unsubscribe = () => void;
 
 /** 面板（设置、资料卡、调试台）用的桥。 */
 export interface PanelsBridge {
+  /** 挑片台（#104）：仅开发模式注入，安装版不提供。 */
+  reviewStation?: ReviewStationBridge;
   sendCommand(command: ToMainCommand): void;
   getSnapshot(): Promise<StateSnapshot>;
   getContent(): Promise<ContentCatalog>;

@@ -222,6 +222,12 @@ describe('素材工厂的候选 manifest', () => {
       clip: clip(),
     };
     expect(problemsOf(CandidateManifestSchema, manifest)).toEqual([]);
+    const scored = CandidateManifestSchema.parse({
+      ...manifest,
+      assessment: { score: 100, reasons: ['自动初筛通过，仍需人工挑选'] },
+    });
+    expect(scored.status).toBe('pending');
+    expect(scored.assessment?.score).toBe(100);
   });
 });
 
