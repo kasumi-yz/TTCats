@@ -1242,11 +1242,6 @@ test('声音：真实解码、调试命令、呼噜停止与空闲挂起', async
     );
     await expect.poll(async () => (await snapshot(overlay)).silencedBy).toEqual([]);
     const debug = await openDebug(app);
-    // M2 已接入真实安静时段；声音解码测试不能随执行时的钟点变成静音测试。
-    await debug.evaluate(
-      'window.ttcats.sendCommand({ type: "settings/update", patch: { quietHoursStart: "00:00", quietHoursEnd: "00:00" } })',
-    );
-    await expect.poll(async () => (await snapshot(debug)).silencedBy).toEqual([]);
     const audible = () =>
       app.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows().some(
