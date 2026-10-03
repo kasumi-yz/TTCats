@@ -14,6 +14,9 @@ const api = vi.hoisted(() => ({
   /** 前台窗口：0 表示没有 */
   foreground: 100,
   windowClass: 'Chrome_WidgetWin_1',
+  windowStyle: vi.fn<() => number>(),
+  setLastError: vi.fn<(error: number) => void>(),
+  lastError: vi.fn<() => number>(),
   windowRect: { left: 0, top: 0, right: 2880, bottom: 1800 },
   monitorRect: { left: 0, top: 0, right: 2880, bottom: 1800 },
   /** 前台窗口所在的屏幕 */
@@ -42,6 +45,9 @@ vi.mock('koffi', () => ({
         if (signature.includes('GetSystemMetrics')) return api.metrics;
         if (signature.includes('SHQueryUserNotificationState')) return api.notification;
         if (signature.includes('GetForegroundWindow')) return () => api.foreground;
+        if (signature.includes('GetWindowLongPtrW')) return api.windowStyle;
+        if (signature.includes('SetLastError')) return api.setLastError;
+        if (signature.includes('GetLastError')) return api.lastError;
         if (signature.includes('GetClassNameW'))
           return (_w: number, b: Buffer, max: number) => text(b, api.windowClass, max);
         if (signature.includes('GetWindowRect'))
@@ -84,6 +90,8 @@ beforeEach(() => {
   });
   api.foreground = 100;
   api.windowClass = 'Chrome_WidgetWin_1';
+  api.windowStyle.mockReturnValue(0);
+  api.lastError.mockReturnValue(0);
   api.windowRect = { left: 0, top: 0, right: 2880, bottom: 1800 };
   api.monitorRect = { left: 0, top: 0, right: 2880, bottom: 1800 };
   api.process = String.raw`C:\Games\game.exe`;
@@ -148,6 +156,40 @@ describe('Windows 桌面层系统状态', () => {
     api.foregroundMonitor = 2;
     api.catMonitor = 2;
     expect(createWindowsPlatform().isFullscreen(cat)).toBe(true);
+  });
+
+  it.each(['XamlExplorerHostIslandWindow', 'Windows.UI.Core.CoreWindow'])(
+    '%s 系统界面即使忙碌且盖满屏幕，也不能让猫随机消失',
+    (name) => {
+      busy();
+      api.windowClass = name;
+      expect(createWindowsPlatform().isFullscreen(cat)).toBe(false);
+    },
+  );
+
+  it('工作区等于屏幕时，带完整标题栏的最大化普通窗口不能隐藏猫', () => {
+    busy();
+    api.windowStyle.mockReturnValue(0x01c00000);
+    expect(createWindowsPlatform().isFullscreen(cat)).toBe(false);
+  });
+
+  it('样式读取失败时保留原来的几何判断，不能引入新的隐藏条件', () => {
+    busy();
+    api.windowStyle.mockReturnValue(0);
+    api.lastError.mockReturnValue(1400);
+    expect(createWindowsPlatform().isFullscreen(cat)).toBe(true);
+    expect(api.setLastError).toHaveBeenCalledWith(0);
+    expect(api.lastError).toHaveBeenCalled();
+    api.windowRect.bottom = 1700;
+    expect(createWindowsPlatform().isFullscreen(cat)).toBe(false);
+  });
+
+  it('合法的零样式窗口不能沿用上一次 API 的错误而漏掉全屏', () => {
+    busy();
+    api.lastError.mockReturnValue(1400);
+    api.setLastError.mockImplementation(() => api.lastError.mockReturnValue(0));
+    expect(createWindowsPlatform().isFullscreen(cat)).toBe(true);
+    expect(api.setLastError).toHaveBeenCalledWith(0);
   });
 
   it('按缩放把 Electron 坐标换成系统的物理像素再问是哪块屏幕', () => {

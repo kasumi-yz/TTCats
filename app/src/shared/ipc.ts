@@ -108,6 +108,8 @@ export type MainCommand =
   | { type: 'update/check' }
   /** 重启并安装已经下好的更新（#68）。没有下好的更新时什么也不做。 */
   | { type: 'update/install' }
+  /** 调试台：假装电脑已闲置够久，立刻按闲置自动安装规则判断一次；其他条件照常检查（#95）。 */
+  | { type: 'debug/simulateIdle' }
   /** 调试台：让桌面层的渲染进程崩溃，用来测试崩溃恢复和安全模式（D13）。 */
   | { type: 'debug/crashOverlay' }
   /**
@@ -124,6 +126,7 @@ export const MAIN_COMMAND_TYPES = [
   'diagnostics/export',
   'update/check',
   'update/install',
+  'debug/simulateIdle',
   'debug/crashOverlay',
   'debug/simulateFullscreen',
 ] as const satisfies readonly MainCommand['type'][];

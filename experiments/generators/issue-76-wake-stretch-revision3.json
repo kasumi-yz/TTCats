@@ -1,0 +1,24 @@
+{
+  "id": "sleep-to-sit",
+  "revision": 3,
+  "author": "Codex",
+  "userRequest": "伸懒腰动作不太自然，一般猫咪伸懒腰是闭着眼的，并且不会起的这么快，我在桌面放了一张网图素材供你参考",
+  "createdAt": "2026-10-03T10:13:58.263491+00:00",
+  "changeReason": "用户否决第2版，要求参考桌面网图的闭眼前伸姿势，并减慢坐起；时长从5秒增至8秒。网图只参考动作，豆豆身份仍来自已认可首尾姿势。",
+  "originalPromptSha256": "0e6c5f957f791225eed2f6ad0cfe30e5cc03897f863451d6453ec62d0781db3c",
+  "prompt": "A static, locked-off camera films a real cat from the side against a plain studio backdrop of one flat teal color. The framing never changes: no zoom, no pan, no camera shake, no cuts. The cat is a golden shaded British cat with a plush coat, a narrow ivory collar and a dark-tipped tail, facing right. The sleepy cat keeps both eyes softly closed while slowly waking and stretching. During the first two seconds it gradually slides both front paws forward along the floor and lifts its hindquarters, keeping its hind paws planted. It extends its forelegs fully, sinks its chest low between its front legs and gently arches its back, with its rump higher than its shoulders, like a relaxed cat stretching after a nap. Its eyelids remain closed throughout the entire stretch; no wide or alert eyes. It lingers in this comfortable forward stretch for about two seconds, without popping up or rushing. Then over the next three seconds it slowly releases the stretch, shifts its weight back, gently folds its hind legs, brings its front paws back underneath its shoulders and gradually settles into the final upright sitting pose. Only after it has finished stretching and is nearly seated does it softly open its eyes. It rests quietly in the final sitting pose for the last second. One continuous gentle movement at natural sleepy speed. Its mouth stays relaxed and closed; its tail stays soft and calm. Photorealistic, real-time natural speed, the same soft even lighting throughout, and the backdrop stays perfectly flat and empty. Only this one cat is in the frame. Quiet room tone.",
+  "sha256": "aad6f156e6880cba2c37eaafc055f42a296e98cfddd4e2f4f913d04c77904611",
+  "seconds": 8,
+  "seeds": [
+    6,
+    42,
+    1234,
+    2026
+  ],
+  "first": "D:\\TTCats-素材库\\work\\issue-76\\poses\\pose-sleep.png",
+  "last": "D:\\TTCats-素材库\\work\\issue-7\\poses\\pose-sit.png",
+  "previousPromptSha256": "5b7fa6a14da42c3fdba52abb2b72303568a53b8a6a55d1ba94ea34ecdc2721ed",
+  "poseReference": "D:\\TTCats-素材库\\work\\issue-76\\wake-stretch-v3\\references\\网图 金渐层伸懒腰.png",
+  "poseReferenceSha256": "56c51c1407642ac48df36c3cae500bf6d3f05e970cb0d157c7b57d105170b61c",
+  "referenceUsage": "pose and eyelid reference only; first/last Doudou identity images unchanged; reference not uploaded to FL2VA"
+}
