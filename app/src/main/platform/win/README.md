@@ -4,7 +4,7 @@
 
 通过 `await createPlatform()`（从 `main/platform/index.ts` 导入）创建接口，然后同步查询：
 
-- `isFullscreen(display)`：通知状态为 3（D3D 独占全屏）、4（演示模式）时直接返回 `true`，系统不说是哪块屏幕；状态 2（忙碌）时再核对前台窗口：要和猫在同一块显示器上（`display` 是那块显示器上的一点，Electron 坐标，用 `screen.dipToScreenPoint` 换成物理像素后 `MonitorFromPoint`），并且盖满那块显示器，桌面、任务栏和白名单程序不算（#29、#65）。HRESULT 失败会抛出含 API 名和错误码的诊断错误。
+- `isFullscreen(display)`：通知状态为 3（D3D 独占全屏）、4（演示模式）时直接返回 `true`，系统不说是哪块屏幕；状态 2（忙碌）时再核对前台窗口：要和猫在同一块显示器上（`display` 是那块显示器上的一点，Electron 坐标，用 `screen.dipToScreenPoint` 换成物理像素后 `MonitorFromPoint`），并且盖满那块显示器。桌面、任务栏、系统切换界面、输入面板、白名单程序，以及带完整标题栏的最大化窗口不算（#29、#65、#103）。类名不区分大小写，窗口样式读失败保留原几何判断。HRESULT 失败会抛出含 API 名和错误码的诊断错误。
 - `isCtrlDown()`：读取合并的 Ctrl 当前按下位，左右 Ctrl 均有效，不使用不可靠的“最近按过”位。
 - `isLeftButtonDown()`：读取系统设置里的主按钮。每次检查 `SM_SWAPBUTTON`，交换左右键后立即改读物理右键，供拖动松手兜底使用。
 
@@ -72,3 +72,7 @@ npx electron app/out/platform-watch.mjs
 按键查询远小于 20ms 轮询间隔；全屏查询也可沿用 M0 的 500ms 周期。这里不启动任何轮询。
 
 API 语义参考：[GetAsyncKeyState](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate)、[通知状态](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/ne-shellapi-query_user_notification_state)。
+
+## #103 全屏误判修正
+
+纯函数在 `fullscreen.ts`，不依赖 Electron 或系统接口。真机结果、实测边界及复测命令见 [fullscreen-verification.md](fullscreen-verification.md)。
