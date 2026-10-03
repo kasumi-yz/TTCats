@@ -5,3 +5,12 @@ export interface Platform {
   isCtrlDown(): boolean;
   isLeftButtonDown(): boolean;
 }
+
+/** 诊断导出用的系统信息（D13）。用户目录和用户名只用来在导出时替换掉，不写进压缩包。 */
+export interface SystemInfo {
+  home: string;
+  username: string;
+  os: { version: string; release: string; arch: string };
+  cpu: { model: string | null; cores: number };
+  memory: { totalBytes: number; freeBytes: number };
+}
