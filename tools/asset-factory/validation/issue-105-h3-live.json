@@ -1,0 +1,41 @@
+{
+  "record_version": 1,
+  "batch": "issue-105-h3-live",
+  "complete": true,
+  "first_task_id_unchanged": true,
+  "first_generation_log_unchanged": true,
+  "duplicate_submissions": false,
+  "candidates": [
+    {
+      "task": "walk-42",
+      "prompt_id": "a6f2078e-f56f-4230-8129-d8b1b413d14d",
+      "generation_attempt": 5,
+      "matching_server_tasks": 1,
+      "generator_log": "D:\\TTCats-素材库\\generation-records\\7d16c6e08c4947578ecfe2183207100b803a84ccfffc37d54836b8ad996fff2f\\attempt-5.json",
+      "source_sha256": "9a085dd0d65510205f43877c5654d57cc65d7e668b92c219203f2c88201a012a",
+      "manifest": "D:\\TTCats-素材库\\factory\\clip-d27a30dfa2ea4886\\finalize\\manifest.json",
+      "score": 81.79,
+      "frame_count": 74,
+      "fps": 24.0
+    },
+    {
+      "task": "walk-1234",
+      "prompt_id": "c0c6d05a-95f3-482e-9e8b-416f64dee283",
+      "generation_attempt": 6,
+      "matching_server_tasks": 1,
+      "generator_log": "D:\\TTCats-素材库\\generation-records\\7d16c6e08c4947578ecfe2183207100b803a84ccfffc37d54836b8ad996fff2f\\attempt-6.json",
+      "source_sha256": "e166067a8aa2730fcfe4700d79b4c897fa52f5eed873fcf2adf7e85fd46c18bc",
+      "manifest": "D:\\TTCats-素材库\\factory\\clip-fa9f9c0ee73d4d40\\finalize\\manifest.json",
+      "score": 83.99,
+      "frame_count": 33,
+      "fps": 24.0
+    }
+  ],
+  "interruption": {
+    "StoppedOnlyBatchProcess": 52052,
+    "PromptId": "a6f2078e-f56f-4230-8129-d8b1b413d14d",
+    "GenerationLog": "D:\\TTCats-素材库\\generation-records\\7d16c6e08c4947578ecfe2183207100b803a84ccfffc37d54836b8ad996fff2f\\attempt-5.json",
+    "ComfyPid": 36092
+  },
+  "note": "实际H3两种子串行生成、第一项queued时仅中断工厂后恢复。两候选均pending，不代表用户视觉接受或脚严格通过。"
+}
