@@ -118,7 +118,7 @@ npm run test:smoke         # 冒烟测试：用 Playwright 启动构建好的应
 - `src/core/`、`src/shared/` 里导入 `electron`、`pixi.js`、`react`、`node:*`，或者使用 `window`、`document` 等 DOM 全局变量、`Date.now()`（规则 1、6）。
 - `src/main/platform/` 以外导入 `koffi` 或使用 `process.platform`（规则 3）。
 
-CI（`.github/workflows/ci.yml`）：Linux 上跑 `npm run check`；有 `tools/asset-factory/` 时跑 `uv sync`、`uv run ruff check`、`uv run pytest`；Windows 上构建应用并跑冒烟测试。
+CI（`.github/workflows/ci.yml`）：Linux 上跑 `npm run check`；有 `tools/asset-factory/` 时跑 `uv sync`、`uv run ruff check`、`uv run pytest`；Windows 上构建应用并跑冒烟测试（只改了 `docs/`、`content/` 或 `.md` 文件的 PR 跳过冒烟；安装包只在推到 `main` 时生成）。
 
 ## Agent skills
 
